@@ -57,7 +57,7 @@ class ASCIIReplyDecoder(ReplyDecoder):
         for c in self.stripChars:
             replyString = replyString.replace(c, '')
             
-     # Make sure to consume unparseable junk up to the next EOL.
+        # Make sure to consume unparseable junk up to the next EOL.
         #
         try:
             r = parseASCIIReply(replyString, cidFirst=self.cidFirst)

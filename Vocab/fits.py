@@ -40,7 +40,7 @@ class fits(InternalCmd.InternalCmd):
         """ Return the instrument object, or fail the command. """
 
         if inst not in self.instClasses:
-            cmd.fail('hubTxt=%s' % (qstr("Unknown instrument: %s" % inst)))
+            cmd.fail('hubTxt=%s' % (CPL.qstr("Unknown instrument: %s" % inst)))
             return None
             
         return self.instClasses[inst]
@@ -322,13 +322,13 @@ class InstFITS(object):
 
         scratchFile = g.KVs.getKey(self.instName, 'scratchFile', None)
         if scratchFile == None:
-            cmd.fail('fitsTxt=%s' % (qstr("NO IMAGE FILE FOR %s!!!!" % (self.instName))))
+            cmd.fail('fitsTxt=%s' % (CPL.qstr("NO IMAGE FILE FOR %s!!!!" % (self.instName))))
             return
 
         try:
             inFITS = FITS(inputFile=scratchFile)
         except Exception, e:
-            cmd.fail('fitsTxt=%s' % (qstr("Could not read FITS file %s: %s" % (scratchFile, e))))
+            cmd.fail('fitsTxt=%s' % (CPL.qstr("Could not read FITS file %s: %s" % (scratchFile, e))))
             return
 
         cmd.inform('fitsDebug=%s' % (CPL.qstr("Generating fits file %s" % (outName))))
@@ -358,14 +358,16 @@ class InstFITS(object):
             outFile = os.fdopen(f, "w")
             CPL.log('InstFITS.finish', 'f=%s, file=%s' % (f, outFile))
         except (OSError, IOError), e:
-            cmd.fail('fitsTxt=%s' % (qstr("Could not create %s (%s)" % (outName, e.strerror))))
+            cmd.fail('fitsTxt=%s' % \
+                     (CPL.qstr("Could not create %s (%s)" % (outName, e.strerror))))
             return
 
         inFITS.writeToFile(outFile)
         outFile.close()
         del inFITS
 
-        cmd.finish('fitsTxt=%s' % (qstr("Finished writing the %s file: %s" % (self.instName, outName))))
+        cmd.finish('fitsTxt=%s' % \
+                   (CPL.qstr("Finished writing the %s file: %s" % (self.instName, outName))))
         
 class grimFITS(InstFITS):
     """ The Grim-specific FITS routines.

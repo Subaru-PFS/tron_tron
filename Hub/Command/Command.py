@@ -96,11 +96,11 @@ class Command(CPL.Object):
         if g.hubcmd != None and self.bcastCmdInfo:
             g.hubcmd.inform(("NewCmd=%s" % (self.xid),
                              "CmdTime=%s" % (self.ctime),
-                             "Cmdr=%s" % (qstr(self.cmdrName)),
+                             "Cmdr=%s" % (CPL.qstr(self.cmdrName)),
                              "CmdrMID=%s" % (self.cmdrMid),
-                             "CmdrCID=%s" % (qstr(cid_s)),
-                             "CmdActor=%s" % (qstr(self.actorName)),
-                             "CmdText=%s" % (qstr(cmd_s))),
+                             "CmdrCID=%s" % (CPL.qstr(cid_s)),
+                             "CmdActor=%s" % (CPL.qstr(self.actorName)),
+                             "CmdText=%s" % (CPL.qstr(cmd_s))),
                              src='cmds')
 
     def __str__(self):
@@ -179,9 +179,9 @@ class Command(CPL.Object):
         if matches:
             return matches.groupdict()
         else:
-            g.hubcmd.inform('ParseError=%s' % (qstr("Consuming all trailing text '%s'" % (s))),
+            g.hubcmd.inform('ParseError=%s' % (CPL.qstr("Consuming all trailing text '%s'" % (s))),
                             src='hub')
-        return {'val':qstr(s), 'rest':''}
+        return {'val':CPL.qstr(s), 'rest':''}
 
     def eatAString(self, s):
         # Match a quoting-escaped string.
@@ -228,7 +228,7 @@ class Command(CPL.Object):
         if c == "\\" and level % 2 == 1:
             add += "\\"
        
-        g.hubcmd.inform([('ParseError', qstr('appended %s to string %s' % (add, s)))],
+        g.hubcmd.inform([('ParseError', CPL.qstr('appended %s to string %s' % (add, s)))],
                         src='hub')
         s += add
         return {'val':s, 'level':1, 'rest':''}
@@ -256,7 +256,7 @@ class Command(CPL.Object):
     
         match = self.kv_re.match(s)
         if match == None:
-            g.hubcmd.inform([('ParseError', qstr("No key-value found at '%s'" % (s)))],
+            g.hubcmd.inform([('ParseError', CPL.qstr("No key-value found at '%s'" % (s)))],
                             src='hub')
             return None
         

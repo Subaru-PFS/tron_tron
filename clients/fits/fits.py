@@ -12,7 +12,7 @@ import time
 import client
 import Command
 import Actor
-import CPL.log as log
+import CPL
 
 class FITSActor(Actor.Actor):
     def __init__(self, **argv):
@@ -35,7 +35,7 @@ class FITSActor(Actor.Actor):
         try:
             self._parse(cmd)
         except Exception, e:
-            cmd.fail('fitsTxt=%s' % qstr(e, tquote='"'))
+            cmd.fail('fitsTxt=%s' % CPL.qstr(e, tquote='"'))
             CPL.log("fits", "exception=%s" % (e))
             return
 

@@ -21,7 +21,7 @@ class ActorNub(CoreNub):
             If set, call when each command is dispatched and finished.
         replyCallback - func(cmd, reply)
             If set, called with eachreply line _instead of_ the cmd callback.
-            
+        logDir     - Log all I/O to the given directory
         """
         
         self.cid = None
@@ -36,6 +36,12 @@ class ActorNub(CoreNub):
         self.replyCallback = argv.get('replyCallback', None)
         self.needsAuth = argv.get("needsAuth", False)
 
+        logDir = argv.get("logDir", None)
+        if logDir:
+            self.log = CPL.Logfile(logDir, EOL='', doEncode=True)
+        else:
+            self.log = None
+            
         safeCmds = argv.get('safeCmds', None)
         if safeCmds == None:
             self.safeCmds = None
@@ -102,9 +108,11 @@ class ActorNub(CoreNub):
                          ("ActorMID", c.actorMid),
                          ("ActorCID", c.actorCid)),
                         src="cmds")
-            
-        self.queueForOutput(ec)
 
+        self.queueForOutput(ec)
+        if self.log:
+            self.log.log(ec, note='>')
+            
     def copeWithInput(self, s):
         """ Incorporate new input: buffer it, then extract and operate on each complete reply.
 
@@ -127,6 +135,13 @@ class ActorNub(CoreNub):
             if reply == None:
                 break
 
+            if self.log:
+                try:
+                    txt = reply['RawText']
+                except:
+                    txt = "UNKNOWN INPUT"
+                self.log.log(txt, note='<')
+            
             # Optionally try to fetch our CID by looking at the first reply.
             # The actor had better reply to our connection...
             #

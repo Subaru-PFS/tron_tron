@@ -150,7 +150,7 @@ class ExposureActor(Actor.Actor):
 
         inst = inst.lower()
         if not inst in self.knownInstruments:
-            cmd.fail('exposeTxt="%s is not a known instrument"' % (qstr(inst, tquote="'")))
+            cmd.fail('exposeTxt="%s is not a known instrument"' % (CPL.qstr(inst, tquote="'")))
             return
 
         # OK, split ourselves into operations which do and do not act on an existing exposure.
@@ -207,7 +207,7 @@ class ExposureActor(Actor.Actor):
             self.openExposures[inst] = exp
             exp.run()
         else:
-            cmd.fail('exposeTxt="command %s has not even been imagined"' % (qstr(command, tquote="'")))
+            cmd.fail('exposeTxt="command %s has not even been imagined"' % (CPL.qstr(command, tquote="'")))
             return
 
     def status(self, cmd, inst):
@@ -234,7 +234,7 @@ class ExposureActor(Actor.Actor):
     def getIDKey(self, cmd, inst):
         """ Return the key describing a given command and instrument. """
 
-        return "exposeID=%s,%s" % (qstr(cmd.program()), qstr(inst))
+        return "exposeID=%s,%s" % (CPL.qstr(cmd.program()), CPL.qstr(inst))
 
     def getPathID(self, cmd, inst):
         return (cmd.program(), inst)

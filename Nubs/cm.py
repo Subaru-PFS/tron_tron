@@ -1,5 +1,6 @@
 import Hub
 import hub
+import g
 
 name = 'cm'
 
@@ -10,7 +11,7 @@ def start(poller):
     d = Hub.ASCIIReplyDecoder(debug=9)
     e = Hub.ASCIICmdEncoder(debug=9, sendCommander=True)
     nub = Hub.ShellNub(poller, ['/usr/bin/env',
-                                'PYTHONPATH=%s/Client:%s' % (hub.home, hub.home),
+                                'PYTHONPATH=%s/Client:%s' % (g.home, g.home),
                                 'clients/cm/cm.py'],
                        name=name, encoder=e, decoder=d,
                        debug=9)

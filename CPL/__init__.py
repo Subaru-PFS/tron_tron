@@ -5,3 +5,4 @@ from log import *
 from qstr import *
 from tcmd import *
 from tback import *
+from Logfile import *

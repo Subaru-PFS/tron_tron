@@ -165,7 +165,7 @@ def match(argv, opts):
             converter = want[opt]
             if converter == None:
                 if arg != None:
-                    raise Exception("option %s takes no argument" % (qstr(opt, tquote="'")))
+                    raise Exception("option %s takes no argument" % (CPL.qstr(opt, tquote="'")))
                 matches[opt] = None
             else:
                 try:
