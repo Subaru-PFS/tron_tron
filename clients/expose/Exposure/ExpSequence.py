@@ -8,6 +8,8 @@ import grimExposure
 
 class ExpSequence(Actor.Acting):
     def __init__(self, actor, cmd, inst, expType, path, cnt, **argv):
+        """ Track 
+        """
         Actor.Acting.__init__(self, actor, **argv)
         
         self.actor = actor
@@ -55,31 +57,38 @@ class ExpSequence(Actor.Acting):
         self.cmd.respond(self.getStateKey())
         
     def returnPathKey(self):
-        self.cmd.respond(self.path.getKey())
+        self.cmd.respond(self.exposure.lastFilesKey())
+
+    def returnNewFilesKey(self):
+        self.cmd.respond(self.exposure.newFilesKey())
         
     def returnKeys(self):
         """ Generate all the keys describing our last and next files. """
 
         self.returnStateKey()
-        self.returnPathKey()
-
+        # self.returnPathKey()
+        self.cmd.respond(self.path.getKey())
+        
     def getKeys(self):
         return self.getStateKey(), self.exposure.getStateKeys()
-
+    
     def _finishExposure(self):
+        """ Called when one of our exposures is finished.
+        """
+        
         # If we actually generated image files, let them know.
         if self.exposure and self.exposure.state not in ('idle', 'aborted'):
             CPL.log("seq.finishExposure", "state=%s" % (self.exposure.state))
                     
             # self.exposure.finishUp()
-            filesKey = self.exposure.filesKey()
+            filesKey = self.exposure.lastFilesKey()
             if filesKey:
                 self.cmd.respond(filesKey)
 
         # If we have reached the end of the sequence, close ourselves out.
         if self.cntLeft <= 0 or self.state in ('stopped', 'aborted'):
-            #if self.cntLeft <= 0:
-            #    self.state = 'done'
+            if self.state not in ('stopped', 'aborted'):
+                self.state = 'done'
             self.returnKeys()
             self.actor.seqFinished(self)
             return
@@ -104,6 +113,7 @@ class ExpSequence(Actor.Acting):
         
         self.cntLeft -= 1
         self.returnKeys()
+        self.returnNewFilesKey()
         self.exposure.run()
     
     def startSequence(self):

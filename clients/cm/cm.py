@@ -244,7 +244,7 @@ class CM(Actor.Actor):
         CPL.log("cmDebug", "REQSTAT call")
         
         try:
-            client.callback('tcc', 'show time', debug=5)
+            client.call('tcc', 'show time')
             time.sleep(0.5)
         except Exception, e:
             CPL.log("cmDebug", "show time bailed: %s" % (e))
@@ -314,7 +314,7 @@ class CM(Actor.Actor):
 
         """
 
-        client.callback('tcc', 'show time', debug=5)
+        client.call('tcc', 'show time')
         time.sleep(0.5)
         try:
             keys = client.getKeys("tcc", [('ObjPos', asCoord2),
@@ -417,7 +417,7 @@ class CM(Actor.Actor):
 
         cmd.respond('cmDebug=%s' % (CPL.qstr(c)))
         cid = "%s.%s" % (cmd.fullname, self.name)
-        res = client.callback('tcc', c, cid=cid, debug=5)
+        res = client.call('tcc', c, cid=cid)
         time.sleep(0.5)
 
         cmd.finish('RawTxt="1"')
@@ -523,11 +523,11 @@ class CM(Actor.Actor):
 #
 def main(name, eHandler=None, debug=0, test=False):
     if eHandler == None:
-        eHandler = CM(debug=5)
+        eHandler = CM(debug=1)
     eHandler.start()
 
     try:
-        client.run(name=name, cmdQueue=eHandler.queue, background=False, debug=5, cmdTesting=test)
+        client.run(name=name, cmdQueue=eHandler.queue, background=False, debug=1, cmdTesting=test)
     except SystemExit, e:
         CPL.log('expose.main', 'got SystemExit')
         raise
@@ -547,4 +547,4 @@ def tc(s):
     mid += 1
     
 if __name__ == "__main__":
-    main('cm', debug=9)
+    main('cm', debug=1)

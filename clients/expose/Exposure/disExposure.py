@@ -86,7 +86,7 @@ class disExposure(Exposure.Exposure):
                 raise Exception("%s exposures require a time argument" % (expType))
 
         self.reserveFilenames()
-        
+
     def reserveFilenames(self):
         """ Reserve filenames, and set .basename.
 
@@ -102,8 +102,14 @@ class disExposure(Exposure.Exposure):
 
     def _basename(self):
         return os.path.join(*self.pathParts)
+
+    def lastFilesKey(self):
+        return self.filesKey(keyName="disFiles")
     
-    def filesKey(self):
+    def newFilesKey(self):
+        return self.filesKey(keyName="disNewFiles")
+    
+    def filesKey(self, keyName="disFiles"):
         """ Return a fleshed out key variable describing our files.
 
         We return all the parts separately, in a form that can be
@@ -120,14 +126,15 @@ class disExposure(Exposure.Exposure):
             blueFile = CPL.qstr("%sb.fits" % (filebase))
             redFile = CPL.qstr("%sr.fits" % (filebase))
         elif self.cameras == "red ":
-            blueFile = "None"
+            blueFile = 'None'
             redFile = CPL.qstr("%sr.fits" % (filebase))
         else:
             blueFile = CPL.qstr("%sb.fits" % (filebase))
-            redFile = "None"
+            redFile = 'None'
 
-        return "disFiles=%s,%s,%s,%s,%s,%s,%s" % \
-               (CPL.qstr(self.cmd.cmdrName),
+        return "%s=%s,%s,%s,%s,%s,%s,%s" % \
+               (keyName,
+                CPL.qstr(self.cmd.cmdrName),
                 CPL.qstr('tycho.apo.nmsu.edu'),
                 CPL.qstr(self.pathParts[0] + os.sep),
                 CPL.qstr(self.pathParts[1] + os.sep),
