@@ -21,7 +21,8 @@ class ExpSequence(Actor.Acting):
         self.state = "running"
 
         self.exposure = None
-
+        self.path.newSequence()
+        
     def run(self):
         self.startSequence()
 

@@ -22,7 +22,8 @@ class gcam(Guider.Guider):
         # Additional commands for the Alta.
         #
         self.commands.update({'setTemp':    self.doSetTemp,
-                              'setFan':     self.doSetFan})
+                              'setFan':     self.doSetFan,
+                              'setThresh':  self.doSetThresh})
 
         self._setDefaults()
         
@@ -35,7 +36,13 @@ class gcam(Guider.Guider):
         self.guideScale = 0.8
         self.GImName = "Alta-E6"
         self.GImCamID = 1
+
         self.plateScale = 0.138
+        self.bias = 1787
+        self.rdNoise = 21.3
+        self.ccdGain = 1.6
+        self.starThresh = 4.5
+        self.defaultStarThresh = self.starThresh
         
     def doSetTemp(self, cmd):
         """ Handle setTemp command.
@@ -87,6 +94,27 @@ class gcam(Guider.Guider):
         self.camera.coolerStatus(cmd)
         cmd.finish()
             
+    def doSetThresh(self, cmd):
+        """ Handle setThresh command, which sets the stddev factor to consider a blob a star.
+
+        CmdArgs:
+           int    - the new 
+        """
+
+        parts = cmd.raw_cmd.split()
+        if len(parts) != 2:
+            cmd.fail('%sTxt="usage: setThresh value."')
+            return
+
+        try:
+            t = float(parts[1])
+        except:
+            cmd.fail('%sTxt="setThresh value must be a number"')
+            return
+
+        self.starThresh = t
+        cmd.finish('starThreshold=%0.2f' % (self.starThresh))
+        
     def _guideExpose(self):
         pass
     

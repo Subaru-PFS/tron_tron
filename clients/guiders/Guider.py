@@ -85,7 +85,11 @@ class Guider(Actor.Actor, GuideLoop.GuideLoop):
             for i in range(len(ret)-1):
                 cmd.respond('txtForTcc=%s' % (CPL.qstr(ret[i])))
             cmd.finish('txtForTcc=%s' % (CPL.qstr(ret[-1])))
-
+        else:
+            for i in range(len(ret)-1):
+                cmd.respond('rawTxt=%s' % (CPL.qstr(ret[i])))
+            cmd.finish('rawTxt=%s' % (CPL.qstr(ret[-1])))
+            
     def doInit(self, cmd):
         """ Clean up/stop/initialize ourselves. """
 
@@ -358,10 +362,14 @@ showstatus
         
         try:
             isSat, stars = PyGuide.findStars(
-		data = img,
-                mask=mask
+		img, mask,
+                self.bias, self.rdNoise, self.ccdGain,
+                dataCut = self.starThresh,
+                verbosity=0
                 )
-        except:
+        except Exception, e:
+            cmd.warn('debug=%s' % (CPL.qstr(e)))
+            raise
             isSat = False
             stars = []
 
@@ -371,7 +379,7 @@ showstatus
 
         cmd.respond('txtForTcc=%s' % (CPL.qstr(cmd.raw_cmd)))
 
-        scale = self.plateScale * self.binForTcc[0]
+        scale = self.binForTcc[0]
 
         if len(stars) == 0:
             cmd.respond('txtForTcc="no stars found"')

@@ -68,15 +68,14 @@ class ExpPath(object):
             self._checkFileAccess = self._checkSimpleFileAccess
         
         self.rootDir = rootDir.strip()
+        self.userDir = ''
+
         self._adjustProgramDir()
         
         d = os.path.join(self.rootDir, self.programDir)
         if self._isSneakyDir(d):
             raise CPL.Error("I don't trust the program name %s" % (CPL.qstr(program, tquote="'")))
 
-        #userDir, name = self.normalizeDir(userDir, name)
-        #CPL.log("ExpPath", "dir=%s, name=%s" % (userDir, name))
-        
         self._checkDir(userDir)
         self._checkName(name)
         self._checkNumber(number)
@@ -85,6 +84,11 @@ class ExpPath(object):
         self.needSize = needSize
         self.suffix = suffix
 
+        self.forcePathUpdate = False
+
+    def newSequence(self):
+        self.forcePathUpdate = True
+        
     def normalizeDir(self, userDir, name):
         """ Move any directories specified in name to userDir. """
 
@@ -107,20 +111,6 @@ class ExpPath(object):
         if self._isSneakyDir(d):
             raise CPL.Error("I don't trust the path %s" % (d))
         self.userDir = userDir
-        fullDir = d
-        
-        # Make sure we can own or create the user directory.
-        #
-        if not os.path.exists(fullDir):
-            try:
-                os.makedirs(fullDir, 0777)
-            except Exception, e:
-                raise CPL.Error("could not create directory %s: %s" % (fullDir, e))
-        try:
-            os.chmod(fullDir, 0777)
-        except Exception, e:
-            raise CPL.Error("could not open up directory %s: %s" % (fullDir, e))
-
         
     def _checkName(self, name):
         """ Check the proposed new file basename.
@@ -134,13 +124,9 @@ class ExpPath(object):
            Error
         """
 
-        # if '/' in name:
-        #     raise Error("please do not put directories in the file name")
-
         name = name.strip()
         userDir, name = self.normalizeDir('', name)
-        if True or userDir != '':
-            self._checkDir(userDir)
+        self._checkDir(userDir)
         CPL.log("ExpPath", "dir=%s, name=%s" % (userDir, name))
         
         # Make sure the fully fleshed out userpath does not escape from our root directory.
@@ -282,7 +268,14 @@ class ExpPath(object):
         by checking for each file whether the right directory exists.
 
         We want the directories to change at local noon and be named after the
-        new day's date. 
+        new day's date.
+
+        Example:
+           self.rootDir = '/export/images'
+           self.program = 'UC05'
+           self.userDir = ''
+           
+           
         """
 
         now = time.time()
@@ -291,14 +284,18 @@ class ExpPath(object):
 
         dateString = time.strftime("UT%y%m%d", time.gmtime(localNowPlus12H))
         quarterString = self.month2quarters[dateString[4:6]]
-
         programDir = os.path.join(quarterString + self.program, dateString)
-        dirName = os.path.join(self.rootDir, programDir)
+        dirName = os.path.join(self.rootDir, programDir, self.userDir)
         if not os.path.isdir(dirName):
+            CPL.log("expPath", "creating %s" % (dirName))
+            if self._isSneakyDir(dirName):
+                raise CPL.Error("I don't trust the directory %s" % \
+                                (CPL.qstr(dirName, tquote="'")))
             os.makedirs(dirName)
             os.chmod(dirName, 0777)
 
         self.programDir = programDir
+        self.forcePathUpdate = False
         
     def _fullName(self):
         return "%s%s%s" % (self.name, self._getNumber(), self.suffix)
@@ -307,7 +304,7 @@ class ExpPath(object):
         return os.path.join(self.rootDir, self.programDir, self.userDir, self._fullName())
         
     def _allParts(self, keepPath):
-        if not keepPath:
+        if self.forcePathUpdate or not keepPath:
             self._adjustProgramDir()
         return self.rootDir, self.programDir, self.userDir, self._fullName()
 
@@ -402,6 +399,15 @@ class ExpPath(object):
                                               CPL.qstr(self.name),
                                               CPL.qstr(self._getNumber()),
                                               CPL.qstr(self.suffix))
+    def getNextKey(self):
+        """ Return the key that describes us. """
+
+        return "%sPath=%s,%s,%s,%s,%s" % (self.inst.lower(),
+                                          CPL.qstr(self.cmdrID),
+                                          CPL.qstr(self.userDir),
+                                          CPL.qstr(self.name),
+                                          CPL.qstr(self._getNumber()),
+                                          CPL.qstr(self.suffix))
     
 if __name__ == "__main__":
     p = ExpPath("PU01/..")
