@@ -7,22 +7,17 @@ import g
 name = 'nicfps'
 
 def start(poller):
-    # deep_reload(Hub)
-    
     stop()
 
-    initCmds = ('filters names',
-                'temp names',
-                'temp min',
-                'temp max',
-                'temp read',
-                'filters getpos')
+    initCmds = ('filters status',
+                'temp status',
+                'pressure status')
 
-    safeCmds = r'^\s*status\s*$'
+    safeCmds = r'status\s*$'
 
-    d = Hub.ASCIIReplyDecoder(EOL='\n', CIDfirst=True, debug=5)
+    d = Hub.ASCIIReplyDecoder(EOL='\n', debug=5)
     e = Hub.ASCIICmdEncoder(EOL='\n', debug=5)
-    nicfps = Hub.SocketActorNub(poller, 'nicfps', 8880,
+    nicfps = Hub.SocketActorNub(poller, 'nicfps', 9878,
                                 name=name, encoder=e, decoder=d,
                                 initCmds=initCmds, safeCmds=safeCmds,
                                 needsAuth=True,
