@@ -41,7 +41,11 @@ class echelleCB(Exposure.CB):
                 if maybeNewState == 'flushing...':
                     newState = "flushing"
                     length = 37.0
-                elif maybeNewState in ('integrating...', 'resuming'):
+                elif maybeNewState in ('resuming'):
+                    newState = "integrating"
+                elif maybeNewState[:-1] in ('integrating dark',
+                                            'bias integration',
+                                            'integrating..'):
                     newState = "integrating"
                     self.exposure.integrationStarted()
                 elif maybeNewState == 'pausing':
@@ -78,8 +82,10 @@ class echelleExposure(Exposure.Exposure):
         self.instArgs = req
 
         self.comment = ""
+        self.commentArg = ""
         if req.has_key('comment'):
-            self.comment='comment=%s ' % req['comment']
+            self.comment = req['comment']
+            self.commentArg = 'comment=%s ' % (CPL.qstr(req['comment']))
 
         if expType in ("object", "dark", "flat"):
             if req.has_key('time'):
@@ -123,7 +129,13 @@ class echelleExposure(Exposure.Exposure):
         if self.state != "aborted":
             self.callback('fits', 'finish echelle %s' % (output))
 
-    def filesKey(self):
+    def lastFilesKey(self):
+        return self.filesKey(keyName="echelleFiles")
+    
+    def newFilesKey(self):
+        return self.filesKey(keyName="echelleNewFiles")
+    
+    def filesKey(self, keyName="echelleFiles"):
         """ Return a fleshed out key variable describing our files.
 
         We return all the parts separately, in a form that can be
@@ -136,8 +148,9 @@ class echelleExposure(Exposure.Exposure):
         if userDir != '':
             userDir += os.sep
             
-        return "echelleFiles=%s,%s,%s,%s,%s,%s" % \
-               (CPL.qstr(self.cmd.cmdrName),
+        return "%s=%s,%s,%s,%s,%s,%s" % \
+               (keyName,
+                CPL.qstr(self.cmd.cmdrName),
                 CPL.qstr('tycho.apo.nmsu.edu'),
                 CPL.qstr(self.pathParts[0] + os.sep),
                 CPL.qstr(self.pathParts[1] + os.sep),
