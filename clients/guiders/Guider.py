@@ -67,11 +67,14 @@ class Guider(Actor.Actor):
         self.defaults['maskDir'] = CPL.cfg.get(self.name, 'maskDir')
         self.defaults['maskFile'] = CPL.cfg.get(self.name, 'maskFile')
 
+        self.defaults['fitErrorScale'] = CPL.cfg.get(self.name, 'fitErrorScale')
+        self.defaults['minOffset'] = CPL.cfg.get('telescope', 'minOffset')
+
     def statusCmd(self, cmd):
         """ Returns camera and guide loop status keywords. """
 
-        self.camera.status(cmd, doFinish=False)
-        self.mask.status(cmd, doFinish=False)
+        self.camera.statusCmd(cmd, doFinish=False)
+        self.mask.statusCmd(cmd, doFinish=False)
 	
         if self.guideLoop:
             self.guideLoop.doStatus(cmd, doFinish=False)
@@ -186,7 +189,7 @@ class Guider(Actor.Actor):
                                                frame, tweaks,
                                                cnt=1)
             if not stars:
-                cmd.fail('centroidTxt="no stars found"' % (self.name))
+                cmd.fail('centroidTxt="no stars found"')
                 return
 
             seed = stars[0].ctr
@@ -212,8 +215,12 @@ class Guider(Actor.Actor):
         guide loop destroyed.
 
         """
-
+        g = self.guideLoop
         self.guideLoop = None
+
+        CPL.log("guideLoopIsStopped", "deleting %s" % (g))
+        
+        del g
         
     def guideCmd(self, cmd):
         """ Start or stop guiding.
@@ -223,8 +230,16 @@ class Guider(Actor.Actor):
 
         if cmd.argDict.has_key('off'):
             if self.guideLoop:
-                self.guideLoop.stop()
+                self.guideLoop.stop(cmd)
                 cmd.finish('%sTxt="Turning guiding off."' % (self.name))
+            else:
+                cmd.fail('%sTxt="Guiding is already off."' % (self.name))
+            return
+        elif cmd.argDict.has_key('zap'):
+            if self.guideLoop:
+                self.guideLoop.stop(cmd)
+                cmd.finish('%sTxt="Turning guiding off."' % (self.name))
+                self.guideLoop.stopGuiding()
             else:
                 cmd.fail('%sTxt="Guiding is already off."' % (self.name))
             return
@@ -451,7 +466,7 @@ class Guider(Actor.Actor):
 
         return coords
 
-    def parseBin(self, parts):
+    def parseBin(self, s):
         """ Parse a binning specification of the form X,Y or N
 
         Args:
@@ -466,6 +481,7 @@ class Guider(Actor.Actor):
         """
 
         try:
+            parts = s.split(',')
             if len(parts) == 1:
                 parts = parts * 2
             if len(parts) != 2:

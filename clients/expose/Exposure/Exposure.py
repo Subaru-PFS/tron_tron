@@ -140,7 +140,7 @@ class CB(object):
         if self.debug > 0:
             CPL.log("CB.cb", "res=%s" % (res))
         
-        if res['ok']:
+        if res.ok:
             if self.sequence:
                 self.sequence.nextInSequence()
             if self.cmd:

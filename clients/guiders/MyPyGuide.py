@@ -78,7 +78,7 @@ def findstars(cmd, filename, mask, frame, tweaks, cnt=10):
             chiSq = shape.chiSq
             bkgnd = shape.bkgnd
             ampl = shape.ampl
-        except:
+        except Exception, e:
             cmd.warn("findstarsTxt=%s" % (CPL.qstr("starShape failed: %s" % e)))
             fwhm = 0.0        # nan does not work.
             chiSq = 0.0
@@ -131,7 +131,12 @@ def centroid(cmd, filename, mask, frame, seed, tweaks):
     frame.setImageFromFITSHeader(header)
     maskbits = mask.getMaskForGFrame(cmd, frame)
 
+    # Transform the seed from CCD to image coordinates
+    seed = frame.ccdXY2imgXY(seed)
     cSeed = xy2ij(seed)
+
+    cmd.warn('debug=%s' % (CPL.qstr("centroid file=%s, frame=%s, seed=%s" % \
+                                    (filename, frame, seed))))
     try:
         star = PyGuide.centroid(
             img, maskbits,

@@ -21,6 +21,9 @@ class BaseFilter(Queue.Queue):
         
         self.debug = argv.get('debug', 0)
         
+    def __str__(self):
+        return "BaseFilter(debug=%d, id=%d)" % (self.debug, id(self))
+    
     def copeWithInput(self, x):
         """ Accept all input. """
 
@@ -35,6 +38,10 @@ class ClientCmdFilter(BaseFilter):
         self.cid = str(command.cmdrCid)
         self.mid = str(command.cmdrMid)
 
+    def __str__(self):
+        return "ClientCmdFilter(cid=%s, mid=%s, debug=%s, id=%s)" % \
+               (self.cid, self.mid, self.debug, id(self))
+    
     def copeWithInput(self, reply):
         """ Accept replies to our command. """
 
@@ -63,6 +70,10 @@ class ActorFilter(BaseFilter):
         self.name = name
         self.cmds = {}
 
+    def __str__(self):
+        return "ActorFilter(name=%s, cmds=%s, debug=%d, id=%d)" % \
+               (self.name, self.cmds, self.debug, id(self))
+    
     def addCommand(self, command, **argv):
         key = (str(command.cmdrCid), str(command.cmdrMid))
         self.cmds[key] = True
@@ -103,6 +114,10 @@ class ClientFilter(BaseFilter):
         self.setSrc(src)
         self.setKeys(keys)
 
+    def __str__(self):
+        return "ClientFilter(src=%s, keys=%s, debug=%d, id=%d)" % \
+               (self.src, self.keys, self.debug, id(self))
+    
     def listify(self, x):
         """ Turn x into a list, by the following rules:
 

@@ -30,6 +30,16 @@ class GimCtrlGCamera(GCamera.GCamera):
         self.conn = GimCtrlConnection.GimCtrlConnection(argv['host'],
                                                         argv['port'])
 
+    def statusCmd(self, cmd, doFinish=True):
+        """ Generate status keywords.
+
+        Args:
+           cmd       - the controlling Command
+           doFinish  - whether or not to .finish the command
+        """
+
+        pass
+    
     def zap(self, cmd):
         pass
 
