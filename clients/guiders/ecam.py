@@ -24,7 +24,8 @@ class ecam(Guider.Guider, TCCGcam.TCCGcam):
                                                ccdSize,
                                                **argv)
         Guider.Guider.__init__(self, camera, 'ecam', **argv)
-
+        TCCGcam.TCCGcam.__init__(self, **argv)
+        
     def _setDefaults(self):
         Guider.Guider._setDefaults(self)
         

@@ -138,12 +138,12 @@ class GCamera(object):
                  "%-80s" % ('EXPTIME = %0.2f' % d['iTime']),
                  "%-80s" % ('CCDTEMP = %0.1f' % (self.getCCDTemp())),
                  "%-80s" % ("FILENAME= '%s'" % (basename)),
-                 "%-80s" % ("FULLX   = %d" % (self.ccdSize[0]))
-                 "%-80s" % ("FULLY   = %d" % (self.ccdSize[1]))
-                 "%-80s" % ("BEGX    = %d" % (d['offset'][0]))
-                 "%-80s" % ("BEGY    = %d" % (d['offset'][1]))
-                 "%-80s" % ("BINX    = %d" % (d['binning'][0]))
-                 "%-80s" % ("BINY    = %d" % (d['binning'][1]))
+                 "%-80s" % ("FULLX   = %d" % (self.ccdSize[0])),
+                 "%-80s" % ("FULLY   = %d" % (self.ccdSize[1])),
+                 "%-80s" % ("BEGX    = %d" % (d['offset'][0])),
+                 "%-80s" % ("BEGY    = %d" % (d['offset'][1])),
+                 "%-80s" % ("BINX    = %d" % (d['binning'][0])),
+                 "%-80s" % ("BINY    = %d" % (d['binning'][1])),
                  "%-80s" % ('END')]
 
         # Write out all our header cards

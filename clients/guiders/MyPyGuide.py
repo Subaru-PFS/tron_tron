@@ -34,7 +34,6 @@ def findstars(cmd, filename, mask, frame, tweaks, cnt=10):
     Returns:
         - the PyGuide.findstars isSat flag
         - a list of StarInfos, in full CCD coordinates
-
     """
     
     fits = pyfits.open(filename)
@@ -43,7 +42,7 @@ def findstars(cmd, filename, mask, frame, tweaks, cnt=10):
     fits.close()
 
     frame.setImageFromFITSHeader(header)
-    maskbits = mask.getMaskForGFrame(cmd, frame)
+    maskFile, maskBits = mask.getMaskForGFrame(cmd, frame)
     
     try:
         isSat, stars = PyGuide.findStars(

@@ -2,8 +2,6 @@
 
 __all__ = ['TCCGcam']
 
-import pyfits
-
 import CPL
 import GuideFrame
 import MyPyGuide
@@ -98,14 +96,14 @@ showstatus
         """
 
         # Parse off the camera number:
-        id = int(cmd.argv[-1])
-        self.GImCamID = id
+        gid = int(cmd.argv[-1])
+        self.GImCamID = gid
         
         lastImageNum = self.cam.lastImageNum() # 'nan'
         
         cmd.respond('txtForTcc=%s' % (CPL.qstr(cmd.raw_cmd)))
         cmd.respond('txtForTcc=%s' % (CPL.qstr('%d "%s" %d %d %d nan %s "%s"' % \
-                                            (id, self.GImName,
+                                            (gid, self.GImName,
                                              self.size[0], self.size[1], 16,
                                              lastImageNum,
                                              "camera: ID# name sizeXY bits/pixel temp lastFileNum"))))

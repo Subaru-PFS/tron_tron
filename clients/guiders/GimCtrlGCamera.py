@@ -151,11 +151,11 @@ class GimCtrlGCamera(GCamera.GCamera):
         hdr = inFITS[0].header
         inFITS.writeto(newPath)
         inFITS.close()
-        os.chown(newPath, 0644)
+        os.chmod(newPath, 0644)
         
         return newPath
 
         #
         shutil.copyfile(oldPath, newPath)
-        os.chown(newPath, 0644)
+        os.chmod(newPath, 0644)
         return newPath

@@ -5,7 +5,6 @@
 """
 
 import sys
-import time
 
 import client
 import CPL

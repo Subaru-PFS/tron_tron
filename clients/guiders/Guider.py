@@ -10,6 +10,7 @@ Coordinate notes:
     whenever we go betweem the cameras and the TCC.
 """
 
+import os
 import sys
 
 import pyfits
@@ -54,19 +55,15 @@ class Guider(Actor.Actor):
     
     def _setDefaults(self):
         self.defaults = {}
-        self.defaults['bias'] = CPL.cfg.get(self.name, 'bias')
-        self.defaults['readNoise'] = CPL.cfg.get(self.name, 'readNoise')
-        self.defaults['ccdGain'] = CPL.cfg.get(self.name, 'ccdGain')
-        self.defaults['ccdSize'] = CPL.cfg.get(self.name, 'ccdSize')
-        self.defaults['binning'] = CPL.cfg.get(self.name, 'binning')
+
+        for name in ('bias',
+                     'readNoise', 'ccdGain',
+                     'ccdSize', 'binning',
+                     'starThresh', 'radius',
+                     'maskFile', 'imagePath',
+                     'fitErrorScale'):
+            self.defaults[name] = CPL.cfg.get(self.name, name)
         self.size = self.defaults['ccdSize']
-
-        self.defaults['starThresh'] = CPL.cfg.get(self.name, 'starThresh')
-        self.defaults['radius'] = CPL.cfg.get(self.name, 'radius')
-        self.defaults['maskDir'] = CPL.cfg.get(self.name, 'maskDir')
-        self.defaults['maskFile'] = CPL.cfg.get(self.name, 'maskFile')
-
-        self.defaults['fitErrorScale'] = CPL.cfg.get(self.name, 'fitErrorScale')
         self.defaults['minOffset'] = CPL.cfg.get('telescope', 'minOffset')
 
     def statusCmd(self, cmd):
@@ -150,6 +147,8 @@ class Guider(Actor.Actor):
         cmd.respond('%sDebug=%s' % \
                     (self.name, CPL.qstr('checking filename=%s' % (filename))))
 
+        self.genFilesKey(cmd, 'findstarsFiles', True, filename, None, None, None, filename)
+        
         isSat, stars = MyPyGuide.findstars(cmd, filename, self.mask, frame, tweaks)
         if not stars:
             cmd.fail('txt="no stars found"')
@@ -412,16 +411,19 @@ class Guider(Actor.Actor):
         
         return fname
     
-    def _setMask(self, cmd, filename):
+    def _setMask(self, cmd, filename, doFinish=True):
 	""" Set our mask to the contents of the given filename. """
 
         try:
-            self.mask = GuiderMask.GuiderMask(cmd, filename,
-                                              self.config['maskDir'])
+            self.mask = GuiderMask.GuiderMask(cmd, filename)
         except Exception, e:
-            cmd.fail('could not set the mask file: %s')
+            if cmd:
+                cmd.fail('could not set the mask file: %s')
+            else:
+                raise
 
-        cmd.finish('maskFile=%s' % (CPL.qstr(fname)))
+        if cmd and doFinish:
+            cmd.finish('maskFile=%s' % (CPL.qstr(filename)))
         
     def parseWindow(self, w):
         """ Parse a window specification of the form X0,Y0,X1,Y1.
@@ -578,23 +580,30 @@ class Guider(Actor.Actor):
 
         return tweaks
 
-    def genFilesKey(self, cmd, keyName,
-                    fname, maskname, darkname, flatname, finalname):
+    def getCurrentDir(self):
+        """ Return the current image directory. """
+
+        dateStr = CPL.getDayDirName()
+        return os.path.join(self.config['imagePath'], dateStr)
+        
+    def genFilesKey(self, cmd, keyName, isNewFile,
+                    finalname, maskname, camname, darkname, flatname):
         """ Generate an xxxFiles keyword.
 
         Args:
             cmd          - the controlling Command to respond to.
             keyName      - the name of the keyword.
-            fname, maskname, darkname, flatname - the component filenames.
+            isNewFile    - whether  
+            finalname, maskname, camname, darkname, flatname - the component filenames.
 
         If the files are in the current active directory, then output relative filenames.
         Otherwise output absolute filenames.
         """
 
-        cd = self.currentDir
+        cd = self.getCurrentDir()
 
         files = []
-        for f in fname, maskname, darkname, flatname, finalname:
+        for f in finalname, maskname, camname, darkname, flatname:
             if f == None:
                 files.append('')
             elif os.path.commonprefix(cd, f) == cd:
@@ -603,6 +612,6 @@ class Guider(Actor.Actor):
                 files.append(f)
 
         qfiles = map(CPL.qstr, files)
-        cmd.respond("%s=%s" % (keyName,
-                               qfiles.join(',')))
+        cmd.respond("%s=%d,%s" % (keyName, int(isNewFile),
+                                  qfiles.join(',')))
                              
