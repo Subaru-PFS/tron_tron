@@ -679,7 +679,6 @@ class nicfpsFITS(InstFITS):
 
     def __init__(self, cmd, **argv):
         argv['alwaysAllowOverwrite'] = True
-        argv['flipSign'] = True
         InstFITS.__init__(self, cmd, **argv)
         self.instName = 'nicfps'
         
