@@ -29,8 +29,8 @@ class nicfpsCB(Exposure.CB):
             CPL.log("nicfpsCB.cbDribble", "res=%s" % (res))
         try:
             # Check for new exposureState:
-            maybeNewState = res.KVs.get('exposureStatus', None)
-            CPL.log("nicfpsCB.cbDribble", "exposureStatus=%s" % (maybeNewState))
+            maybeNewState = res.KVs.get('exposureState', None)
+            CPL.log("nicfpsCB.cbDribble", "exposureState=%s" % (maybeNewState))
             newState = None
 
             # Extract the expected duration from the exposureState keyword
@@ -77,7 +77,7 @@ class nicfpsExposure(Exposure.Exposure):
 
         self.comment = req.get('comment', None)
 
-        if expType in ("object", "dark", "flat"):
+        if expType in ("object", "dark", "flat", "test"):
             if req.has_key('time'):
                 self.expTime = req['time']
             else:
@@ -97,7 +97,7 @@ class nicfpsExposure(Exposure.Exposure):
         self.pathParts = self.path.getFilenameInParts(keepPath=True)
 
         # HACK - squirrel away a directory listing to compare with later.
-        self.startDirList = os.listdir(self.rawDir)
+        # self.startDirList = os.listdir(self.rawDir)
         
     def _basename(self):
         return os.path.join(*self.pathParts)
@@ -114,7 +114,7 @@ class nicfpsExposure(Exposure.Exposure):
             cmdStr += ' comment=%s' % (CPL.qstr(self.comment))
         self.callback('fits', cmdStr)
 
-    def getNewRawFile(self):
+    def getNewRawFileXX(self):
         """ Wait for a new raw file to appear and be completed. """
 
         self.cmd.warn('debug="waiting for new NICFPS file in %s; %d files"' % \
@@ -161,7 +161,8 @@ class nicfpsExposure(Exposure.Exposure):
 
         CPL.log("nicfps.finishUp", "state=%s" % (self.state))
 
-        rawFile = self.getNewRawFile()
+        rawFile = os.path.join(*self.rawpath)
+        self.cmd.warn('debug="finishing from rawfile=%s"' % (rawFile))
         
         if self.state != "aborted":
             self.callback('fits', 'finish nicfps infile=%s' % (rawFile))
@@ -196,16 +197,46 @@ class nicfpsExposure(Exposure.Exposure):
                 CPL.qstr(userDir),
                 CPL.qstr(self.pathParts[-1]))
 
+    def genRawfileName(self, cmd):
+        """ Generate a filename for the ICC to write to.
+
+        Returns:
+           root      - the part of the path that only _we_ know and care about,
+           path      - the part of the path that both we and the ICC care about.
+           filename  - a filename which is known not to exist now.
+        """
+
+        root = '/export/images'
+        path = 'nicfps/forTron'
+
+        n = 1
+        timestamp = time.strftime('%Y%m%dT%H%M%SZ', time.gmtime())
+        while 1:
+            filename = "%s%02d.fits" % (timestamp, n)
+            pathname = os.path.join(root, path, filename)
+            if os.path.exists(filename):
+                n += 1
+                cmd.warn('debug="raw filename %s existed"' % pathname)
+            else:
+                break
+
+            if n > 98:
+                raise RuntimeException("Could not create a scratch file for NICFPS. Last tried %s" % (pathname))
+            
+        return root, path, filename
+    
     def bias(self):
         """ Start a single bias. Requires several self. variables. """
 
         self.sequence.exposureFailed('exposeTxt="nicfps does not take biases."')
-        
+
     def _expose(self, type):
         """ Start a single object exposure. Requires several self. variables. """
 
+        self.rawpath = self.genRawfileName(self.cmd)
         cb = nicfpsCB(None, self.sequence, self, type)
-        r = self.callback("nicfps", "expose object time=%0.2f" % (self.expTime),
+        r = self.callback("nicfps", "expose %s time=%0.2f basename=%s" % \
+                          (type, self.expTime, os.path.join(*self.rawpath[1:])),
                           callback=cb.cbDribble, responseTo=self.cmd, dribble=True)
         
     def object(self):
@@ -222,6 +253,11 @@ class nicfpsExposure(Exposure.Exposure):
         """ Start a single dark. Requires several self. variables. """
 
         self._expose('dark')
+        
+    def test(self):
+        """ Start a single test (ramp) exposure. Requires several self. variables. """
+
+        self._expose('test')
         
     def stop(self, cmd, **argv):
         """ Stop the current exposure: cause it to read out immediately, and save the data. """
