@@ -94,7 +94,7 @@ class disExposure(Exposure.Exposure):
         
         """
 
-        parts = list(self.path.getFilenameInParts())
+        parts = list(self.path.getFilenameInParts(keepPath=True))
         basename = os.path.splitext(parts[-1])[0]
         parts[-1] = basename
         
