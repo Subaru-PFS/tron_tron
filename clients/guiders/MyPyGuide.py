@@ -13,14 +13,15 @@ class StarInfo(object):
     def __str__(self):
         return "Star(ctr=%r err=%r fwhm=%r)" % (self.ctr, self.err, self.fwhm)
 
-def xy2ij(pos):
-    """ Swap between (x,y) and image(i,j). """
-    return pos[1], pos[0]
+    def copy(self):
+        """ Return a shallow copy of ourselves. """
+        
+        ns = StarInfo()
+        for k, v in self.__dict__.iteritems():
+            ns.__dict__[k] = v
 
-def ij2xy(pos):
-    """ Swap between image(i,j) and (x,y). """
-    return pos[1], pos[0]
-
+        return ns
+    
 def findstars(cmd, filename, mask, frame, tweaks, cnt=10):
     """ Run PyGuide.findstars on the given file
 
@@ -63,6 +64,7 @@ def findstars(cmd, filename, mask, frame, tweaks, cnt=10):
             tweaks['readNoise'],
             tweaks['ccdGain'],
             dataCut = tweaks['thresh'],
+            radMult = tweaks['radMult'],
             verbosity=0
             )
     except Exception, e:
@@ -74,8 +76,6 @@ def findstars(cmd, filename, mask, frame, tweaks, cnt=10):
     if cmd and isSat:
         cmd.warn('findstarsSaturated')
 
-    binning = frame.frameBinning
-    
     starList = []
     i=1
     for star in stars:
@@ -126,17 +126,12 @@ def centroid(cmd, filename, mask, frame, seed, tweaks):
         maskbits = img * 0 + 1
         cmd.warn('text="no mask file available to centroid"')
 
-    # Transform the seed from CCD to image coordinates
-    seed = frame.ccdXY2imgXY(seed)
-    #cSeed = xy2ij(seed)
-    cSeed = seed
-
     cmd.warn('debug=%s' % (CPL.qstr("calling centroid file=%s, frame=%s, seed=%s" % \
                                     (filename, frame, seed))))
     try:
         star = PyGuide.centroid(
             img, maskbits,
-            cSeed,
+            seed,
             tweaks['radius'],
             tweaks['bias'],
             tweaks['readNoise'],
@@ -146,7 +141,7 @@ def centroid(cmd, filename, mask, frame, seed, tweaks):
         cmd.warn('text=%s' % (CPL.qstr(e.args[0])))
         return None
     except Exception, e:
-        cmd.warn('debug=%s' % (CPL.qstr(e)))
+        cmd.warn('text=%s' % (CPL.qstr(e)))
         raise
 
     s = starshape(cmd, frame, img, maskbits, star)
@@ -167,30 +162,24 @@ def starshape(cmd, frame, img, maskbits, star):
         star      - PyGuide centroid info.
     """
     
-    binning = frame.frameBinning
-
-    ctr = frame.imgXY2ccdXY(star.xyCtr)
-    err = star.xyErr[0] * binning[0], \
-          star.xyErr[1] * binning[1]           
-
     try:
         shape = PyGuide.starShape(img,
                                   maskbits,
                                   star.xyCtr)
-        fwhm = shape.fwhm * binning[0]
+        fwhm = shape.fwhm
         chiSq = shape.chiSq
         bkgnd = shape.bkgnd
         ampl = shape.ampl
     except Exception, e:
         cmd.warn("debug=%s" % \
                  (CPL.qstr("starShape failed, vetoing star at %0.2f,%0.2f: %s" % \
-                           (ctr[0], ctr[1], e))))
+                           (star.xyCtr[0], star.xyCtr[1], e))))
         return None
     
     # Put _eveything into a single structure
     s = StarInfo()
-    s.ctr = ctr
-    s.err = err
+    s.ctr = star.xyCtr
+    s.err = star.xyErr
     s.fwhm = (fwhm, fwhm)
     s.angle = 0.0
     s.counts = star.counts
@@ -200,6 +189,33 @@ def starshape(cmd, frame, img, maskbits, star):
     s.asymm = star.asymm
     
     return s
+
+def star2CCDXY(star, frame):
+    """ Convert all convertable star coordinates from image to CCD coordinates
+
+    Args:
+        star      - a StarInfo
+        frame     - a CCD/image coordinate frame.
+
+    Returns:
+        - a new StarInfo
+    """
+
+    CCDstar = star.copy()
+
+    binning = frame.frameBinning
+
+    ctr = frame.imgXY2ccdXY(star.xyCtr)
+    err = star.xyErr[0] * binning[0], \
+          star.xyErr[1] * binning[1]           
+    fwhm = star.fwhm[0] * binning[0], \
+           star.fwhm[1] * binning[1]
+
+    CCDstar.ctr = ctr
+    CCDstar.err = err
+    CCDstar.fwhm = fwhm
+
+    return CCDstar
 
 def genStarKeys(cmd, stars, keyName='star', caller='x', cnt=None):
     """ Generate the canonical star keys.

@@ -1,7 +1,6 @@
 __all__ = ['GuiderMask']
 
 import os
-import time
 
 import CPL
 import pyfits
