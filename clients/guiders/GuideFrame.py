@@ -100,6 +100,22 @@ class ImageFrame(object):
 
         self.trimSelf()
         
+    def setImageFromCtrAndSize(self, binning, ctr, size):
+        """ Set our image subframe directly.
+
+        Args:
+           binning    - (x, y)
+           ctr        - (x0, y0), in binned pixels
+           size       - (x, y) in binned pixels
+
+        """
+
+        offset = [0,0]
+        offset[0] = ctr[0] - size[0] / 2
+        offset[1] = ctr[1] - size[1] / 2
+
+        self.setImageFromFrame(binning, offset, size)
+        
     def setImageFromWindow(self, binning=None, window=None):
         """ Set our image subframe.
 
@@ -172,7 +188,7 @@ class ImageFrame(object):
         ccdX = (self.frameOffset[0] + imgXY[0]) * self.frameBinning[0]
         ccdY = (self.frameOffset[1] + imgXY[1]) * self.frameBinning[1]
 
-        return (ccdX, ccdY)
+        return ccdX, ccdY
 
     def ccdXY2imgXY(self, ccdXY, doTruncate=False):
         """ Convert an ccd-frame coordinate to a image-frame coordinate.
@@ -200,7 +216,7 @@ class ImageFrame(object):
             elif imgY >= self.frameSize[1]:
                 imgY = self.frameSize[1] - 1
 
-        return (imgX, imgY)
+        return imgX, imgY
     
     def imgFrame(self):
         """ Return the pieces of the image frame.
@@ -269,6 +285,39 @@ class ImageFrame(object):
                x0 + self.frameSize[0] - skooch, \
                y0 + self.frameSize[1] - skooch
 
-               
-               
+    def imgXYinFrame(self, p):
+        """ Determine whether p is in the image frame.
+
+        Args:
+             p     - (x,y), in image coordinates.
+
+        Returns:
+             - True/False
+        """
+
+        if p[0] < 0:
+            return False
+        if p[1] < 0:
+            return False
+
+        if p[0] > self.frameSize[0]:
+            return False
+        if p[1] > self.frameSize[1]:
+            return False
+
+        return True
     
+    def ccdXYinFrame(self, p):
+        """ Determine whether p is in the ccd frame.
+
+        Args:
+             p     - (x,y), in ccd coordinates.
+
+        Returns:
+             - True/False
+        """
+
+        p = self.ccdXY2imgXY(p)
+        return self.imgXYInFrame(p)
+    
+        

@@ -86,7 +86,6 @@ class Guider(Actor.Actor):
         tweaks = self.parseCmdTweaks(cmd, self.config)
 
         def cb(cmd, fname, frame, tweaks=None):
-            cmd.respond('camFile=%s' % (CPL.qstr(fname)))
             cmd.finish()
             
         self.doCmdExpose(cmd, cb, 'expose', tweaks)
@@ -101,8 +100,7 @@ class Guider(Actor.Actor):
 
         tweaks = self.parseCmdTweaks(cmd, self.config)
 
-        def cb(cmd, fname, frame):
-            cmd.respond('darkFile=%s' % (CPL.qstr(fname)))
+        def cb(cmd, fname, frame, tweaks=None):
             cmd.finish()
             
         self.doCmdExpose(cmd, cb, 'dark', tweaks)
@@ -137,24 +135,32 @@ class Guider(Actor.Actor):
 
         tweaks = self.parseCmdTweaks(cmd, self.config)
         
-        # Get the image
+        # Get the image and call the real findstars routine.
         self.doCmdExpose(cmd, self._findstarsCB, 'expose', tweaks=tweaks)
 
     def _findstarsCB(self, cmd, filename, frame, tweaks=None):
         """ Callback called when an exposure is done.
         """
         
-        cmd.respond('%sDebug=%s' % \
-                    (self.name, CPL.qstr('checking filename=%s with frame=%s' % (filename, frame))))
+        cmd.warn('%sDebug=%s' % \
+                    (self.name, CPL.qstr('findstars checking filename=%s with frame=%s' % (filename, frame))))
 
-        self.genFilesKey(cmd, 'findstarsFiles', True, filename, None, None, None, filename)
+        # We need the maskfile name for the guiderFiles keyword.
+        maskName, maskbits = self.mask.getMaskForFrame(cmd, filename, frame)
+        self.genFilesKey(cmd, 'findstarsFiles', True, filename, maskName,
+                         None, None, filename)
         
         isSat, stars = MyPyGuide.findstars(cmd, filename, self.mask, frame, tweaks)
         if not stars:
             cmd.fail('txt="no stars found"')
             return
 
-        MyPyGuide.genStarKeys(cmd, stars)
+        try:
+            cnt = int(cmd.argDict['cnt'])
+        except:
+            cnt = None
+        
+        MyPyGuide.genStarKeys(cmd, stars, cnt=cnt)
         cmd.finish()
         
     findstarsCmd.helpText = ('findstars itime=S [window=X0,Y0,X1,Y1] [bin=N] [bin=X,Y]')
@@ -179,6 +185,11 @@ class Guider(Actor.Actor):
         
         cmd.respond('%sDebug=%s' % \
                     (self.name, CPL.qstr('checking filename=%s' % (filename))))
+
+        # We need the maskfile name for the guiderFiles keyword.
+        maskName, maskbits = self.mask.getMaskForFrame(cmd, filename, frame)
+        self.genFilesKey(cmd, 'centroidFiles', True, filename, maskName,
+                         None, None, filename)
 
         if cmd.argDict.has_key('on'):
             seed = self.parseCoord(cmd.argDict['on'])
@@ -347,7 +358,8 @@ class Guider(Actor.Actor):
 
             frame = GuideFrame.ImageFrame(self.size)
             frame.setImageFromFITSFile(filename)
-            
+
+            tweaks['newFile'] = False
             cb(cmd, filename, frame, tweaks=tweaks)
 
         else:
@@ -362,6 +374,8 @@ class Guider(Actor.Actor):
                 bin = self.parseBin(matched['bin'])
             if matched.has_key('window'):
                 window = self.parseWindow(matched['window'])
+
+            tweaks['newFile'] = True
 
             frame = GuideFrame.ImageFrame(self.size)
             frame.setImageFromWindow(bin, window)
@@ -388,7 +402,10 @@ class Guider(Actor.Actor):
         """
 
         def _cb(cmd, filename, frame):
-            cmd.respond('camFile=%s'% (CPL.qstr(filename)))
+            if type == 'expose':
+                cmd.respond('camFile=%s'% (CPL.qstr(filename)))
+            else:
+                cmd.respond('darkFile=%s'% (CPL.qstr(filename)))
             cb(cmd, filename, frame, **cbArgs)
             
         cmd.warn('debug=%s' % (CPL.qstr("exposing %s(%s) frame=%s" % (type, itime, frame))))
@@ -405,10 +422,23 @@ class Guider(Actor.Actor):
                      'current' directory.
 
         Returns:
-            - an absolute filename.
+            - an absolute filename, or None if no readable file found.
         """
+
+        # Take an absolute path straight.
+        if os.path.isabs(fname):
+            if os.access(fname, os.R_OK):
+                return fname
+            return None
+
+        # Otherwise try to find the file in our "current" directory.
+        cd = self.getCurrentDir()
+        path = os.path.join(cd, fname)
+        if os.access(path, os.R_OK):
+            return path
+
+        return None
         
-        return fname
     
     def _setMask(self, cmd, filename, doFinish=True):
 	""" Set our mask to the contents of the given filename. """

@@ -84,7 +84,10 @@ class GimCtrlGCamera(GCamera.GCamera):
         cmdParts.append("%0.2f" % (itime))
 
         cmdParts.append("%d %d" % tuple(frame.frameBinning))
-        cmdParts.append("%d %d %d %d" % tuple(frame.imgFrameAsCtrAndSize()))
+
+        ctr, size = frame.imgFrameAsCtrAndSize()
+        cmdParts.append("%0.2f %0.2f %0.2f %0.2f" % (ctr[0], ctr[1],
+                                                     size[0], size[1]))
 
         return None, ' '.join(cmdParts)
 
@@ -117,7 +120,7 @@ class GimCtrlGCamera(GCamera.GCamera):
         actor, cmdLine = self.genExposeCommand(cmd, expType, itime, frame=frame)
 
         def _cb(cmd, ret):
-            filename = self.getLastImageName(cmd)
+            filename = self.copyinNewRawImage()
             frame = GuideFrame.ImageFrame(self.ccdSize)
             frame.setImageFromFITSFile(filename)
             cb(cmd, filename, frame)

@@ -10,7 +10,8 @@ import PyGuide
 import GuideFrame
 
 class StarInfo(object):
-    pass
+    def __str__(self):
+        return "Star(ctr=%r err=%r fwhm=%r)" % (self.ctr, self.err, self.fwhm)
 
 def xy2ij(pos):
     """ Swap between (x,y) and image(i,j). """
@@ -41,10 +42,16 @@ def findstars(cmd, filename, mask, frame, tweaks, cnt=10):
     header = fits[0].header
     fits.close()
 
+    if not frame:
+        frame = GuideFrame.ImageFrame(img.shape)
     frame.setImageFromFITSHeader(header)
 
     cmd.warn('debug=%s' % (CPL.qstr(frame)))
-    maskfile, maskbits = mask.getMaskForFrame(cmd, filename, frame)
+    
+    if mask:
+        maskfile, maskbits = mask.getMaskForFrame(cmd, filename, frame)
+    else:
+        maskbits = img * 0 + 1
 
     CPL.log('findstars', 'tweaks=%s' % (tweaks))
     
@@ -55,7 +62,7 @@ def findstars(cmd, filename, mask, frame, tweaks, cnt=10):
             tweaks['readNoise'],
             tweaks['ccdGain'],
             dataCut = tweaks['thresh'],
-            verbosity=1
+            verbosity=0
             )
     except Exception, e:
         cmd.warn('debug=%s' % (CPL.qstr(e)))
@@ -66,27 +73,33 @@ def findstars(cmd, filename, mask, frame, tweaks, cnt=10):
     if cmd and isSat:
         cmd.warn('findstarsSaturated')
 
-    cmd.warn('debug="findstars returned %d stars"' % (len(stars)))
+    binning = frame.frameBinning
     
     starList = []
     i=1
     for star in stars:
         CPL.log('star', 'star=%s' % (star))
 
-        ctr = ij2xy(star.ctr)
-        ctr = frame.imgXY2ccdXY(ctr)
-        err = ij2xy(star.err)
+        # Convert back to full-frame coordinates.
+        #ctr = ij2xy(star.ctr)
+        ctr = frame.imgXY2ccdXY(star.xyCtr)
+        #err = ij2xy(star.err)
+        err = star.xyErr[0] * binning[0], \
+              star.xyErr[1] * binning[1]           
 
         try:
             shape = PyGuide.starShape(img,
                                       maskbits,
-                                      star.ctr)
-            fwhm = shape.fwhm
+                                      star.xyCtr)
+            fwhm = shape.fwhm * binning[0]
             chiSq = shape.chiSq
             bkgnd = shape.bkgnd
             ampl = shape.ampl
         except Exception, e:
-            cmd.warn("findstarsTxt=%s" % (CPL.qstr("starShape failed: %s" % e)))
+            cmd.warn("findstarsTxt=%s" % \
+                     (CPL.qstr("starShape failed, vetoing star at %0.2f,%0.2f: %s" % \
+                               (ctr[0], ctr[1], e))))
+            continue
             fwhm = 0.0        # nan does not work.
             chiSq = 0.0
             bkgnd = 0.0
@@ -135,14 +148,21 @@ def centroid(cmd, filename, mask, frame, seed, tweaks):
     header = fits[0].header
     fits.close()
 
+    if not frame:
+        frame = GuideFrame.ImageFrame(img.shape)
     frame.setImageFromFITSHeader(header)
-    maskfile, maskbits = mask.getMaskForFrame(cmd, filename, frame)
+
+    if mask:
+        maskfile, maskbits = mask.getMaskForFrame(cmd, filename, frame)
+    else:
+        maskbits = img * 0 + 1
 
     # Transform the seed from CCD to image coordinates
     seed = frame.ccdXY2imgXY(seed)
-    cSeed = xy2ij(seed)
+    #cSeed = xy2ij(seed)
+    cSeed = seed
 
-    cmd.warn('debug=%s' % (CPL.qstr("centroid file=%s, frame=%s, seed=%s" % \
+    cmd.warn('debug=%s' % (CPL.qstr("calling centroid file=%s, frame=%s, seed=%s" % \
                                     (filename, frame, seed))))
     try:
         star = PyGuide.centroid(
@@ -160,20 +180,26 @@ def centroid(cmd, filename, mask, frame, seed, tweaks):
         cmd.warn('debug=%s' % (CPL.qstr(e)))
         raise
 
-    ctr = ij2xy(star.ctr)
-    ctr = frame.imgXY2ccdXY(ctr)
-    err = ij2xy(star.err)
+    binning = frame.frameBinning
+
+    ctr = frame.imgXY2ccdXY(star.xyCtr)
+    err = star.xyErr[0] * binning[0], \
+          star.xyErr[1] * binning[1]           
 
     try:
         shape = PyGuide.starShape(img,
                                   maskbits,
-                                  star.ctr)
-        fwhm = shape.fwhm
+                                  star.xyCtr)
+        fwhm = shape.fwhm * binning[0]
         chiSq = shape.chiSq
         bkgnd = shape.bkgnd
         ampl = shape.ampl
     except Exception, e:
-        cmd.warn("debug=%s" % (CPL.qstr("starShape failed: %s" % e)))
+        cmd.warn("debug=%s" % \
+                 (CPL.qstr("starShape failed, vetoing star at %0.2f,%0.2f: %s" % \
+                           (ctr[0], ctr[1], e))))
+        return None
+    
         fwhm = 0.0        # nan does not work.
         chiSq = 0.0
         bkgnd = 0.0
@@ -196,18 +222,22 @@ def centroid(cmd, filename, mask, frame, seed, tweaks):
     
     return s
 
-def genStarKeys(cmd, stars, keyName='star'):
+def genStarKeys(cmd, stars, keyName='star', cnt=None):
     """ Generate the canonical star keys.
 
     Args:
        cmd     - the Command to respond to.
        stars   - a list of StarInfos
        keyname ? the key name to generate. Defaults to 'star'
+       cnt     ? limit the number of stars output to the given number
     """
 
     i = 1
     for s in stars:
         genStarKey(cmd, s, i, keyName=keyName)
+
+        if cnt and i >= cnt:
+            break
         i += 1
         
 def genStarKey(cmd, s, idx=None, keyName='star'):

@@ -30,11 +30,11 @@ class AltaGCamera(GCamera.GCamera):
     def zap(self, cmd):
         pass
     
-    def status(self, cmd, doFinish=True):
+    def statusCmd(self, cmd, doFinish=True):
         """ Generate status keywords. Does NOT finish teh command.
         """
 
-        coolerStatus = self.cam.coolerStatus(doFinish=doFinish)
+        coolerStatus = self.cam.coolerStatus()
         if self.lastImage == None:
             fileStatus = 'lastImage='
         else:
@@ -91,8 +91,8 @@ class AltaGCamera(GCamera.GCamera):
         filename = self.expose(cmd, expType, itime, frame)
         frame = GuideFrame.ImageFrame(self.ccdSize)
         frame.setImageFromFITSFile(filename)
-        cmd.warn('debug=%s' % (CPL.qstr("alta cbExpose %s %s secs, frame=%s, ccdSize=%s" \
-                                        % (expType, itime, frame, self.ccdSize))))
+        #cmd.warn('debug=%s' % (CPL.qstr("alta cbExpose %s %s secs, frame=%s, ccdSize=%s" \
+        #                                % (expType, itime, frame, self.ccdSize))))
         
         
         cb(cmd, filename, frame, **cbArgs)
@@ -109,8 +109,8 @@ class AltaGCamera(GCamera.GCamera):
             The full FITS path.
         """
 
-        cmd.warn('debug=%s' % (CPL.qstr("alta expose %s %s secs, frame=%s" \
-                                        % (expType, itime, frame))))
+        #cmd.warn('debug=%s' % (CPL.qstr("alta expose %s %s secs, frame=%s" \
+        #                                % (expType, itime, frame))))
         
         # Check format:
         bin = frame.frameBinning
