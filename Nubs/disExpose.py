@@ -17,6 +17,7 @@ def start(poller):
                                 'clients/expose/%s.py' % (name)],
                        name=name, encoder=e, decoder=d,
                        initCmds=initCmds,
+                       logDir=os.path.join(g.logDir, name),
                        debug=1)
     hub.addActor(nub)
     

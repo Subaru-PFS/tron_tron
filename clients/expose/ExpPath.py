@@ -17,6 +17,20 @@ import CPL
 
 class ExpPath(object):
 
+    month2quarters = { '01' : 'Q1',
+                       '02' : 'Q1',
+                       '03' : 'Q1',
+                       '04' : 'Q2',
+                       '05' : 'Q2',
+                       '06' : 'Q2',
+                       '07' : 'Q3',
+                       '08' : 'Q3',
+                       '09' : 'Q3',
+                       '10' : 'Q4',
+                       '11' : 'Q4',
+                       '12' : 'Q4'
+                       }
+                       
     def __init__(self, cmdrID, inst,
                  userDir="", name="test.", number=1, places=4,
                  needSize=10000000, suffix=".fits", rootDir="/export/images"):
@@ -52,7 +66,9 @@ class ExpPath(object):
             self._checkFileAccess = self._checkSimpleFileAccess
         
         self.rootDir = rootDir.strip()
-        d = os.path.join(rootDir, program)
+        self._adjustProgramDir()
+        
+        d = os.path.join(self.rootDir, self.programDir)
         if self._isSneakyDir(d):
             raise CPL.Error("I don't trust the program name %s" % (CPL.qstr(program, tquote="'")))
 
@@ -85,7 +101,7 @@ class ExpPath(object):
         
         # Make sure the fully fleshed out userpath does not escape from our root directory.
         #
-        d = os.path.join(self.rootDir, self.program, userDir)
+        d = os.path.join(self.rootDir, self.programDir, userDir)
         if self._isSneakyDir(d):
             raise CPL.Error("I don't trust the path %s" % (d))
         self.userDir = userDir
@@ -127,7 +143,7 @@ class ExpPath(object):
         
         # Make sure the fully fleshed out userpath does not escape from our root directory.
         #
-        d = os.path.join(self.rootDir, self.program, self.userDir, name)
+        d = os.path.join(self.rootDir, self.programDir, self.userDir, name)
         if self._isSneakyDir(d):
             raise CPL.Error("I don't trust the path %s" % (d))
 
@@ -204,7 +220,7 @@ class ExpPath(object):
         glob just does not work -- switch to filtering with regexps.
         """
 
-        pattern = os.path.join(self.rootDir, self.program, self.userDir,
+        pattern = os.path.join(self.rootDir, self.programDir, self.userDir,
                                "%s%s?%s" % (self.name, "[0-9]" * self.places, self.suffix))
         files = glob.glob(pattern)
 
@@ -256,15 +272,42 @@ class ExpPath(object):
         
         if self.number != 'next':
             self.number += 1
-    
+
+    def _adjustProgramDir(self):
+        """ Make .programDir reflect the current date. 
+
+        This is where we create any necessary directories. And we do that expensively,
+        by checking for each file whether the right directory exists.
+
+        We want the directories to change at local noon and be named after the
+        new day's date. 
+        """
+
+        now = time.time()
+        localNow = now - time.timezone
+        localNowPlus12H = localNow + (12 * 3600)
+
+        dateString = time.strftime("UT%y%m%d", time.gmtime(localNowPlus12H))
+        quarterString = self.month2quarters(dateString[4:5])
+        
+        dirName = os.path.join(self.rootDir, quarterString + self.program,
+                               dateString)
+        if not os.path.isdir(dirName):
+            os.mkdir(dirName)
+            os.chmod(dirName, 0777)
+
+        self.programDir = dirName
+        
     def _fullName(self):
         return "%s%s%s" % (self.name, self._getNumber(), self.suffix)
 
     def _fullPath(self):
-        return os.path.join(self.rootDir, self.program, self.userDir, self._fullName())
+        return os.path.join(self.rootDir, self.programDir, self.userDir, self._fullName())
         
-    def _allParts(self):
-        return self.rootDir, self.program, self.userDir, self._fullName()
+    def _allParts(self, keepPath):
+        if not keepPath:
+            self._adjustProgramDir()
+        return self.rootDir, self.programDir, self.userDir, self._fullName()
 
     def _checkSimpleFileAccess(self, parts):
         """ Confirm that the parts describe a useable filename.
@@ -295,12 +338,18 @@ class ExpPath(object):
 
             self._checkSimpleFileAccess(tuple(colorParts))
             
-    def getFilenameInParts(self):
+    def getFilenameInParts(self, keepPath=False):
         """ Returns the next filename in the sequence.
 
+        Args:
+            keepPath    - if True, do not adjust the path for date/quarter rollovers.
+            
         Returns:
           - The system root directory
-          - The program directory
+          - The program directory. This will include:
+              - the quarter name,
+              - the program name,
+              - the date
           - The user directory
           - The new filename
           
@@ -309,7 +358,7 @@ class ExpPath(object):
 
         """
 
-        parts = self._allParts()
+        parts = self._allParts(keepPath)
         CPL.log("getFilename", "parts=%s" % (parts,))
 
         self._checkFileAccess(parts)

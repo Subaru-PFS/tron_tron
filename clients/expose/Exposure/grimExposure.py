@@ -95,7 +95,7 @@ class grimExposure(Exposure.Exposure):
         """ Reserve filenames, and set .basename.
         """
 
-        self.pathParts = self.path.getFilenameInParts()
+        self.pathParts = self.path.getFilenameInParts(keepPath=True)
 
     def _basename(self):
         return os.path.join(*self.pathParts)
