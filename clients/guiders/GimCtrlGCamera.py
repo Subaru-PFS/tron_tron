@@ -1,7 +1,9 @@
-__all__ = ['GimGCamera']
+__all__ = ['GimCtrlGCamera']
 
 import shutil
 import os.path
+
+import pyfits
 
 import client
 import CPL
@@ -145,10 +147,15 @@ class GimCtrlGCamera(GCamera.GCamera):
         oldPath = self._getLastImageName()
         newPath = self._getFilename()
 
-        # This is probably where we would annotate the image header.
+        inFITS = pyfits.open(oldPath)
+        hdr = inFITS[0].header
+        inFITS.writeto(newPath)
+        inFITS.close()
+        os.chown(newPath, 0644)
+        
+        return newPath
+
         #
         shutil.copyfile(oldPath, newPath)
         os.chown(newPath, 0644)
         return newPath
-    
-        

@@ -98,12 +98,11 @@ class AltaGCamera(GCamera.GCamera):
                 self.cam.setBinning(*bin)
                 self.binning = bin
             window = self.imgFrameAsWindow()
+            window[2] -= 1
+            window[3] -= 1
             if window != self.window:
-                twindow = window[:]
-                twindow[2] -= 1
-                twindow[3] -= 1
-                self.cam.setWindow(*twindow)
-                self.window = twindow
+                self.cam.setWindow(*window)
+                self.window = window
 
         doShutter = expType == 'expose'
 
@@ -114,7 +113,7 @@ class AltaGCamera(GCamera.GCamera):
 
         filename = self.writeFITS(cmd, d)
 
-        # Try to recover image memory. 
+        # Try hard to recover image memory. 
         del d
         
         return filename

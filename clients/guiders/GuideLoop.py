@@ -33,7 +33,7 @@ class GuideLoop(object):
         self._initTrailing()
 
         # We listen for changes in TCC keywords that indicate that a guider frame
-        # may not be valid.
+        # may not be valid, and guess when an uncomputed offset will be done.
         #
         self.telHasBeenMoved = False
         self.offsetWillBeDone = 0.0
@@ -56,12 +56,13 @@ class GuideLoop(object):
         return "GuideLoop(guiding=%s, listeners=%s)" % (self.guiding, self.listeners)
     
     def cleanup(self):
+        """ """
+        
         self.guiding = False
         for i in range(len(self.listeners)):
             CPL.log("GuideLoop.cleanup", "deleting listener %s" % (self.listeners[0]))
             self.listeners[0].stop()
             del self.listeners[0]
-        
         
     def failGuiding(self, why):
         """ Stop guiding, 'cuz something went wrong.
@@ -151,7 +152,6 @@ class GuideLoop(object):
     def listenToTCCBoresight(self, reply):
         """ Figure out if the telescope has been moved by examining the TCC's TCCStatus key.
         """
-
         
         k = reply.KVs['Boresight']
         pos = list(map(float, k))
@@ -217,7 +217,8 @@ class GuideLoop(object):
 
         if not self.guiding:
             self.stopGuiding()
-            
+            return
+        
         # Steps:
         #  1) Look for at-start offsets (centerOn=X,Y or gstar=X,Y
         #      if specified, use specified position to seed centroid()
@@ -253,7 +254,9 @@ class GuideLoop(object):
                 self.failGuiding('could not parse the centerOn position: %s.' % (e))
                 return
 
-            self.cmd.respond('txt="offsetting object to the boresight...."')
+            seedPos = frame.ccdXY2imgXY(seedPos)
+            self.cmd.respond('txt="offsetting object at (%d, %d) to the boresight...."' % \
+                             (seedPos[0], seedPos[1]))
             try:
                 star = MyPyGuide.centroid(self.cmd, filename, self.controller.mask,
                                           frame, seedPos, self.tweaks)
@@ -351,7 +354,11 @@ class GuideLoop(object):
         Args:
             star          - star info, including s.ctr and error estimates
             diffPos       - the original offset.
-            
+
+        We use tweaks['fitErrorScale'], which is a list of thresh0,scale0,...threshN,scaleN
+        pairs. If the individual coordinate errors are less than a given threshold, scale
+        the offset by the corresponding scale.
+        
         Think about a dead zone, or a scaling function that decreases close to the boresight.
         """
 
@@ -363,15 +370,21 @@ class GuideLoop(object):
         for scale in scales:
             if fitErrors[0] < scale[0]:
                 xfitFactor = scale[1]
+                xoffset = diffPos[0] * xfitFactor
                 break
         yfitFactor = 0.0
         for scale in scales:
             if fitErrors[1] < scale[0]:
                 yfitFactor = scale[1]
+                yoffset = diffPos[1] * yfitFactor
                 break
-            
-        return [diffPos[0] * xfitFactor, \
-               diffPos[1] * yfitFactor]
+
+        #distance = math.sqrt(xoffset * xoffset + yoffset * yoffset)
+        #if distance < self.tweaks['minOffset']:
+        #    xoffset = yoffset = 0.0
+
+        return [xoffset, yoffset]
+               
 
     def _initTrailing(self):
         """ Initialize toy test trailing for the Echelle. """
@@ -524,7 +537,8 @@ class GuideLoop(object):
             self._guideLoopTop()
         else:
             self.cmd.warn('debug=%s' % (CPL.qstr('starting offset: %s' % (cmdTxt))))
-            cb = client.callback('tcc', cmdTxt, self._doneOffsetting, cid=self.controller.cidForCmd(self.cmd))
+            cb = client.callback('tcc', cmdTxt, self._doneOffsetting,
+                                 cid=self.controller.cidForCmd(self.cmd))
 
 
     def _doneOffsetting(self, ret):
@@ -577,16 +591,21 @@ class GuideLoop(object):
             return
         
         if self.cmd.argDict.has_key('file'):
-            fname = self.getNextTrackedFilename(self.cmd.argDict['file'])
-            frame = GuideFrame.ImageFrame(self.controller.size)
-            frame.setImageFromFITSFile(fname)
-        else:                           # USE res.KVs['imgFile']!
-            fname = self.controller.camera.getLastImageName(self.cmd)
+            filename = self.getNextTrackedFilename(self.cmd.argDict['file'])
+        frame = GuideFrame.ImageFrame(self.controller.size)
+        frame.setImageFromFITSFile(filename)
 
+        # We need the maskfile name for the guiderFiles keyword.
+        maskName = self.controller.mask.getMaskFileForFile(filename)
+
+        self.controller.genFilesKey(self.cmd, 'guiderFiles',
+                                    filename, maskName, None, None, filename)
+        
         # Need to interpolate to the middle of the exposure.
         refPos = self._getExpectedPos()
+        self.cmd.respond("guiderPredPos=%0.2f,%0.2f" % (refPos[0], refPos[1]))
         try:
-            star = MyPyGuide.centroid(self.cmd, fname, self.controller.mask,
+            star = MyPyGuide.centroid(self.cmd, filename, self.controller.mask,
                                       frame, refPos, tweaks=self.tweaks)
             if not star:
                 raise RuntimeError('no star found')
@@ -597,7 +616,7 @@ class GuideLoop(object):
 
         self.cmd.warn('debug=%s' % (CPL.qstr('center=%0.2f, %0.2f' % (star.ctr[0],
                                                                       star.ctr[1]))))
-        self._centerUp(self.cmd, star, frame, refPos, fname=fname)
+        self._centerUp(self.cmd, star, frame, refPos, fname=filename)
         
     def _extractCnvPos(self, res):
         """ Extract and convert the converted position from a tcc convert.

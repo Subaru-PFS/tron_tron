@@ -15,9 +15,18 @@ __all__ = ['GCamera']
 import os.path
 import time
 
+import CPL
+
 class GCamera(object):
     def __init__(self, name, path, ccdSize, **argv):
+        """ Create a GCamera instance.
 
+        Args:
+             name        - a unique, human-readable name.
+             path        - a root path for image files. We add a per-day subdirectory
+             ccdSize     - [x, y] - the size of the unbinned fullframe CCD.
+        """
+        
         self.name = name
         self.nameChar = name[0]
         
@@ -36,8 +45,7 @@ class GCamera(object):
     def _getFilename(self):
         """ Return the next available filename.
 
-        We try to not suffer collisions by naming the files with timestamps and
-        putting them in per-day directories.
+        We try to not suffer collisions by putting the files in per-day directories.
 
         This is where we create any necessary directories. And we do that expensively,
         by checking for each file whether the right directory exists.
@@ -46,12 +54,7 @@ class GCamera(object):
         new day's date. 
         """
 
-        now = time.time()
-        localNow = now - time.timezone
-        localNowPlus12H = localNow + (12 * 3600)
-        
-        dateString = time.strftime("UT%y%m%d", time.gmtime(localNowPlus12H))
-
+        dateString = CPL.getDayDirName()
         dirName = os.path.join(self.path, dateString)
         if not os.path.isdir(dirName):
             os.mkdir(dirName)
@@ -128,13 +131,19 @@ class GCamera(object):
                  "%-80s" % ('NAXIS   = 2'),
                  "%-80s" % ('NAXIS1  = %d' % (w)),
                  "%-80s" % ('NAXIS2  = %d' % (h)),
-#                 "%-80s" % ("INSTRUME= '%s'" % self.name),
+                 "%-80s" % ("INSTRUME= '%s'" % self.name),
                  "%-80s" % ('BSCALE  = 1.0'),
                  "%-80s" % ('BZERO   = 32768.0'),
                  "%-80s" % ("IMAGETYP= '%s'" % d['type']),
                  "%-80s" % ('EXPTIME = %0.2f' % d['iTime']),
                  "%-80s" % ('CCDTEMP = %0.1f' % (self.getCCDTemp())),
                  "%-80s" % ("FILENAME= '%s'" % (basename)),
+                 "%-80s" % ("FULLX   = %d" % (self.ccdSize[0]))
+                 "%-80s" % ("FULLY   = %d" % (self.ccdSize[1]))
+                 "%-80s" % ("BEGX    = %d" % (d['offset'][0]))
+                 "%-80s" % ("BEGY    = %d" % (d['offset'][1]))
+                 "%-80s" % ("BINX    = %d" % (d['binning'][0]))
+                 "%-80s" % ("BINY    = %d" % (d['binning'][1]))
                  "%-80s" % ('END')]
 
         # Write out all our header cards
@@ -154,8 +163,6 @@ class GCamera(object):
             f.write(' ' * (2880 - partialBlock))
 
         f.close()
-        
-        cmd.respond('imgFile="%s"' % (filename))
         
         return filename
     

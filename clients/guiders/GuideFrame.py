@@ -76,7 +76,7 @@ class ImageFrame(object):
         self.setImageFromFrame(binning, offset, size)
 
     def setImageFromFrame(self, binning, offset, size):
-        """ Set our image subframe.
+        """ Set our image subframe directly.
 
         Args:
            binning    - (x, y)
