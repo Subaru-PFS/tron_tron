@@ -2,7 +2,7 @@ import os
 import socket
 
 import CPL
-
+import Parsing
 import Exposure
 
 class echelleCB(Exposure.CB):
@@ -77,19 +77,15 @@ class echelleExposure(Exposure.Exposure):
 
         # Look for Echelle-specific options & arguments.
         #
-        req, notMatched, leftovers = cmd.match([('time', float),
-                                                ('comment', str)])
-        self.instArgs = req
+        opts, notMatched, leftovers = cmd.match([('time', float),
+                                                 ('comment', Parsing.dequote)])
+        self.instArgs = opts
 
-        self.comment = ""
-        self.commentArg = ""
-        if req.has_key('comment'):
-            self.comment = req['comment']
-            self.commentArg = 'comment=%s ' % (CPL.qstr(req['comment']))
+        self.comment = opts.get('comment', None)
 
         if expType in ("object", "dark", "flat"):
-            if req.has_key('time'):
-                t = req['time']
+            if opts.has_key('time'):
+                t = opts['time']
                 self.expTime = t
             else:
                 raise Exception("%s exposures require a time argument" % (expType))
@@ -111,9 +107,14 @@ class echelleExposure(Exposure.Exposure):
         if self.state == "paused":
             return
         
+        outfile = self._basename()
         if self.debug > 1:
-            CPL.log("echelleExposure", "starting echelle FITS header")
-        self.callback('fits', 'start echelle')
+            CPL.log("echelleExposure", "starting echelle FITS header to %s" % (outfile))
+
+        cmdStr = 'start echelle outfile=%s' % (outfile)
+        if self.comment:
+            cmdStr += ' comment=%s' % (CPL.qstr(self.comment))
+        self.callback('fits', cmdStr)
         
     def finishUp(self):
         """ Clean up and close out the FITS files.
@@ -123,11 +124,12 @@ class echelleExposure(Exposure.Exposure):
         
         """
 
-        output = self._basename()
-        if self.debug > 1:
-            CPL.log("echelleExposure", "finishing echelle FITS header for %s" % (output))
+        CPL.log("echelle.finishUp", "state=%s" % (self.state))
+
         if self.state != "aborted":
-            self.callback('fits', 'finish echelle %s' % (output))
+            self.callback('fits', 'finish echelle inkey=scratchFile')
+        else:
+            self.callback('fits', 'abort echelle')
 
     def lastFilesKey(self):
         return self.filesKey(keyName="echelleFiles")

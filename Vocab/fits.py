@@ -2,6 +2,7 @@ __all__ = ['fits']
 
 import math
 import os
+import tempfile
 import time
 
 import g
@@ -16,10 +17,10 @@ import Vocab.InternalCmd as InternalCmd
 class fits(InternalCmd.InternalCmd):
     """ All the commands that the "fits" package provides. To wit:
 
-    fits start inst=INST [time=TIME] [args]
-    fits finish inst=INST in=FILENAME out=FILENAME [time=TIME] [args]
+    fits start inst=INST [out=FILENAME] [time=TIME] [args]
+    fits finish inst=INST [in=FILENAME] [out=FILENAME] [time=TIME] [args]
 
-    For GRIm and the Echelle,
+    Much of the meat happens in per-instrument subclasses.
     """
     
     def __init__(self, **argv):
@@ -27,6 +28,7 @@ class fits(InternalCmd.InternalCmd):
         self.debug = argv.get('debug', 0)
         self.commands = { 'start' : self.start,
                           'finish' : self.finish,
+                          'abort' : self.abort,
                           'status' : self.status
                           }
         # FITS
@@ -51,21 +53,33 @@ class fits(InternalCmd.InternalCmd):
         for h in self.headers.keys():
             cmd.inform('fitsTxt="header for %s"' % (self.headers[h].instName))
         cmd.finish('')
+
+    def abort(self, cmd):
+        """ Remove all traces of a given instrument's header and file. """
+
+        raise NotImplementedError("abort")
         
     def start(self, cmd):
-        """
+        """ Reserve a fits header for a given instrument. Optionally create the output file.
+
+
+        CmdArgs:
+           inst         - name of the instrument.
+
+        OptCmdArgs:
+           comment=     - comment string
+           infile=      - filename to read FITS data from
+           outfile=     - filename to create. Fail if it cannot be created.
         """
 
-        # Switch to real parsing, Craig.
-        d0, words, d1 = cmd.match({})
-        words = d1.keys()
-        CPL.log("fits.start", "args(%d)=%s" % (len(words), words))
-        
-        if len(words) < 2 or len(words) > 4:
-            cmd.fail('hubTxt="usage: fits start INSTname [comment]"')
+        matched, unmatched, leftovers = cmd.match([('start', None),
+                                                   ('comment', Parsing.dequote),
+                                                   ('outfile', Parsing.dequote)])
+        if len(leftovers) != 1:
+            cmd.fail('hubTxt="usage: fits start INSTname [comment=COMMENT] [outfile=FILENAME]"')
             return
 
-        inst = words[1].lower()
+        inst = leftovers.keys()[0].lower()
         instClass = self.getInst(cmd, inst)
         if not instClass:
             cmd.fail('hubTxt="unknown instrument: %s"' % (inst))
@@ -76,12 +90,21 @@ class fits(InternalCmd.InternalCmd):
 
         CPL.log("fits.start", "starting header for %s" % (inst))
 
-        self.headers[inst] = instClass(cmd)
+        comment = matched.get('comment', None)
+        outfile = matched.get('outfile', None)
+
+        self.headers[inst] = instClass(cmd, outfile=outfile, comment=comment)
         self.headers[inst].start(cmd)
         
     def finish(self, cmd):
         """ Finish off a FITS file: merge all data and headers into an output file.
 
+        CmdArgs:
+           inst       - name f the instrument.
+
+        OptCmdArgs:
+           filename=  - filename to create. This might have been specified by the start command.
+           
         Note:
            This must be called after the instrument has fully read out and generated
            any header keys, but before any additional commands might have gone to the
@@ -89,20 +112,30 @@ class fits(InternalCmd.InternalCmd):
         """
         
         d0, words, d1 = cmd.match({})
-        words = d1.keys()
-        if len(words) != 3:
-            cmd.fail('hubTxt="usage: fits finish INSTname outFile"')
+        matched, unmatched, leftovers = cmd.match([('finish', None),
+                                                   ('infile', Parsing.dequote),
+                                                   ('inkey', Parsing.dequote)])
+        if len(leftovers) != 1:
+            cmd.fail('hubTxt="usage: fits finish INSTname [infile=FILENAME]"')
             return
-        
-        inst = words[1].lower()
-        outFile = Parsing.dequote(words[2])
-        
+
+        inst = leftovers.keys()[0].lower()
         if inst not in self.headers:
             cmd.fail('hubTxt="No header to finish for %s"' % (inst))
             return
-
+        CPL.log("fits.finish", "finishing header for %s" % (inst))
         obj = self.headers[inst]
-        obj.finish(cmd, outFile)
+
+        inFile = matched.get('infile', None)
+        inKey = matched.get('inkey', None)
+        if inFile != None and inKey != None:
+            cmd.warn('fitsTxt="Both infile and inkey were specified. Using infile"')
+            inKey = None
+
+        if inKey != None:
+            inFile = g.KVs.getKey(inst, inKey, None)
+        
+        obj.finish(cmd, inFile)
 
         del self.headers[inst]
         
@@ -199,7 +232,17 @@ class InstFITS(object):
         self.debug = argv.get('debug', 0)
         self.cards = OrderedDict()
         self.instName = "unknown"
+        self.comment = argv.get('comment', None)
+        # cmd.warn('debug=%s' % (CPL.qstr('InstFITS args = %s; comment=%s' % (argv, self.comment))))
         
+        self.outfileName = None
+        self.infile = None
+        self.outfile = None
+
+        outfileName = argv.get('outfile', None)
+        if outfileName:
+            self.createOutfile(cmd, outfileName)
+            
     def fetchValueAs(self, cmd, src, keyName, cnv, idx=None):
         """ Fetch and convert a keyword value. """
         
@@ -246,12 +289,12 @@ class InstFITS(object):
         CPL.log("fits", "card %s: name %s=%s" % (cardName, keyName, cnvV))
                 
     def appendCard(self, cmd, card):
-        """ Append a FITS card.
+        """ Append a single FITS card to cards.
         """
 
         self.cards[card.name] = card
         
-    def returnSiteCards(self, cmd):
+    def fetchSiteCards(self, cmd):
         """ Return the static cards which define the site, """
 
         cards = []
@@ -271,7 +314,10 @@ class InstFITS(object):
         self.fetchCardAs(cmd, 'TELALT', 'tcc', 'AxePos', asFloat, RealCard, 'TCC AxePos altitude', idx=1)
         self.fetchCardAs(cmd, 'TELROT', 'tcc', 'AxePos', asFloat, RealCard, 'TCC AxePos rotator', idx=2)
         self.fetchCardAs(cmd, 'TELFOCUS', 'tcc', 'SecFocus', asFloat, RealCard, 'TCC SecFocus')
-    
+        
+        self.fetchCardAs(cmd, 'BOREOFFX', 'tcc', 'Boresight', asFloat, RealCard, 'TCC boresight offset X', idx=0)
+        self.fetchCardAs(cmd, 'BOREOFFY', 'tcc', 'Boresight', asFloat, RealCard, 'TCC boresight offset Y', idx=3)
+        
     def fetchObjectCards(self, cmd):
         objSys = g.KVs.getKey('tcc', 'ObjSys', None)
         csys = 'Unknown'
@@ -281,16 +327,29 @@ class InstFITS(object):
         tracking = csys not in ('Mount', 'Physical', 'Unknown', 'None')
         
         self.fetchCardAs(cmd, 'OBJNAME', 'tcc', 'ObjName', asDeQStr, StringCard, 'Object name, per TCC ObjName')
+
+        self.appendCard(cmd, StringCard('NOTE001', '', 'All coordinates and offsets are from the start of the exposure'))
         
         self.fetchCardAs(cmd, 'RADECSYS', 'tcc', 'ObjSys', asStr, StringCard, 'Coordinate system, per TCC ObjSys', idx=0)
         if tracking:
             self.fetchCardAs(cmd, 'EQUINOX', 'tcc', 'ObjSys', asFloat, RealCard, 'Equinox, per TCC ObjSys', idx=1)
             self.fetchCardAs(cmd, 'OBJANGLE', 'tcc', 'ObjInstAng', asFloat, RealCard, 'Angle from inst x,y to sky', idx=0)
-            self.fetchCardAs(cmd, 'RA', 'tcc', 'ObjNetPos', asRASex, StringCard, 'RA hours, from TCC ObjNetPos', idx=0)
-            self.fetchCardAs(cmd, 'DEC', 'tcc', 'ObjNetPos', asDecSex, StringCard, 'Dec degrees, from TCC ObjNetPos', idx=3)
+            self.fetchCardAs(cmd, 'RA', 'tcc', 'ObjPos', asRASex, StringCard, 'RA hours, from TCC ObjPos', idx=0)
+            self.fetchCardAs(cmd, 'DEC', 'tcc', 'ObjPos', asDecSex, StringCard, 'Dec degrees, from TCC ObjPos', idx=3)
+            self.fetchCardAs(cmd, 'NETRA', 'tcc', 'ObjNetPos', asRASex, StringCard, 'RA hours, from TCC ObjNetPos', idx=0)
+            self.fetchCardAs(cmd, 'NETDEC', 'tcc', 'ObjNetPos', asDecSex, StringCard, 'Dec degrees, from TCC ObjNetPos', idx=3)
+
+            self.fetchCardAs(cmd, 'ARCOFFX', 'tcc', 'ObjArcOff', asFloat, RealCard, 'TCC arc offset X', idx=0)
+            self.fetchCardAs(cmd, 'ARCOFFY', 'tcc', 'ObjArcOff', asFloat, RealCard, 'TCC arc offset Y', idx=3)
+            self.fetchCardAs(cmd, 'OBJOFFX', 'tcc', 'ObjOff', asFloat, RealCard, 'TCC object offset X', idx=0)
+            self.fetchCardAs(cmd, 'OBJOFFY', 'tcc', 'ObjOff', asFloat, RealCard, 'TCC object offset Y', idx=3)
+            self.fetchCardAs(cmd, 'CALOFFX', 'tcc', 'CalibOff', asFloat, RealCard, 'TCC calibration offset X', idx=0)
+            self.fetchCardAs(cmd, 'CALOFFY', 'tcc', 'CalibOff', asFloat, RealCard, 'TCC calibration offset Y', idx=3)
+
         self.fetchCardAs(cmd, 'ROTTYPE', 'tcc', 'RotType', asFloat, StringCard, 'TCC RotType')
         self.fetchCardAs(cmd, 'ROTPOS', 'tcc', 'RotPos', asFloat, RealCard, 'User-specified rotation wrt ROTTYPE')
-    
+        
+ 
     def _setUTC_TAI(self, cmd):
         """ Note the current UTC-TAI offset.
         """
@@ -302,72 +361,111 @@ class InstFITS(object):
         self.UTC_TAI = UTC_TAI
         
     def start(self, cmd, inFile):
+        if self.comment != None:
+            self.appendCard(cmd, CommentCard('COMMENT', self.comment))
+
         self._setUTC_TAI(cmd)
         self.fetchObjectCards(cmd)
         self.fetchWeatherCards(cmd)
         self.fetchTelescopeCards(cmd)
 
-    def generateTimeCards(self, cmd):
+    def fetchTimeCards(self, cmd):
         return []
     
-    def finish(self, cmd, outName):
-        """ Finish off a FITS file by reading in a given file, adding our keys, then writing out a new file.
+    def finish(self, cmd, inFile):
 
-        Args:
-          outFile  - the name of the output file. Must not exist.
-        """
-
-        siteCards = self.returnSiteCards(cmd)
-        timeCards = self.generateTimeCards(cmd)
-
-        scratchFile = g.KVs.getKey(self.instName, 'scratchFile', None)
-        if scratchFile == None:
+        self.fetchInstCards(cmd)
+        if inFile == None:
             cmd.fail('fitsTxt=%s' % (CPL.qstr("NO IMAGE FILE FOR %s!!!!" % (self.instName))))
             return
 
         try:
-            inFITS = FITS(inputFile=scratchFile)
+            inFITS = FITS(inputFile=inFile)
         except Exception, e:
-            cmd.fail('fitsTxt=%s' % (CPL.qstr("Could not read FITS file %s: %s" % (scratchFile, e))))
-            return
+            cmd.fail('fitsTxt=%s' % (CPL.qstr("Could not read FITS file %s: %s" % (inFile, e))))
+            return False
+        
+        self.finishHeader(cmd, inFITS)
+        
+    def finishHeader(self, cmd, fits):
+        """ Finish off a given FITS header by adding our keys, then writing out a new file.
 
-        cmd.inform('fitsDebug=%s' % (CPL.qstr("Generating fits file %s" % (outName))))
+        Args:
+            cmd     - the controlling Command.
+            fits    - a FITS object.
+        """
+
+        siteCards = self.fetchSiteCards(cmd)
+        timeCards = self.fetchTimeCards(cmd)
+
+
+        cmd.inform('fitsDebug=%s' % (CPL.qstr("Generating fits file %s" % (self.outfileName))))
 
         # Stuff the header with our cards. Stick them at the top of the header.
         after = 'NAXIS2'
 
         # Site cards first
         for c in siteCards:
-            inFITS.addCard(c, after=after)
+            fits.addCard(c, after=after)
             after = c.name
 
         # Time cards next
         for c in timeCards:
-            inFITS.addCard(c, after=after)
+            fits.addCard(c, after=after)
             after = c.name
 
         # Then the rest
         for c in self.cards.itervalues():
-            inFITS.addCard(c, after=after)
+            fits.addCard(c, after=after)
             after = c.name
 
-        # Finally, write the output file.
-        #
-        try:
-            f = os.open(outName, os.O_WRONLY|os.O_CREAT|os.O_EXCL, 0664)
-            outFile = os.fdopen(f, "w")
-            CPL.log('InstFITS.finish', 'f=%s, file=%s' % (f, outFile))
-        except (OSError, IOError), e:
-            cmd.fail('fitsTxt=%s' % \
-                     (CPL.qstr("Could not create %s (%s)" % (outName, e.strerror))))
-            return
-
-        inFITS.writeToFile(outFile)
-        outFile.close()
-        del inFITS
+        if self.outfile == None:
+            self.outfile, self.outfileName = tempfile.mkstemp('.fits', "%s-" % (self.name), '/export/images')
+            cmd.warn('fitsTxt=%s' % \
+                     (CPL.qtsr("BAD NEWS: no filename specified for fits start or finish. Saving to %s" % (self.outfileName))))
+            
+        fits.writeToFile(self.outfile)
+        self.outfile.close()
+        del fits
 
         cmd.finish('fitsTxt=%s' % \
-                   (CPL.qstr("Finished writing the %s file: %s" % (self.instName, outName))))
+                   (CPL.qstr("Finished writing the %s file: %s" % (self.instName, self.outfileName))))
+
+    def createOutfile(self, cmd, filename):
+        """ Actually create the output file.
+
+        Args:
+           cmd      - the controlling Command
+           filename - the filename to use.
+
+        Returns:
+            boolean  - whether we succeeded.
+            
+        self.file and self.filename will be modified. Note that self.file already exists, we warn but do not
+        fail. The point is that .createFile will only be called before any significant data is written. So changing
+        .file should not have us lose any data.
+
+        """
+
+        if self.outfile != None:
+            cmd.warn('fitsTxt=%s' % (CPL.qstr("fits.creatFile is overwriting its file.")))
+        if self.outfileName != None:
+            cmd.warn('fitsTxt=%s' % (CPL.qstr("fits.creatFile is overwriting its file. old filename=%s, new filename=%s" % \
+                                              (self.outfileName, filename))))
+            
+        try:
+            f = os.open(filename, os.O_WRONLY|os.O_CREAT|os.O_EXCL, 0664)
+            fd = os.fdopen(f, "w")
+            CPL.log('InstFITS.createFile', 'filename=%s' % (filename))
+        except (OSError, IOError), e:
+            cmd.fail('fitsTxt=%s' % \
+                     (CPL.qstr("Could not create %s (%s)" % (filename, e.strerror))))
+            return False
+
+        self.outfile = fd
+        self.outfileName = filename
+
+        return True
         
 class grimFITS(InstFITS):
     """ The Grim-specific FITS routines.
@@ -379,6 +477,8 @@ class grimFITS(InstFITS):
         
     def start(self, cmd, inFile=None):
         InstFITS.start(self, cmd, inFile)
+        self.cards['INSTRUME'] = StringCard('INSTRUME', self.instName, 'Instrument name')
+
         self.fetchInstCards(cmd)
         
     def fetchNiceInstCards(self, cmd):
@@ -442,7 +542,7 @@ class grimFITS(InstFITS):
                                 self.TS(expStart, format="%Y-%m-%dT%H:%M:%S", goodTo=3),
                                 'Start of integration.'))
 
-        cards.append(RealCard('UTC_TAI', self.UTC_TAI, 'UTC offset from TAI, seconds.'))
+        cards.append(RealCard('UTC-TAI', self.UTC_TAI, 'UTC offset from TAI, seconds.'))
         cards.append(StringCard('UTC-OBS',
                                 self.TS(expStart + self.UTC_TAI, format="%H:%M:%S", goodTo=3),
                                 'Start of integration.'))
@@ -453,7 +553,7 @@ class grimFITS(InstFITS):
 
         return cards
     
-    def generateTimeCards(self, cmd):
+    def fetchTimeCards(self, cmd):
 
         # Calculate Unix time for the beginning of the exposure.
         #
@@ -470,11 +570,6 @@ class grimFITS(InstFITS):
         
         return cards
     
-    def finish(self, cmd, outFile):
-        self.fetchInstCards(cmd)
-        
-        InstFITS.finish(self, cmd, outFile)
-        
 class echelleFITS(InstFITS):
     """ The Echelle-specific FITS routines.
     """
@@ -485,15 +580,11 @@ class echelleFITS(InstFITS):
         
     def start(self, cmd, inFile=None):
         InstFITS.start(self, cmd, inFile)
+        self.cards['INSTRUME'] = StringCard('INSTRUME', self.instName, 'Instrument name')
         
     def fetchInstCards(self, cmd):
         pass
     
-    def finish(self, cmd, outFile):
-        self.fetchInstCards(cmd)
-        
-        InstFITS.finish(self, cmd, outFile)
-
 class disFITS(InstFITS):
     """ The DIS-specific FITS routines.
     """
@@ -502,14 +593,7 @@ class disFITS(InstFITS):
         InstFITS.__init__(self, cmd, **argv)
         self.instName = 'dis'
         
-    def start(self, cmd, inFile=None):
-        InstFITS.start(self, cmd, inFile)
-
     def fetchInstCards(self, cmd):
         pass
     
-    def finish(self, cmd, outFile):
-        self.fetchInstCards(cmd)
-        
-        InstFITS.finish(self, cmd, outFile)
         
