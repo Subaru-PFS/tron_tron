@@ -80,7 +80,7 @@ class ExpSequence(Actor.Acting):
         """ Generate all the keys describing our last and next files. """
 
         self.returnStateKey()
-        self.cmd.respond('comment=%s' % (CPL.qstr(self.exposure.comment)))
+        self.cmd.respond('comment=%s' % (self.exposure.comment))
         # self.returnPathKey()
         self.cmd.respond(self.path.getKey())
         
