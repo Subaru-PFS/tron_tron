@@ -4,6 +4,10 @@ __all__ = ['Guider']
 
 """ The "guider" command.
 
+Coordinate notes:
+  - Because the TCC CONVERT command views the world in unbinned, full-frame coordinates (image/ccd centric),
+    but the guide cameras can both bin and window, we need to be sure to convert to & from ccd- and frame- systems
+    whenever we go betweem the cameras and the TCC.
 """
 
 import inspect
@@ -185,7 +189,7 @@ class Guider(Actor.Actor):
         
         # Parse the arguments for the camera controller.
         #
-        fname = self._doCmdExpose(cmd, 'expose', 'expose')
+        fname, bin, offset, size = self._doCmdExpose(cmd, 'expose', 'expose')
         cmd.respond('imgFile=%s' % (CPL.qstr(fname)))
         cmd.finish()
         
@@ -196,7 +200,7 @@ class Guider(Actor.Actor):
         does not stop the guiding loop.
         """
 
-        fname = self._doCmdExpose(cmd, 'dark', 'dark')
+        fname, bin, offset, size = self._doCmdExpose(cmd, 'dark', 'dark')
         cmd.respond('imgFile=%s' % (CPL.qstr(fname)))
         cmd.finish()
         
@@ -211,7 +215,7 @@ class Guider(Actor.Actor):
         if cmd.program() == 'TC01':
             return self.doTccFindstars(cmd)
             
-        fname = self._doCmdExpose(cmd, 'expose', 'findstars')
+        fname, bin, offset, size = self._doCmdExpose(cmd, 'expose', 'findstars')
         cmd.respond('%sDebug=%s' % (self.name, CPL.qstr('checking filename=%s' % (fname))))
         fits = pyfits.open(fname)
         img = fits[0].data
@@ -226,9 +230,9 @@ class Guider(Actor.Actor):
 	)
 
         if isSat:
-            cmd.warn('%sFindstarsSaturated=%s' % (self.name, CPL.qstr(fname)))
+            cmd.warn('findstarsSaturated=%s' % (self.name, CPL.qstr(fname)))
 
-        cmd.respond('%sFindstarsCnt=%d' % (self.name, len(stars)))
+        cmd.respond('starCnt=%d' % (self.name, len(stars)))
         i=1
         for counts, ctr, rad, totPts in stars:
             ctr = self.ij2xy(ctr)
@@ -250,7 +254,7 @@ class Guider(Actor.Actor):
         if cmd.program() == 'TC01':
             return self.doTccCentroid(cmd)
             
-        fname = self._doCmdExpose(cmd, 'expose', 'centroid')
+        fname, bin, offset, size = self._doCmdExpose(cmd, 'expose', 'centroid')
 
         if not cmd.argDict.has_key('on'):
             seed = self._getBestCenter(cmd, fname)
@@ -339,7 +343,7 @@ class Guider(Actor.Actor):
             self.guideLoop.run()
 
     def getActiveConfig(self):
-        """ Return the current configuration dictionary. """
+        """ Return the current configuration dictionary. If none has been created, copy the defaults. """
 
         if self.config == None:
             self.config = self.defaults.copy()
@@ -351,29 +355,26 @@ class Guider(Actor.Actor):
 
         Only the exposure owner or an APO user can zap an exposure.
         """
-        
-        # Only let the exposure owner or any APO user control an active exposure.
-        #
-        gCmd = self.guidingCmd
 
-        if gCmd == None:
-            cmd.fail('%sTxt="no guiding cmd to zap"' % (self.name))
-            return
-        
-        if gCmd.program() != cmd.program() and cmd.program() != 'APO':
-            cmd.fail('%sTxt="guiding belongs to %s.%s"' % (self.name,
-                                                           gCmd.program(),
-                                                           gCmd.username()))
-            return
+        if not self.guideLoop:
+            cmd.warn('%sTxt="no guiding loop to zap"' % (self.name))
+        else:
+            # Only let the exposure owner or any APO user control an active exposure.
+            #
+            gCmd = self.guideLoop.cmd
 
+            if gCmd.program() != cmd.program() and cmd.program() != 'APO':
+                cmd.fail('%sTxt="guiding loop belongs to %s.%s"' % (self.name,
+                                                                    gCmd.program(),
+                                                                    gCmd.username()))
+                return
+
+	    self.guideLoop.stop(cmd, doFinish=False)
+	    self.guideLoop = None
 
         self.camera.zap(cmd)
-	if self.guideLoop:
-	    self.guideLoop.abort(cmd)
-	    self.guideLoop = None
         cmd.finish('')
-
-    doZap.helpText = ('zap            - stop and active exposure and/or cleanup.')
+    doZap.helpText = ('zap', 'stop and active exposure and/or cleanup.')
 
     def doSetMask(self, cmd):
         """ Load a mask to apply.
@@ -393,23 +394,8 @@ class Guider(Actor.Actor):
         self._setMask(fname)
         
         cmd.finish('maskFile=%s' % (self.name, CPL.qstr(fname)))
+    doSetMask.helpText = ('setMask [filename]', 'load a mask file. Reload existing mask if no file is specified')
         
-    def doSetBoresight(self, cmd):
-        """ Define the boresight
-
-        CmdArgs:
-            x,y  - unbinned pixels
-        """
-
-        if len(cmd.argv) != 3:
-            cmd.fail('%sTxt="usage: setBoresight X Y"' % (self.name))
-            return
-        x = float(cmd.argv[1])
-        y = float(cmd.argv[2])
-        self.boresightPixel = [x,y]
-
-        cmd.finish('%sBoresight=%0.1f,%0.1f' % (self.name, x, y))
-                   
     def doSetScale(self, cmd):
         """ Define the global guiding gain
 
@@ -471,6 +457,9 @@ class Guider(Actor.Actor):
             
         Returns:
             - a filename
+            - the [X,Y] binning factors,
+            - the _actual_ [X0,Y0] LL corner
+            - the _actual_ [W,H] frame size.
         """
 
         matched, notMatched, leftovers = cmd.match([('time', float),
@@ -485,7 +474,6 @@ class Guider(Actor.Actor):
                                        CPL.qstr("No such file: %s" % (matched['file']))))
                 return
 
-            return fname
         else:
             if not matched.has_key('time') :
                 cmd.fail('%sTxt="Exposure commands must specify exposure times"' % (self.name))
@@ -499,8 +487,58 @@ class Guider(Actor.Actor):
             if matched.has_key('window'):
                 window = self.parseWindow(matched['window'])
 
-            return self._doExpose(cmd, type, time, bin, window)
+            fname = self._doExpose(cmd, type, time, bin, window) 
 
+            return (fname,) + getGeometryFromFile(cmd, fname)
+
+    def getGeometryFromFile(self, cmd, fname):
+        """ Read a FITS file and return geometry information.
+
+        Args:
+           cmd     - the controlling Command
+           fname   - the name of a FITS file.
+
+        Returns:
+            - the [X,Y] binning factors,
+            - the _actual_ [X0,Y0] LL corner
+            - the _actual_ [W,H] frame size.
+        
+        """
+    
+        fits = pyfits.open(fname)
+        hdr = fits[0].header
+        fits.close()
+
+        return getGeometryFromHeader(cmd, hdr)
+    
+    def getGeometryFromHeader(self, cmd, hdr):
+        """ Read a FITS header and return geometry information.
+
+        Args:
+           cmd     - the controlling Command
+           hdr     - a pyFITS header, with all the required cards.
+
+        Returns:
+            - the [X,Y] binning factors,
+            - the _actual_ [X0,Y0] LL corner
+            - the _actual_ [W,H] frame size.
+        
+        Requires the following FITS cards:
+           BEGX, BEGY     - binned pixels offset of LL corner on full CCD frame.
+           BINX, BINY     - binning factor of the image.
+           NAXIS1, NAXIS2 - binned pixels in image.
+
+        """
+
+        begx = hdr['BEGX']
+        begy = hdr['BEGY']
+        binx = hdr['BINX']
+        biny = hdr['BINY']
+        w = hdr['NAXIS1']
+        h = hdr['NAXIS2']
+        
+        return (binx, biny), (begx, begy), (w, h)
+    
     def _doExpose(self, cmd, type, itime, bin, window):
         """ Actually request an exposure from a camera.
 
@@ -534,7 +572,7 @@ class Guider(Actor.Actor):
         """
 
         if fname == None:
-            fname = self._doCmdExpose(cmd, 'expose', 'centroid')
+            fname, bin, offset, size = self._doCmdExpose(cmd, 'expose', 'centroid')
         fits = pyfits.open(fname)
         img = fits[0].data
         fits.close()
@@ -552,10 +590,14 @@ class Guider(Actor.Actor):
     def _doCentroid(self, cmd, seedPos, fname=None, scanRad=None):
         """ Takes a single guider exposure and centroids on the given position. This overrides but
         does not stop the guiding loop.
+
+        Args:
+            cmd     - the controlling command
+            seedPos - the 
         """
 
         if fname == None:
-            fname = self._doCmdExpose(cmd, 'expose', 'centroid')
+            fname, bin, offset, size = self._doCmdExpose(cmd, 'expose', 'centroid')
         fits = pyfits.open(fname)
         img = fits[0].data
         fits.close()
