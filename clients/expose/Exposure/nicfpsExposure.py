@@ -206,8 +206,8 @@ class nicfpsExposure(Exposure.Exposure):
            filename  - a filename which is known not to exist now.
         """
 
-        root = '/export/images'
-        path = 'nicfps/forTron'
+        root = '/export/images/nicfps'
+        path = 'forTron'
 
         n = 1
         timestamp = time.strftime('%Y%m%dT%H%M%SZ', time.gmtime())

@@ -29,7 +29,8 @@ class gcam(Guider.Guider, TCCGcam.TCCGcam):
         # Additional commands for the Alta.
         #
         self.commands.update({'setTemp':    self.setTempCmd,
-                              'setFan':     self.setFanCmd})
+                              'setFan':     self.setFanCmd,
+                              'tccfs':      self.doTccFindstars})
 
     def _setDefaults(self):
 

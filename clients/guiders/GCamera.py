@@ -131,7 +131,7 @@ class GCamera(object):
         binning = frame.frameBinning
         corner, size = frame.imgFrameAsCornerAndSize()
         
-        cmd.warn('debug=%s' % (CPL.qstr("writeFITS frame=%s" % (frame))))
+        # cmd.warn('debug=%s' % (CPL.qstr("writeFITS frame=%s" % (frame))))
 
         cards = ["%-80s" % ('SIMPLE  = T'),
                  "%-80s" % ('BITPIX  = 16'),
