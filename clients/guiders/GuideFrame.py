@@ -76,7 +76,9 @@ class ImageFrame(object):
             binning = (3,3)
 
         try:
-            offset = (h['BEGX'], h['BEGY'])
+            FITSoffset = (h['BEGX'], h['BEGY'])
+            offset = FITSoffset[0] - 1, \
+                     FITSoffset[1] - 1
         except KeyError:
             offset = (0,0)
             

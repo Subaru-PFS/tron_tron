@@ -13,7 +13,6 @@ Coordinate notes:
 import os
 import sys
 
-import pyfits
 import Command
 import Actor
 import CPL
@@ -147,7 +146,7 @@ class Guider(Actor.Actor):
 
         # We need the maskfile name for the guiderFiles keyword.
         maskName, maskbits = self.mask.getMaskForFrame(cmd, filename, frame)
-        self.genFilesKey(cmd, 'findstarsFiles', True, filename, maskName,
+        self.genFilesKey(cmd, 'f', True, filename, maskName,
                          None, None, filename)
         
         isSat, stars = MyPyGuide.findstars(cmd, filename, self.mask, frame, tweaks)
@@ -160,7 +159,7 @@ class Guider(Actor.Actor):
         except:
             cnt = None
         
-        MyPyGuide.genStarKeys(cmd, stars, cnt=cnt)
+        MyPyGuide.genStarKeys(cmd, stars, caller='f', cnt=cnt)
         cmd.finish()
         
     findstarsCmd.helpText = ('findstars itime=S [window=X0,Y0,X1,Y1] [bin=N] [bin=X,Y]')
@@ -188,7 +187,7 @@ class Guider(Actor.Actor):
 
         # We need the maskfile name for the guiderFiles keyword.
         maskName, maskbits = self.mask.getMaskForFrame(cmd, filename, frame)
-        self.genFilesKey(cmd, 'centroidFiles', True, filename, maskName,
+        self.genFilesKey(cmd, 'c', True, filename, maskName,
                          None, None, filename)
 
         if cmd.argDict.has_key('on'):
@@ -211,7 +210,7 @@ class Guider(Actor.Actor):
             cmd.fail('centroidTxt="no star found"')
             return
 
-        MyPyGuide.genStarKey(cmd, star, keyName='centroid')
+        MyPyGuide.genStarKey(cmd, star, caller='c')
         cmd.finish()
         
     centroidCmd.helpText = ('centroid itime=S [window=X0,Y0,X1,Y1] [bin=N] [bin=X,Y] [on=X,Y]',
@@ -528,69 +527,6 @@ class Guider(Actor.Actor):
 
         return coords
         
-        
-    def trimUnit(self, x, size):
-	""" Trim a coordinate to [0..size], but do not change it's type. """
-	
-        if x < 0:
-            if type(x) == int:
-                return 0
-            else:
-                return 0.0
-        if x > size:
-            return size
-        return x
-
-    def trimCoord(self, x0, x1, size):
-        """ Return the part of an extent that intersects a given [0..size-1]
-        """
-
-        return self.trimUnit(x0, size), self.trimUnit(x1, size)
-        
-    def trimRectToFrame(self, x0, y0, x1, y1, frameWidth, frameHeight):
-        """ Return the section of a rectange that intersects a frame.
-
-        Args:
-             x0, y0         - the LL corner of a rectangle
-             x1, y1         - the UR corner of a rectangle
-             frameWidth,
-             frameHeight    - the size of a frame.
-
-        Returns:
-             x0, y0         - the LL corner of a possibly trimmed rectangle
-             x1, y1         - the UR corner of a possibly trimmed rectangle
-        """
-
-        tX0, tX1 = self.trimCoord(x0, x1, frameWidth)
-        tY0, tY1 = self.trimCoord(y0, y1, frameHeight)
-
-        CPL.log("rectTrim", "frame=%d,%d from=%s,%s,%s,%s to %s,%s,%s,%s" % \
-                (frameWidth, frameHeight,
-                 x0, y0, x1, y1,
-                 tX0, tY0, tX1, tY1))
-
-        return tX0, tY0, tX1, tY1
-    
-    def trimPosAndSizeToFrame(self, x0, y0, xSize, ySize, frameWidth, frameHeight):
-        """ Return the section of a pos+size rectange that intersects a frame.
-
-        Args:
-             x0, y0         - the center of a rectangle
-             xSize, ySize   - the size of a rectangle
-             frameWidth,
-             frameHeight    - the size of a frame.
-
-        Returns:
-             x0, y0         - the center of the possibly trimmed rectangle.
-             xSize, ySize   - the size of the possibly trimmed rectangle
-        """
-
-        tX0, tY0, tX1, tY1 = self.trimRectToFrame(x0 - xSize/2.0, y0 - ySize/2.0,
-                                                  x0 + xSize/2.0, y0 + ySize/2.0,
-                                                  frameWidth, frameHeight) 
-
-        return (tX1 + tX0) / 2, (tY1 + tY0) / 2, tX1-tX0, tY1-tY0
-    
     def parseCmdTweaks(self, cmd, baseConfig):
         """ Parse all configuration tweaks in a command, and modify a copy of baseConfig.
         """
@@ -618,13 +554,13 @@ class Guider(Actor.Actor):
         dateStr = CPL.getDayDirName()
         return os.path.join(self.config['imagePath'], dateStr)
         
-    def genFilesKey(self, cmd, keyName, isNewFile,
+    def genFilesKey(self, cmd, caller, isNewFile,
                     finalname, maskname, camname, darkname, flatname):
         """ Generate an xxxFiles keyword.
 
         Args:
             cmd          - the controlling Command to respond to.
-            keyName      - the name of the keyword.
+            caller       - a string indicating whose files these are.
             isNewFile    - whether  
             finalname, maskname, camname, darkname, flatname - the component filenames.
 
@@ -644,6 +580,7 @@ class Guider(Actor.Actor):
                 files.append(f)
 
         qfiles = map(CPL.qstr, files)
-        cmd.respond("%s=%d,%s" % (keyName, int(isNewFile),
-                                  ','.join(qfiles)))
+        cmd.respond("files=%s,%d,%s" % (CPL.qstr(caller),
+                                        int(isNewFile),
+                                        ','.join(qfiles)))
                              

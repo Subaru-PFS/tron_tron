@@ -52,6 +52,7 @@ def findstars(cmd, filename, mask, frame, tweaks, cnt=10):
         maskfile, maskbits = mask.getMaskForFrame(cmd, filename, frame)
     else:
         maskbits = img * 0 + 1
+        cmd.warn('text="no mask file available to findstars"')
 
     CPL.log('findstars', 'tweaks=%s' % (tweaks))
     
@@ -123,6 +124,7 @@ def centroid(cmd, filename, mask, frame, seed, tweaks):
         maskfile, maskbits = mask.getMaskForFrame(cmd, filename, frame)
     else:
         maskbits = img * 0 + 1
+        cmd.warn('text="no mask file available to centroid"')
 
     # Transform the seed from CCD to image coordinates
     seed = frame.ccdXY2imgXY(seed)
@@ -141,7 +143,7 @@ def centroid(cmd, filename, mask, frame, seed, tweaks):
             tweaks['ccdGain']
             )
     except RuntimeError, e:
-        cmd.warn('centroidTxt=%s' % (CPL.qstr(e.args[0])))
+        cmd.warn('text=%s' % (CPL.qstr(e.args[0])))
         return None
     except Exception, e:
         cmd.warn('debug=%s' % (CPL.qstr(e)))
@@ -185,11 +187,6 @@ def starshape(cmd, frame, img, maskbits, star):
                            (ctr[0], ctr[1], e))))
         return None
     
-        fwhm = 0.0        # nan does not work.
-        chiSq = 0.0
-        bkgnd = 0.0
-        ampl = 0.0
-
     # Put _eveything into a single structure
     s = StarInfo()
     s.ctr = ctr
@@ -204,52 +201,46 @@ def starshape(cmd, frame, img, maskbits, star):
     
     return s
 
-def genStarKeys(cmd, stars, keyName='star', cnt=None):
+def genStarKeys(cmd, stars, keyName='star', caller='x', cnt=None):
     """ Generate the canonical star keys.
 
     Args:
        cmd     - the Command to respond to.
        stars   - a list of StarInfos
        keyname ? the key name to generate. Defaults to 'star'
+       caller  ? an indicator of the caller's identity.
        cnt     ? limit the number of stars output to the given number
     """
 
     i = 1
     for s in stars:
-        genStarKey(cmd, s, i, keyName=keyName)
+        genStarKey(cmd, s, i, keyName=keyName, caller=caller)
 
         if cnt and i >= cnt:
             break
         i += 1
         
-def genStarKey(cmd, s, idx=None, keyName='star'):
+def genStarKey(cmd, s, idx=1, keyName='star', caller='x'):
     """ Generate the canonical star keys.
 
     Args:
         cmd     - the Command to respond to.
-        idx     - the index of the star in the star list. If None, don't print it.
+        idx     - the index of the star in the star list.
         s       - the StarInfo
         keyName ? the key name to use. Defaults to 'star'
+        caller  ? the 'reason' field.
     """
 
-    if idx == None:
-        cmd.respond('%s=%0.2f,%0.2f, %0.2f,%0.2f,%0.2f, %0.2f,%0.2f,%0.2f,%0.2f, %0.1f,%0.1f,%0.1f' % \
-                    (keyName,
-                     s.ctr[0], s.ctr[1],
-                     s.err[0], s.err[1],
-                     s.asymm,
-                     s.fwhm[0], s.fwhm[1], s.angle,
-                     s.chiSq,
-                     s.counts, s.bkgnd, s.ampl))
-    else:
-        cmd.respond('%s=%d,%0.2f,%0.2f, %0.2f,%0.2f,%0.2f, %0.2f,%0.2f,%0.2f,%0.2f, %0.1f,%0.1f,%0.1f' % \
-                    (keyName, idx,
-                     s.ctr[0], s.ctr[1],
-                     s.err[0], s.err[1],
-                     s.asymm,
-                     s.fwhm[0], s.fwhm[1], s.angle,
-                     s.chiSq,
-                     s.counts, s.bkgnd, s.ampl))
+    cmd.respond('%s=%s,%d,%0.2f,%0.2f, %0.2f,%0.2f,%0.2f, %0.2f,%0.2f,%0.2f,%0.2f, %0.1f,%0.1f,%0.1f' % \
+                (keyName,
+                 CPL.qstr(caller),
+                 idx,
+                 s.ctr[0], s.ctr[1],
+                 s.err[0], s.err[1],
+                 s.asymm,
+                 s.fwhm[0], s.fwhm[1], s.angle,
+                 s.chiSq,
+                 s.counts, s.bkgnd, s.ampl))
 
     
     

@@ -106,13 +106,30 @@ class GuiderMask(object):
         f = pyfits.open(newFile)
         im = f[0].data
         f.close()
-        
+
         self.cachedFile = newFile
-        self.cachedMask = im >= CPL.cfg.get(self.name, 'maskThresh')
+        cm = 1 * (im >= CPL.cfg.get(self.name, 'maskThresh'))
+        self.cachedMask = cm 
         #self.cachedMask = im * 0
         self.binning = binning
         self.size = size
         self.offset = offset
+
+        try:
+            cmFile = '/tmp/cachedMask.fits'
+
+            try:
+                os.remove(cmFile)
+            except:
+                pass
+            tf = pyfits.HDUList()
+            hdu = pyfits.PrimaryHDU()
+            hdu.data = cm
+            tf.append(hdu)
+            tf.writeto(cmFile)
+            del tf
+        except Exception, e:
+            cmd.warn('text="Could not save cachedMask.fits: %s"' % (e))
 
         del im
         

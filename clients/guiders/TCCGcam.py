@@ -62,7 +62,6 @@ doread       8.00     3     3      171.0      171.0     1024.0     1024.0
 
 	cmd.respond('txtForTcc="init"')
 	cmd.finish('txtForTcc="OK"')
-	return
         
     def doTccShowstatus(self, cmd):
         ''' Respond to a tcc 'showstatus' command.
@@ -126,6 +125,10 @@ showstatus
         
         '''
 
+        # Cancel out any record of older exposures.
+        self.frameForTcc = None
+        self.imgForTcc = None
+
         # Parse the tcc command. It will _always_ have all fields
         #
         try:
@@ -144,9 +147,6 @@ showstatus
             xBin = int(xBin); yBin = int(yBin)
             xCtr = float(xCtr); yCtr = float(yCtr)
             xSize = float(xSize); ySize = float(ySize)
-
-            # Squirrel our coordinate frame 
-            self.frameForTcc = (xBin, yBin, xCtr, yCtr, xSize, ySize)
 
             # Some realignments, since the TCC can request funny things.
  	    xMax = self.size[0] / xBin
@@ -209,6 +209,11 @@ showstatus
         cmd.respond('txtForTcc=%s' % (CPL.qstr(cmd.raw_cmd)))
         cmd.respond('%sDebug=%s' % (self.name, CPL.qstr('checking filename=%s' % (self.imgForTcc))))
 
+        if not self.imgForTcc or not self.frameForTcc:
+            cmd.warn('error="No doread image available for TCC findstars!"')
+            cmd.finish('txtForTcc=" OK"')
+            return
+            
         # Parse out what (little) we need: the number of stars and the predicted size.
         #
         try:

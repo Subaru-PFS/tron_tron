@@ -152,15 +152,10 @@ class GuideLoop(object):
         """
         
         k = reply.KVs['Boresight']
-        pos = list(map(float, k))
-        if k[2] != 'NaN':
-            pos[2] += self.tccDtime
-        if k[5] != 'NaN':
-            pos[5] += self.tccDtime
-
-        self.boresightOffset = pos
-        self.cmd.warn('debug="set boresight offset to (%0.2f, %0.2f)"' % \
-                      (self.boresightOffset[0], self.boresightOffset[1]))
+        pvt = list(map(float, k))
+        self.boresightOffset = pvt
+        self.cmd.warn('debug="set boresight offset to (%s)"' % \
+                      (self.boresightOffset))
     
     def listenToTCCImCtr(self, reply):
         """ Set the guider/instrument center pixel.
@@ -237,8 +232,8 @@ class GuideLoop(object):
             self.guidingType = 'boresight'
             try:
                 self.refPVT = self._GPos2ICRS(self.getBoresight())
-            except:
-                self.failGuiding('could not establish the boresight.')
+            except Exception, e:
+                self.failGuiding('could not establish the boresight: %s.' % (e))
                 return
                 
         elif centerOn:
@@ -454,18 +449,21 @@ class GuideLoop(object):
         boresight offset. 
 
         Args:
-             T       - time, in Unix seconds, to reckon the boresight at.
+             t       ? time, in Unix seconds, to reckon the boresight at.
+
+        Returns:
+            - the boresight position at t, as an x,y pair of pixel
         """
 
         if t == None:
             t = time.time()
 
-        xPos = self.boresight[0] + \
-               self.imScale[0] * (self.boresightOffset[0] + \
-                                  (t - self.boresightOffset[2]) * self.boresightOffset[1])
-        yPos = self.boresight[1] + \
-               self.imScale[1] * (self.boresightOffset[3] + \
-                                  (t - self.boresightOffset[5]) * self.boresightOffset[4])
+        # Evaluate the boresight offset for t. In degrees.
+        bsPos = self.PVT2pos(self.boresightOffset, t)
+
+        # Add the offset to the ImCtr boresight pixel.
+        xPos = self.boresight[0] + self.imScale[0] * bsPos[0]
+        yPos = self.boresight[1] + self.imScale[1] * bsPos[1]
 
         self.cmd.warn('debug="boresight is at (%0.2f, %0.2f)"' % (xPos, yPos))
         return xPos, yPos
@@ -624,7 +622,7 @@ class GuideLoop(object):
         # We need the maskfile name for the guiderFiles keyword.
         maskName, maskbits = self.controller.mask.getMaskForFrame(cmd, filename, frame)
 
-        self.controller.genFilesKey(self.cmd, 'guiderFiles', True,
+        self.controller.genFilesKey(self.cmd, 'g', True,
                                     filename, maskName, None, None, filename)
         
         # Need to interpolate to the middle of the exposure.
@@ -640,7 +638,17 @@ class GuideLoop(object):
             self.failGuiding(e)
             return
 
-
+        # Get the other stars in the field
+        try:
+            isSat, stars = MyPyGuide.findstars(self.cmd, filename, self.controller.mask,
+                                               frame, tweaks=self.tweaks)
+        except RuntimeError, e:
+            stars = []
+            
+        MyPyGuide.genStarKey(cmd, star, caller='c')
+        if stars:
+            MyPyGuide.genStarKeys(cmd, stars, caller='f')
+            
         self.cmd.warn('debug=%s' % (CPL.qstr('center=%0.2f, %0.2f' % (star.ctr[0],
                                                                       star.ctr[1]))))
         self._centerUp(self.cmd, star, frame, refPos, fname=filename)
