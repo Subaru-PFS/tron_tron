@@ -37,6 +37,13 @@ class GuiderMask(object):
 
         if cmd:
             self.statusCmd(cmd, doFinish=False)
+
+    def getBaseDir(self):
+        """ Return the current image directory for all raw and synthesized images. """
+
+        dateName = CPL.getDateDirName()
+        return os.path.join(self.imagePath, dateName)
+    
             
     def statusCmd(self, cmd, doFinish=True):
         """ Generate our keys.
