@@ -239,16 +239,24 @@ class CM(Actor.Actor):
                        "SLITPOS = %[^ ]",
         """
 
+        CPL.log("cmDebug", "REQSTAT start")
         airTemp, trussTemp, m1Temp, humidity = self._getTemps(cmd)
+        CPL.log("cmDebug", "REQSTAT call")
         
-        client.call('tcc', 'show time')
         try:
+            client.callback('tcc', 'show time', debug=5)
+            time.sleep(0.5)
+        except Exception, e:
+            CPL.log("cmDebug", "show time bailed: %s" % (e))
+        try:
+            CPL.log("cmDebug", "REQSTAT getKeys1")
             keys = client.getKeys("tcc", [('ObjPos', asCoord2),
                                           ('RotPos', asCoord),
                                           ('SecFocus', asFloat),
                                           ('UT1', asFloat),
                                           ('LST', asFloat),
                                           ('AxePos', asPos3)])
+            CPL.log("cmDebug", "REQSTAT resp1")
             cmd.respond('cmKeys=%s' % (CPL.qstr(keys)))
             
             ra = keys['ObjPos'][0]
@@ -266,6 +274,7 @@ class CM(Actor.Actor):
             am = 1.0 / math.sin(alt * math.pi/180)
             focus = keys['SecFocus']
         except Exception, e:
+            CPL.log("cmDebug", "REQSTAT barfedd")
             cmd.warn("cmDebug=%s" % (CPL.qstr(e)))
             ra = -9999
             dec = -9999
@@ -277,6 +286,8 @@ class CM(Actor.Actor):
             am = -9999
             focus = -9999
             
+        CPL.log("cmDebug", "REQSTAT format")
+
         s = "UTC = %s LST = %s RA = %s DEC = %s " + \
             "HA = %s AM = %0.2f DEROTOFF = %0.6f TDOMEAIR = %0.2f " + \
             "TSTRUT = %f TMIRROR = %f TMIRAIR = %f RELHUM = %f " + \
@@ -290,6 +301,8 @@ class CM(Actor.Actor):
                     -9999, -9999, -9999, "true", \
                     self.slitPos)
         
+        CPL.log("cmDebug", "REQSTAT postformat")
+
         cmd.respond('cmDebug=%s' % (CPL.qstr(resp)))
         cmd.finish('RawTxt=%s' % (CPL.qstr(resp)))
 
@@ -301,7 +314,8 @@ class CM(Actor.Actor):
 
         """
 
-        client.call('tcc', 'show time')
+        client.callback('tcc', 'show time', debug=5)
+        time.sleep(0.5)
         try:
             keys = client.getKeys("tcc", [('ObjPos', asCoord2),
                                           ('RotPos', asCoord),
@@ -403,7 +417,8 @@ class CM(Actor.Actor):
 
         cmd.respond('cmDebug=%s' % (CPL.qstr(c)))
         cid = "%s.%s" % (cmd.fullname, self.name)
-        res = client.call('tcc', c, cid=cid)
+        res = client.callback('tcc', c, cid=cid, debug=5)
+        time.sleep(0.5)
 
         cmd.finish('RawTxt="1"')
 
@@ -508,11 +523,11 @@ class CM(Actor.Actor):
 #
 def main(name, eHandler=None, debug=0, test=False):
     if eHandler == None:
-        eHandler = CM(debug=1)
+        eHandler = CM(debug=5)
     eHandler.start()
 
     try:
-        client.run(name=name, cmdQueue=eHandler.queue, background=False, debug=1, cmdTesting=test)
+        client.run(name=name, cmdQueue=eHandler.queue, background=False, debug=5, cmdTesting=test)
     except SystemExit, e:
         CPL.log('expose.main', 'got SystemExit')
         raise
@@ -532,4 +547,4 @@ def tc(s):
     mid += 1
     
 if __name__ == "__main__":
-    main('cm', debug=0)
+    main('cm', debug=9)

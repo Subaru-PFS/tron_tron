@@ -59,9 +59,7 @@ class ecam(Guider.Guider):
     def doTccShowstatus(self, cmd):
         """ Pass on a 'setcam' command from a TCC to our camera. """
 
-        # cmd.warn('debug="starting showstatus"')
         ret = self.camera.rawCmd(cmd, 10)
-        # cmd.warn('debug="received %d lines: %s"' % (len(ret), ret))
         self.echoToTcc(cmd, ret)
     
     def doTccFindstars(self, cmd):
@@ -80,6 +78,12 @@ class ecam(Guider.Guider):
         self.GImName = "S300"
         self.GImCamID = 1
         self.plateScale = 0.134
+
+        self.bias = 1787
+        self.rdNoise = 7.9
+        self.ccdGain = 4.6
+        self.starThresh = 4.5
+        self.defaultStarThresh = self.starThresh
         
 # Start it all up.
 #

@@ -36,7 +36,14 @@ class GimGCamera(GCamera.GCamera):
     def rawCmd(self, cmd, timeout):
         """ Send a command directly to the controller. """
 
-        return self.conn.sendCmd(cmd.raw_cmd, timeout)
+        cmdStr = cmd.raw_cmd
+
+        # 
+        if cmd.program() != "TC01":
+            cmdStr.strip()
+        cmd.warn("debug=%r" % (cmdStr))
+        
+        return self.conn.sendCmd(cmdStr, timeout)
         
     def genExposeCommand(self, cmd, expType, itime, window=None, bin=None):
         """ Generate the command line for a given exposure.
