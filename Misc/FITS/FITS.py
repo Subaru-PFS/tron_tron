@@ -87,6 +87,13 @@ class FITS:
         self.cardOrder.insert(idx, name)
         self.cards[name] = card
             
+    def deleteCard(self, name):
+        """ Try deleting a given card name. """
+
+        if self.cards.has_key(name):
+            self.cardOrder.remove(name)
+            del self.cards[name]
+        
     def getCardName(self, card):
         """ Extract or create a unique card name. For non-commentary cards, just return the Card's name.
             For commentary cards, create a unique name.

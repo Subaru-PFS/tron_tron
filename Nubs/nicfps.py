@@ -10,6 +10,7 @@ def start(poller):
     stop()
 
     initCmds = ('filters status',
+                'fp status',
                 'temp status',
                 'pressure status')
 
