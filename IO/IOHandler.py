@@ -41,6 +41,7 @@ class IOHandler(CPL.Object):
         self.in_f = self.out_f = None
         self.in_fd = self.out_fd = None
         self.outQueue = []
+        self.queueLock = CPL.LLock(debug=argv.get(debug, 0) > 4)
         self.setInputFile(argv.get('in_f', None))
         self.setOutputFile(argv.get('out_f', None))
 
@@ -141,23 +142,28 @@ class IOHandler(CPL.Object):
         """ Append s to the output queue. """
 
         assert s != None, "queueing nothing!"
-        mustRegister = (self.outQueue == [])
 
-        # Keep the output "lines" separate.
-        #
-        self.outQueue.append(s)
+        self.queueLock.acquire()
+        try:
+            mustRegister = (self.outQueue == [])
 
-        # Bump the stats.
-        self.totalQueued += 1
-        if len(self.outQueue) > self.maxQueue:
-            self.maxQueue = len(self.outQueue)
+            # Keep the output "lines" separate.
+            #
+            self.outQueue.append(s)
 
-        if self.debug > 4:
-            CPL.log("IOHandler.queueForOutput",
-                    "appended %r to queue (len=%d) of %s" % (s, len(self.outQueue),
-                                                             self))
-        if mustRegister:
-            self.poller.addOutput(self)
+            # Bump the stats.
+            self.totalQueued += 1
+            if len(self.outQueue) > self.maxQueue:
+                self.maxQueue = len(self.outQueue)
+
+            if self.debug > 4:
+                CPL.log("IOHandler.queueForOutput",
+                        "appended %r to queue (len=%d) of %s" % \
+                        (s, len(self.outQueue), self))
+            if mustRegister:
+                self.poller.addOutput(self)
+        finally:
+            self.queueLock.release()
 
 
     def checkQueue(self):
@@ -238,7 +244,8 @@ class IOHandler(CPL.Object):
 
             wlen = min(len(qtop), self.tryToWrite)
             if self.debug > 3:
-                CPL.log("IOHandler.mayOutput", "writing len=%d wlen=%d %r" % (len(qtop), wlen, qtop[:min(wlen, 50)]))
+                CPL.log("IOHandler.mayOutput", "writing len=%d wlen=%d %r" % \
+                        (len(qtop), wlen, qtop[:min(wlen, 50)]))
                 
             try:
                 wrote = os.write(self.out_fd, qtop[:wlen])
@@ -260,34 +267,41 @@ class IOHandler(CPL.Object):
             self.totalBytesWritten += wrote
             if wrote > self.largestWrite:
                 self.largestWrite = wrote
-                
-            # Either truncate queue[0] or remove it.
-            #
-            wroteFull = False
-            if wrote == len(qtop):
-                self.outQueue.pop(0)
-                wroteFull = True
-            else:
-                self.outQueue[0] = self.outQueue[0][wrote:]
 
-            # Quit if we have no more to write.
-            #
-            if self.outQueue == [] or (self.oneAtATime and wroteFull):
-                self.poller.removeOutput(self)
-                break
-            
-            if self.debug > 3:
-                CPL.log("IOHandler.mayOutput", "queue len=%d" % (len(self.outQueue)))
+            self.queueLock.acquire()
+            try:
+                # Either truncate queue[0] or remove it.
+                #
+                wroteFull = (wrote == len(qtop))
+                if wroteFull:
+                    self.outQueue.pop(0)
+                else:
+                    self.outQueue[0] = self.outQueue[0][wrote:]
 
-            # Quit if we only write one item or if we have written alot.
-            #
-            if self.tryToWriteMany:
-                if totalSent >= self.tryToWrite:
+                # Quit if we have no more to write.
+                #
+                if self.outQueue == []:
+                    self.poller.removeOutput(self)
                     break
-            else:
-                break
 
-        self.totalOutputs += 1
+                # Quit if we don't want to write any more.
+                if (self.oneAtATime and wroteFull):
+                    break
+                
+                if self.debug > 3:
+                    CPL.log("IOHandler.mayOutput", "queue len=%d" % (len(self.outQueue)))
+
+                # Quit if we only write one item or if we have written alot.
+                #
+                if self.tryToWriteMany:
+                    if totalSent >= self.tryToWrite:
+                        break
+                else:
+                    break
+
+                self.totalOutputs += 1
+            finally:
+                self.queueLock.release()
         
     def statusCmd(self, cmd, name, doFinish=True):
         """ Send sundry status information keywords.
