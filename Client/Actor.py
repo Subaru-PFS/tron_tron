@@ -1,0 +1,258 @@
+__all__ = ['Actor']
+
+import inspect
+import pprint
+import sys
+import traceback
+from threading import *
+
+import CPL
+import RO
+
+import Command
+import FilterQueue
+import FullReply
+import HubLink
+
+class Acting(object):
+    """ A base class which provides scriptable actor behavior.
+    """
+    
+    def __init__(self, actor, **argv):
+        self.actor = actor
+        self.debug = argv.get('debug', 0)
+
+        assert isinstance(self.actor, Actor), "self.actor != Actor (%s)" % (self.actor)
+                    
+    def callback(self, target, cmdString, callback=None, responseTo=None, dribble=False):
+        return self.actor.sendCommand(target, cmdString, callback, responseTo=responseTo, dribble=dribble)
+        
+    def call(self, target, cmdString, responseTo=None):
+        raise Exception("Acting cannot send blocking commands.")
+        # return self.actor.sendCommand(target, cmdString, callback, responseTo=responseTo, dribble=dribble)
+        
+class Actor(Thread):
+    """ Actors implement a single-threaded command processor that can also send commands.
+    
+    The external input interface is a Queue.
+    
+    """
+
+    def __init__(self, name, **argv):
+        Thread.__init__(self)
+        self.setName(name)
+        self.setDaemon(True)
+        
+        self.name = name
+        self.debug = argv.get('debug', 0)
+        self.queue = FilterQueue.ActorFilter(name=self.name, debug=self.debug)
+
+        self.mid = 1
+        self.commands = RO.Alg.OrderedDict.OrderedDict({'help':self.doHelp})
+
+        # Generic help template.
+        #
+        self.helpText = ("%s COMMAND" % (self.name),
+                         "   COMMAND is one of:",
+                         )
+
+    def _getFuncHelp(self, name):
+        """ Return a command handler's list of help string, or make up a list.
+
+        Args:
+            name   - the name of a command expected in .commands
+        """
+
+        l = []
+        if name not in self.commands:
+            return None
+
+        try:
+            eval("funcHelp = self.%s.helpText" % (name))
+        except Exception, e:
+            CPL.log('Actor._getFuncHelp', CPL.qstr('error getting help text: %s' % e))
+            funcHelp = ["%s  - no help" % (name)]
+            
+        return funcHelp
+
+        
+    def doHelp(self, cmd):
+        """ Return help strings.
+
+        CmdArgs:
+             none           - print help text for all commands
+             command names  - print help text for the given commands.
+             
+        The object might have a .helpText, and each individual .commands handler might have one.
+
+        """
+
+        # Build the list of help strings. Either all help, or help for the given commands.
+        # If a command name is bogus, print all help.
+        #
+        helpList = []
+        if len(cmd.argDict) > 1:
+            for cmdName in cmd.argDict.keys[1:]:
+                funcHelp = self._getFuncHelp(cmdName)
+
+                # If anything is wrong, print all the help.
+                if funcHelp == None:
+                    helpList = []
+                    break
+
+                helpList += funcHelp
+
+        if not helpList:
+            helpList = []
+            helpList += self.helpText
+            for c in self.commands:
+                helpList += self._getFuncHelp(c)
+
+        for l in helpList:
+            cmd.respond("%sTxt=%s" % (self.name, CPL.qstr(l)))
+        cmd.finish('')
+    doHelp.helpText = ("     help         - you got it!",)
+
+    def _parse(self, cmd):
+        """ Default parsing behavior. Simply calls a Command's handler.
+
+        Args:
+            cmd  - a Command instance. The first word of the command text is used
+                   as a key in .commands.
+
+        If the command word is found, the handler is called. If not, the command is failed.
+        """
+
+        if self.debug >= 0:
+            CPL.log(self.name, "new command: %s" % (cmd.raw_cmd))
+            
+        # Actively reject empty commands. Maybe this should just ignore them.
+        #
+        if len(cmd.argDict) == 0:
+            cmd.warn('%sTxt="empty command"' % (self.name))
+            cmd.finish()
+            return
+        
+        # Find the handler and call it.
+        #
+        cmdWords = cmd.argDict.keys()
+        cmdWord = cmdWords[0]
+        handler = self.commands.get(cmdWord, None)
+        if not handler:
+            cmd.fail('%sTxt=%s' % (self.name,
+                                   CPL.qstr('unknown command %s, try one of %s') % \
+                                   (cmdWord, ', '.join(self.commands.keys()))))
+            return
+        handler(cmd)
+        
+        
+    def parse(self, cmd):
+        CPL.log("parse", "parsing cmd %s" % (cmd))
+        try:
+            self._parse(cmd)
+        except Exception, e:
+            cmd.fail('%sTxt=%s' % (self.name, CPL.qstr(e, tquote='"')))
+            CPL.log(self.name, "exception=%s" % (e))
+
+            tracelist = inspect.trace()
+            toptrace = tracelist[-1]
+            tp = pprint.pformat(toptrace)
+            tloc = pprint.pformat(toptrace[0].f_locals)
+            tvar = pprint.pformat(toptrace[0].f_code.co_varnames)
+
+            ex_list = traceback.format_exception(sys.exc_type, sys.exc_value, sys.exc_traceback)
+            one_liner = "%s: %s" % (sys.exc_type, sys.exc_value)
+            CPL.error('%s.main' % (self.name), "======== Top level exception: %s" % (''.join(ex_list)))
+            CPL.error('%s.main' % (self.name), "==== trace : %s" % (''.join(tp)))
+            CPL.error('%s.main' % (self.name), "==== locals: %s" % (''.join(tloc)))
+            CPL.error('%s.main' % (self.name), "==== vars  : %s" % (''.join(tvar)))
+
+
+    def run(self):
+        while 1:
+            # We may want to switch to blocking on a Condition or Event, which would
+            # give us the ability to timeout.
+            #
+            obj = self.queue.get()
+
+            if 1 or self.debug > 5:
+                CPL.log("Actor.run", "obj=%s" % (obj))
+
+            # Pass exceptions on to higher level.
+            #
+            if isinstance(obj, Exception):
+                raise obj
+
+            if isinstance(obj, float):
+                hitTimeout = self.checkTimeout(obj)
+                
+            # Pass new commands on to the parser
+            if isinstance(obj, Command.Command):
+                self.parse(obj)
+            else:
+                self.__newReply(obj)
+
+    def checkTimeout(self, t):
+        """ Check whether we have exceeded any timeout. If so, clean up and bail. """
+
+        pass
+
+    def __newReply(self, reply):
+        if self.debug >= 0:
+            CPL.log("Actor.newReply", "reply=%s" % (reply))
+
+        key = int(reply.cmdrMid)
+        cmd = self.commands[key]
+
+        if self.debug >= 0:
+            CPL.log("Actor.newReply", "cmd=%s" % (cmd))
+
+        if reply.flag in 'fF:':
+            self.queue.removeCommand(cmd['command'])
+            del self.commands[key]
+
+        if cmd['dribble']:
+            cb = cmd['callback']
+            if cb:
+                cb(reply)
+        else:
+            cmd['replies'].append(reply)
+            if reply.flag in 'fF:':
+                all = { 'lines':cmd['replies'],
+                        'ok':bool(reply.flag == ':')
+                        }
+                cb = cmd['callback']
+                if cb:
+                    cb(all)
+                    
+    def sendCommand(self, actor, cmd, callback, responseTo=None, dribble=False, timeout=0):
+        """ Send command string cmd to the named actor. Optionally indicate which command we are acting
+        on behalf of.
+        """
+
+        if responseTo == None:
+            cid = self.name
+        else:
+            cid = "%s.%s" % (responseTo.fullname, self.name)
+            
+        mid = self.mid
+        self.mid += 1
+        
+        command = HubLink.Command(cid, mid, actor, cmd)
+        self.commands[mid] = { 'callback':callback,
+                               'cid':cid,
+                               'mid':mid,
+                               'replies':[],
+                               'dribble':dribble,
+                               'timeout':timeout,
+                               'command':command
+                               }
+        
+        self.queue.addCommand(command)
+        hubLink.toHub.sendCommand(command)
+
+    def cidForCmd(self, cmd):
+        """ Return a proper cid for a command that we send in response"""
+
+        return "%s.%s" % (cmd.fullname, self.name)
+    

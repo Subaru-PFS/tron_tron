@@ -1,0 +1,97 @@
+
+  Two of the APO instruments (Grim and the Echelle) have no sense of
+files or filenames, nor do they create complete FITS headers. This has
+been handled with an exposure wrapper ('nexpose'), which also provides
+multiple exposure sequencing.
+  One (or two) other instruments do not currently take multiple
+exposures, though they could wthout too much effort.
+
+  We also need a core of FITS cards describing the site, the
+environment, the telescope and object coordinates.
+
+  So one possibility is to re-implement the current nexpose command,
+plus or minus.
+
+  expose required-args
+         optional-args
+         required-inst-args
+         optional-inst-args
+
+  required-args:        
+    inst=NAME           - the name of the instrument
+
+  optional-args:
+    n=N                 - the number of exposures to take (default=1)
+    seq=N               - the sequence number _string_ for the file name
+                          (default=current). The width of the string
+                          determines the minimum width of the exposure
+                          number part of the filename.
+    path=PATH           - the directory for the file, relative to the
+                          commander's program directory. Absolute
+                          pathnames will be treated as relative
+                          pathnames. 
+
+    name=NAME           - the 
+
+    Each program:
+ 
+ For inst=dis:
+   required-args:
+    bias | dark | object
+                        - the exposure type. [Could be type=NAME]
+   
+    itime=S             - exposure time. Disallowed for biases.
+    
+ inst=grim
+    bias | dark | object
+    itime=S
+
+ inst=echelle
+    bias | dark | object
+    itime=S
+
+================================================================
+
+  filename next
+  filename takenext
+  filename path=NEWPATH
+  filename name=NEWNAME
+  filename places=NEWN
+  filename number=NEWN
+  
+           path=SUBPATH
+           name=NAME
+           places=N
+           number=N
+  
+  - Return only to the program/user? The caller?
+  - Return as program.path, etc?
+  - Return in one line: fileProgram
+           
+================================================================
+
+lamps list
+      lampNames="x","y","z"
+      lampStates=0,0,1
+
+lamps on 2 3 4
+lamps off [2]
+
+================================================================
+
+perm list [system]
+perm add system user/program
+perm drop system [user/program]
+
+hub f PermissionDenied="REASON"
+
+  
+================================================================
+================================================================
+
+hub keys:
+    actors=a,b,c
+    commanders=d,e,f
+
+   or
+    Commander=1;  

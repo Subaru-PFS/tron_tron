@@ -1,0 +1,87 @@
+Why (it all works OK now, right?):
+   - Remark is old: Mac-based, written in Yerk, bad network citizen.
+   - MC hub could have been reworked from the inside. For better or
+     worse, we (I) decided to reimplement it instead.
+
+What:
+   - Keeping original architecture and protocols: DIS, Grim, Echelle
+     ICCs and TCC are too much to change. Besides, the protocol is
+     appealingly simple, and generally OK.
+   - Actually, we are going much closer to the original scheme: the
+     hub will primarily switch between devices, rather than interpret
+     any data. [This is a major change]
+   - Remark (and some mcnode functions) are replaced by TUI. The
+     existing hub (and the rest of the mcnode functions) is replaced
+     by a new hub.
+
+Switchover:
+   - New & old hubs can (and probably will) run in parallel: The Grim &
+     Echelle instruments can be implemented later.
+   - The TUI currently drives the TCC, and will shortly drive the
+     DIS. The DIS interface will be the test interface for cameras.
+
+Some operational changes:
+   - TUI becomes the primary interface. It does have a command line,
+   so subsumes mcnodes at some level.
+
+   - Observers need to log in with a program name and a password. The
+   program names are derived from the schedule; the passwords are
+   under obs-spec control.
+
+   - Platform independance means variable user-interface details.
+
+   - Authorization. The proposed scheme is to authorize certain
+   connections (or programs) to control given systems (the tcc, the
+   lamps, certain instruments.)
+
+TUI GUI, TUI scripting, MC scripting.
+   - Due to the considerably different requirements, we are
+   implementing two "scripting" systems. 
+     The TUI is designed to be internally extensible, and provides GUI 
+   widgets and hooks (for oh, say, adding tertiary rotation,
+   eyelid/cover control, all enclosure controller functions). 
+     The hub scripting is designed for non-graphical tasks, and all extensions
+   are done with external programs. The primary difference from existing
+   hub/mcnode scripting is that it supports synchronous commands:
+   send a command and wait for it to finish:
+
+             ditherPath = ((20, 0), (20, 20), (0, 20), (0, 0))
+             for xoff, yoff in ditherPath:
+                  call('tcc', 'offset %g,%g' % (xoff / 3600.0, yoff / 3600.0)) 
+                  call('nexpose', 'expose inst=grim itime=%d n=%d' % (itime, n))
+
+
+Observing procedures/problems that need to be (re-)considered:
+
+  [ This is _my_ main reason for meeting with the obs-specs. I really
+  hope you can list the observing tasks you currently perform, and
+  consider how to improve the least efficient. In particular, would
+  like to list the issues, and assign a responsible obs-spec for
+  each. Some topics that I have thought about follow. ]
+
+  - DIS calibrations -- change from editing file to sending commands.
+  - schedule incorporation. The purpose for requiring program names on
+    login is to allow us to automate certain tasks. Image directory
+    management, nightlog generation.
+  - (off-topic) why are we restarting everything everyday? I say we
+    only need to restart the Grim & Echelle ICCs.
+  - FITS header normalization -- the Grim and Echelle headers will
+    need to be re-done; this is a time to decide what to put in.
+  - graphical offsetting and field acquisition. I believe ds9 will do
+    what we want, but have not fleshed out the details.
+  - DIS slitviewer, Echelle slitviewer. Since Remark is going, the
+    echelle autoguider goes. I would like to propose something very
+    like what Eddie started implementing for the Echelle: a
+    hub-controlled external task which a) requests images, b)
+    centroids appropriately, c) requests tcc offsets, and d) returns
+    centroid info, psf fit, and image info for remote display.
+  - focus automation. See the slitviewer comments above... 
+
+Major immediate :
+
+  - TUI instrument interface. DIS is coming soon.
+  - Complete the scripting interface. I have scripting, but not
+    interactive programming.
+  - TUI focus interface.
+
+

@@ -1,0 +1,20 @@
+FITS handling. Yup. Fun.
+
+  Need FITS creation for Grim and the Echelle.
+  Need FITS annotation for DIS, the DIS slitviewer, the two GIm cameras.
+
+  fits getSystemHeader instName [time]
+    - Fetch the system headers.
+
+  fits addCards inst name=type,value name2=type,value
+
+  fits create instName in=datafile out=fitsfile xpix=N ypix=M
+    - Take datafile, interpreted as an xpix by ypix array, add any previously generated header,
+      and write the result to out.
+
+  fits annotate instName in=datafile out=fitsfile
+    - Take and input FITS file, add any previously generated header lines,
+      and write the result to out.
+
+
+   

@@ -1,0 +1,37 @@
+
+  The fundamental 3.5m protocol is essentially unchanged from the
+original design. While it is probably not a design we would choose
+now, is is implemented by the TCC and three of the instrument ICCs;
+radically changing it would require more work than we can put in.
+
+  Besides, it is more-or-less OK. The flaws are real, but the
+simplicity is appealing.
+  
+    - Commanders send commands to Actors. (sorry about the cheesy
+    C.S. 201 terminology). The commands must be single ASCII lines.
+
+    - Each command is given an identifying numeric MID by the
+    Commander, which is used to identify which command responses apply
+    to.
+
+    -     
+
+Commands are identified by the following:
+    
+cmdrID  - established at login or startup by the hub, so it is known
+          to be trustworthy and unique. Is composed of two strings
+          joined by a period. In the case of logged in connections,
+          the two parts are the observing program name and the user's
+          chosen name. In the case of other Commanders, the left part
+          is empty, and the right part is established by the hub.
+cmdrMID - an integer command ID, supplied by the Commander. 
+
+actorName - the name of the actor to send the command to.
+actorMID  - an integer command ID, supplied by the hub to the actor.
+[actorCID  - the cmdrID, if the actor wants it]
+
+Replies are identified by all the Command info above, plus:
+src       - the name of the actor which actually generated the
+            reply. Almost always the actorName, but can be a few other
+            things; most obviously 'hub' when the hub rejects a
+            command or otherwise injects itself.
