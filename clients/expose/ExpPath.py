@@ -264,6 +264,7 @@ class ExpPath(object):
           - the file number, as extracted, can have trailing non-numeric text.
         """
 
+        fparts = []
         try:
             fparts = fname.split('.')
             fnumPart = fparts[-2]
@@ -274,7 +275,7 @@ class ExpPath(object):
                 
             fnum = int(fnumPart)
         except Exception, e:
-            raise Exception("unexpected filename with no number: %r parts=%s" % (fname, fnumParts))
+            raise Exception("unexpected filename with no number: %r parts=%s" % (fname, fparts))
 
         return fnum
     
