@@ -10,6 +10,9 @@ def start(poller):
 
     stop()
 
+    initCmds = ('status',)
+    safeCmds = r'status\s*$'
+
     d = Hub.ASCIIReplyDecoder(debug=9)
     e = Hub.ASCIICmdEncoder(debug=9, sendCommander=True)
     nub = Hub.ShellNub(poller, ['/usr/bin/env',

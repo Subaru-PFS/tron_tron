@@ -4,6 +4,7 @@
     a GimCtrl Mac
 """
 
+import os
 import sys
 
 import client
@@ -19,9 +20,10 @@ class ecam(Guider.Guider, TCCGcam.TCCGcam):
     
     def __init__(self, **argv):
         ccdSize = CPL.cfg.get('ecam', 'ccdSize')
+
+        path = os.path.join(CPL.cfg.get('ecam', 'imageRoot'), CPL.cfg.get('ecam', 'imageDir'))
         camera = GimCtrlGCamera.GimCtrlGCamera('ecam',
-                                               '/export/images/guider',
-                                               '/export/images/ecam',
+                                               '/export/images/guider', path,
                                                ccdSize,
                                                **argv)
         Guider.Guider.__init__(self, camera, 'ecam', **argv)

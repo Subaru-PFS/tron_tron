@@ -61,7 +61,7 @@ class Guider(Actor.Actor):
                      'readNoise', 'ccdGain',
                      'ccdSize', 'binning',
                      'thresh', 'radius', 'radMult',
-                     'maskFile', 'imagePath',
+                     'maskFile', 'imageHost', 'imageRoot', 'imageDir',
                      'fitErrorScale'):
             self.defaults[name] = CPL.cfg.get(self.name, name)
         self.size = self.defaults['ccdSize']
@@ -73,7 +73,9 @@ class Guider(Actor.Actor):
         cmd.respond("fsDftThresh=%0.1f; fsDftRadMult=%0.1f" % (self.config['thresh'],
                                                                self.config['radMult']))
         cmd.respond("centDftRadius=%0.1f" % (self.config['radius']))
-
+        cmd.respond('imageRoot=%s,%s' % (CPL.qstr(self.config['imageHost']),
+                                         CPL.qstr(self.config['imageRoot'])))
+        
     def statusCmd(self, cmd, doFinish=True):
         """ Returns camera and guide loop status keywords. """
 
@@ -163,7 +165,7 @@ class Guider(Actor.Actor):
 
         # We need the maskfile name for the guiderFiles keyword.
         maskName, maskbits = self.mask.getMaskForFrame(cmd, filename, frame)
-        self.genFilesKey(cmd, 'f', True, filename, maskName,
+        self.genFilesKey(cmd, 'f', tweaks['newFile'], filename, maskName,
                          None, None, filename)
         
         isSat, stars = MyPyGuide.findstars(cmd, filename, self.mask, frame, tweaks)
@@ -205,7 +207,7 @@ class Guider(Actor.Actor):
 
         # We need the maskfile name for the guiderFiles keyword.
         maskName, maskbits = self.mask.getMaskForFrame(cmd, filename, frame)
-        self.genFilesKey(cmd, 'c', True, filename, maskName,
+        self.genFilesKey(cmd, 'c', tweaks['newFile'], filename, maskName,
                          None, None, filename)
 
         if cmd.argDict.has_key('on'):
@@ -370,14 +372,19 @@ class Guider(Actor.Actor):
         matched, notMatched, leftovers = cmd.match([('time', float),
                                                     ('window', str),
                                                     ('bin', str),
-                                                    ('file', str)])
+                                                    ('file', cmd.qstr)])
 
         # Extra double hack: have a configuration override to the filenames. And
         # if that does not work, look for a command option override.
-        filename = self.config.get('forceFile', None)
-        if not filename and matched.has_key('file'):
+        tweaks['newFile'] = True
+        filename = None
+        if matched.has_key('file'):
             filename = matched['file']
-
+            tweaks['newFile'] = False
+        forcefile = self.config.get('forceFile', None)
+        if not filename and forcefile:
+            filename = forcefile
+        
         if filename:
             imgFile = self.findFile(cmd, filename)
             if not imgFile:
@@ -388,8 +395,7 @@ class Guider(Actor.Actor):
             frame = GuideFrame.ImageFrame(self.size)
             frame.setImageFromFITSFile(imgFile)
 
-            tweaks['newFile'] = False
-            cb(cmd, filename, frame, tweaks=tweaks)
+            cb(cmd, imgFile, frame, tweaks=tweaks)
 
         else:
             if not matched.has_key('time') :
@@ -454,6 +460,7 @@ class Guider(Actor.Actor):
             - an absolute filename, or None if no readable file found.
         """
 
+        cmd.warn('debug=%s' % (CPL.qstr("looking for file %s" % (fname))))
         # Take an absolute path straight.
         if os.path.isabs(fname):
             if os.access(fname, os.R_OK):
@@ -461,11 +468,13 @@ class Guider(Actor.Actor):
             return None
 
         # Otherwise try to find the file in our "current" directory.
-        cd = self.getCurrentDir()
-        path = os.path.join(cd, fname)
+        root, dir = self.getCurrentDirParts()
+        path = os.path.join(root, fname)
+        cmd.warn('debug=%s' % (CPL.qstr("looking for file %s" % (path))))
         if os.access(path, os.R_OK):
             return path
 
+        cmd.warn('debug=%s' % (CPL.qstr("could not find file %s" % (path))))
         return None
         
     
@@ -573,18 +582,29 @@ class Guider(Actor.Actor):
                                                    ('radMult', float),
                                                    ('retry', int),
                                                    ('restart', str),
-                                                   ('forceFile', str),
+                                                   ('forceFile', cmd.qstr),
                                                    ('cnt', int)])
 
         tweaks.update(matched)
 
         return tweaks
 
+    def getCurrentDirParts(self):
+        """ Return the two parts of the current image directory.
+
+        Returns:
+           - the essentially fixed imageRoot (e.g. '/export/images/')
+           - the rest of the directory.
+        """
+
+        dateStr = CPL.getDayDirName()
+        return self.config['imageRoot'], \
+               os.path.join(self.config['imageDir'], dateStr)
+
     def getCurrentDir(self):
         """ Return the current image directory. """
 
-        dateStr = CPL.getDayDirName()
-        return os.path.join(self.config['imagePath'], dateStr)
+        return os.path.join(*self.getCurrentDirParts())
         
     def genFilesKey(self, cmd, caller, isNewFile,
                     finalname, maskname, camname, darkname, flatname):
@@ -596,23 +616,51 @@ class Guider(Actor.Actor):
             isNewFile    - whether  
             finalname, maskname, camname, darkname, flatname - the component filenames.
 
+        
         If the files are in the current active directory, then output relative filenames.
         Otherwise output absolute filenames.
         """
 
-        cd = self.getCurrentDir()
+        root, dir = self.getCurrentDirParts()
 
+        # Figure out the directory all the files are in
+        dirs = []
         files = []
         for f in finalname, maskname, camname, darkname, flatname:
             if f == None:
-                files.append('')
-            elif os.path.commonprefix([cd, f]) == cd:
-                files.append(f[len(cd)+1:])
-            else:
-                files.append(f)
+                f = ''
+            d, f = os.path.split(f)
+            common = os.path.commonprefix([root, d])
+            d = d[len(common):]
+            dirs.append(d)
+            files.append(f)
 
+        d0 = ''
+        useFullPaths = False
+        for d in dirs:
+            if d == '':
+                continue
+            if d0 == '':
+                d0 = d
+            else:
+                if d != d0:
+                    cmd.warn('txt="guider images are not all in the same directory"')
+                    useFullPaths = True
+                    break
+
+        # Some of the path directories differ. So put the directories into the filenames.
+        if useFullPaths:
+            d0 = ''
+            for i in range(len(files)):
+                files[i] = os.path.join(dirs[i], files[i])
+        else:
+            if len(d0) > 0 and d0[-1] != '/':
+                d0 = d0 + '/'
+        
+        
         qfiles = map(CPL.qstr, files)
-        cmd.respond("files=%s,%d,%s" % (CPL.qstr(caller),
-                                        int(isNewFile),
-                                        ','.join(qfiles)))
+        cmd.respond("files=%s,%d,%s,%s" % (CPL.qstr(caller),
+                                           int(isNewFile),
+                                           CPL.qstr(d0),
+                                           ','.join(qfiles)))
                              
