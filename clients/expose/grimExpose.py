@@ -185,7 +185,7 @@ class GrimExposureActor(Actor.Actor):
             self.sequence = exp
             exp.run()
         else:
-            cmd.fail('exposeTxt="command %s has not even been imagined"' % (qstr(command, tquote="'")))
+            cmd.fail('exposeTxt="command %s has not even been imagined"' % (CPL.qstr(command, tquote="'")))
             return
 
     def status(self, cmd):
@@ -204,7 +204,7 @@ class GrimExposureActor(Actor.Actor):
     def getIDKey(self, cmd):
         """ Return the key describing a given command and instrument. """
 
-        return "exposeID=%s,%s" % (qstr(cmd.program()), qstr(self.instName))
+        return "exposeID=%s,%s" % (CPL.qstr(cmd.program()), CPL.qstr(self.instName))
 
     def returnKeys(self, cmd):
         """ Generate all the keys describing our next file. """

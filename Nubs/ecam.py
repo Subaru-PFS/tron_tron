@@ -1,3 +1,4 @@
+import g
 import Hub
 import hub
 
@@ -11,7 +12,7 @@ def start(poller):
     e = Hub.ASCIICmdEncoder(debug=9, sendCommander=True)
     nub = Hub.ShellNub(poller, ['/usr/bin/env',
                                 'PATH=/usr/local/bin:/usr/bin',
-                                'PYTHONPATH=%s/Client:%s' % (hub.home, hub.home),
+                                'PYTHONPATH=%s/Client:%s' % (g.home, g.home),
                                 'clients/guiders/%s.py' % (name)],
                        name=name, encoder=e, decoder=d,
                        debug=9)

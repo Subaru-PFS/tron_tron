@@ -1,3 +1,6 @@
+import os.path
+
+import g
 import Hub
 import hub
 
@@ -10,9 +13,10 @@ def start(poller):
     d = Hub.ASCIIReplyDecoder(debug=9)
     e = Hub.ASCIICmdEncoder(debug=9, sendCommander=True)
     nub = Hub.ShellNub(poller, ['/usr/bin/env',
-                                'PYTHONPATH=%s/../apogee:%s/Client:%s' % (hub.home, hub.home, hub.home),
+                                'PYTHONPATH=%s/Client:%s' % (g.home, g.home),
                                 'clients/guiders/%s.py' % (name)],
                        name=name, encoder=e, decoder=d,
+                       logDir=os.path.join(g.logDir, name),
                        debug=9)
     hub.addActor(nub)
     

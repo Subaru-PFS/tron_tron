@@ -28,7 +28,7 @@ class ExpSequence(Actor.Acting):
     def _getIDKeyParts(self):
         """ Return the program name, the instrument name, and the username. """
 
-        return qstr(self.cmd.program()), qstr(self.inst), qstr(self.cmd.username())
+        return CPL.qstr(self.cmd.program()), CPL.qstr(self.inst), CPL.qstr(self.cmd.username())
 
     def getStateKey(self):
         """

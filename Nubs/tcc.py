@@ -1,3 +1,6 @@
+import os.path
+
+import g
 import Hub
 import hub
 import IO
@@ -31,7 +34,9 @@ def start(poller):
                                    '-T', 'tccuser@tcc35m'],
                           initCmds=initCmds, safeCmds=safeCmds,
                           needsAuth=True,
-                          name=name, encoder=e, decoder=d, debug=1)
+                          name=name, encoder=e, decoder=d,
+                          logDir=os.path.join(g.logDir, name),
+                          debug=1)
     hub.addActor(tcc)
     
 def stop():

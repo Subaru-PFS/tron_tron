@@ -41,17 +41,12 @@ import Auth
 import g
 
 def init():
-    global home
-    
-    home = sys.path[0]
-    if home == None or home == '':
-        home = os.getcwd()
-        
-    # We need to properly quote strings all over. So make it a builtin.
-    __builtins__['qstr'] = CPL.qstr
+    g.home = sys.path[0]
+    if g.home == None or g.home == '':
+        g.home = os.getcwd()
 
-    #import deep_reload
-    #setattr(__builtins__, 'deep_reload', deep_reload.reload)
+    g.rootDir = os.getcwd()
+    g.logDir = os.environ['LOG_DIR']
     
     CPL.setLogfile('logs/hub.log', truncate=True)
     CPL.setID('hub')
@@ -241,7 +236,7 @@ class NubDict(OrderedDict):
     def listSelf(self, cmd=None):
         names = []
         for n in self.itervalues():
-            names.append(qstr(n.name))
+            names.append(CPL.qstr(n.name))
 
         if not cmd:
             cmd = g.hubcmd
@@ -438,12 +433,12 @@ def addCommand(cmd):
     actor = getActor(cmd)
 
     if actor == None:
-        cmd.fail('NoTarget=%s' % qstr("the target named %s is not connected" % (cmd.actorName)),
+        cmd.fail('NoTarget=%s' % CPL.qstr("the target named %s is not connected" % (cmd.actorName)),
                  src='hub')
         return
     
     if not checkAccess(cmd):
-        cmd.fail('NoPermission=%s' % qstr("you do not have permission to command %s" % (cmd.actorName)),
+        cmd.fail('NoPermission=%s' % CPL.qstr("you do not have permission to command %s" % (cmd.actorName)),
                  src='hub')
         return
     
@@ -453,18 +448,18 @@ def runCmd(c):
     cmd = c.cmd.strip()
     CPL.log("hub.runCmd", "cmd = %r" % (cmd))
     if cmd == "":
-        c.finish("Eval=%s" % (qstr("")),
+        c.finish("Eval=%s" % (CPL.qstr("")),
                  src='hub')
         return
     
     try:
         ret = eval(cmd)
     except Exception, e:
-        c.fail('EvalError=%s' % qstr(e),
+        c.fail('EvalError=%s' % CPL.qstr(e),
                src='hub')
         raise
     
-    c.finish("Eval=%s" % (qstr(ret)), src='hub')
+    c.finish("Eval=%s" % (CPL.qstr(ret)), src='hub')
     CPL.log("hub.runCmd", "ret = %r" % (ret))
 
 

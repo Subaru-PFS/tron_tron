@@ -6,6 +6,7 @@ import sha
 
 import g
 import hub
+import CPL
 
 class NubAuth(object):
     """ Intercepts and act on login and logout commands. 
@@ -27,7 +28,7 @@ class NubAuth(object):
         try:
             pw_f = open("passwords", "r")
         except Exception, e:
-            g.hubcmd.inform('HubError=%s' % (qstr("Could not read the password file: %s" % e)),
+            g.hubcmd.inform('HubError=%s' % (CPL.qstr("Could not read the password file: %s" % e)),
                             src="hub")
 
             return "Could not read the password file."
@@ -43,7 +44,7 @@ class NubAuth(object):
             try:
                 (program, password) = l.split()
             except Exception, e:
-                g.hubcmd.inform('HubError=%s' % (qstr("password file line cannot be parsed: %s" % l)),
+                g.hubcmd.inform('HubError=%s' % (CPL.qstr("password file line cannot be parsed: %s" % l)),
                                 src="hub")
 
                 continue
@@ -152,7 +153,7 @@ class NubAuth(object):
             if self.state == self.CONNECTED:
                 return False
             else:
-                cmd.fail('why=%s' % (qstr("please log in.")),
+                cmd.fail('why=%s' % (CPL.qstr("please log in.")),
                          src='auth')
                 return True
         
@@ -168,17 +169,17 @@ class NubAuth(object):
                 cmd.finish('bye', src='auth')
             else:
                 return False
-                #cmd.fail('unknownCommand=%s' % (qstr(cmdWord)),
+                #cmd.fail('unknownCommand=%s' % (CPL.qstr(cmdWord)),
                 #         src='auth')
             return self.state != self.CONNECTED
         elif self.state == self.NOT_CONNECTED:
             if cmdWord == 'knockKnock':
                 self.state = self.CONNECTING
                 self.makeMyNonce()
-                cmd.finish('nonce=%s' % (qstr(self.nonce)),
+                cmd.finish('nonce=%s' % (CPL.qstr(self.nonce)),
                            src='auth')
             else:
-                cmd.fail('why=%s' % (qstr("please log in.")),
+                cmd.fail('why=%s' % (CPL.qstr("please log in.")),
                          src='auth')
                 
             return True
@@ -188,15 +189,15 @@ class NubAuth(object):
                 if ret == True:
                     self.state = self.CONNECTED
                     cmd.finish(('loggedIn',
-                                'cmdrID=%s' % qstr(self.name)),
+                                'cmdrID=%s' % CPL.qstr(self.name)),
                                src='auth')
                 else:
                     self.state = self.NOT_CONNECTED
-                    cmd.fail('why=%s' % qstr(ret),
+                    cmd.fail('why=%s' % CPL.qstr(ret),
                              src='auth')
             else:
                 self.state = self.NOT_CONNECTED
-                cmd.fail('why=%s' % (qstr("please play by the rules.")),
+                cmd.fail('why=%s' % (CPL.qstr("please play by the rules.")),
                          src='auth')
             return True
         

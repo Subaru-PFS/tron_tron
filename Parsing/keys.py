@@ -258,9 +258,10 @@ def parseASCIIReply(s, cidFirst=False):
         d['mid'] = 0
         d['cid'] = 0                    # or 'hub' or '.hub'?
         d['flag'] = 'w'
+        d['RawText'] = s
 
         kvs = OrderedDict()
-        kvs['RawLine'] = [qstr(s)]
+        kvs['RawLine'] = [CPL.qstr(s)]
         d['KVs'] = kvs
         return d
 
@@ -273,11 +274,11 @@ def parseASCIIReply(s, cidFirst=False):
         leftoverText = e.leftoverText
 
         # In this case, quote the offending text.
-        KVs['UNPARSEDTEXT'] = [qstr(leftoverText)]
+        KVs['UNPARSEDTEXT'] = [CPL.qstr(leftoverText)]
     except Exception, e:
         CPL.log("parseASCIIReply", "unexpected Exception: %s" % (e))
         KVs = OrderedDict()
-        KVs['UNPARSEDTEXT'] = [qstr(d['rest'])]
+        KVs['UNPARSEDTEXT'] = [CPL.qstr(d['rest'])]
         
     d['KVs'] = KVs
     d['RawText'] = s
@@ -299,7 +300,7 @@ def parseRawReply(s, keyName="RawText"):
     CPL.log('parseRawReply', 'consumed :%r:' % (s))
     
     kvs = OrderedDict()
-    kvs[keyName] = [qstr(s)]
+    kvs[keyName] = [CPL.qstr(s)]
     d['KVs'] = kvs
     d['RawText'] = s
     return d

@@ -200,7 +200,7 @@ class BinaryReplyDecoder(ReplyDecoder):
             if match == None:
                 d['flag'] = 'w'
                 KVs = OrderedDict()
-                KVs['UNPARSEDTEXT'] = qstr(msg)
+                KVs['UNPARSEDTEXT'] = CPL.qstr(msg)
                 d['KVs'] = KVs
 
                 return d, buf
@@ -214,11 +214,11 @@ class BinaryReplyDecoder(ReplyDecoder):
                 KVs = parseKVs(msg_d['rest'])
             except ParseException, e:
                 KVs = e.KVs
-                KVs['UNPARSEDTEXT'] = qstr(e.leftoverText)
+                KVs['UNPARSEDTEXT'] = CPL.qstr(e.leftoverText)
             except Exception, e:
                 CPL.log("parseASCIIReply", "unexpected Exception: %s" % (e))
                 KVs = OrderedDict()
-                KVs['RawLine'] = qstr(msg_d['rest'])
+                KVs['RawLine'] = CPL.qstr(msg_d['rest'])
         
             d['KVs'] = KVs
 

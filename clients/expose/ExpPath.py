@@ -54,7 +54,7 @@ class ExpPath(object):
         self.rootDir = rootDir.strip()
         d = os.path.join(rootDir, program)
         if self._isSneakyDir(d):
-            raise CPL.Error("I don't trust the program name %s" % (qstr(program, tquote="'")))
+            raise CPL.Error("I don't trust the program name %s" % (CPL.qstr(program, tquote="'")))
 
         #userDir, name = self.normalizeDir(userDir, name)
         #CPL.log("ExpPath", "dir=%s, name=%s" % (userDir, name))

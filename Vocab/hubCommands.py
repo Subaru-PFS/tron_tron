@@ -89,7 +89,7 @@ class hubCommands(InternalCmd.InternalCmd):
             try:
                 hub.startNub(nub)
             except Exception, e:
-                cmd.warn('hubTxt=%s' % (qstr("failed to start nub %s: %s" % (nub, e))))
+                cmd.warn('hubTxt=%s' % (CPL.qstr("failed to start nub %s: %s" % (nub, e))))
 
         cmd.finish('')
 
@@ -106,7 +106,7 @@ class hubCommands(InternalCmd.InternalCmd):
                 nub = g.actors[n]
                 nub.statusCmd(cmd, doFinish=False)
             except Exception, e:
-                cmd.warn('hubTxt=%s' % (qstr("failed to query actor %s: %s" % (n, e))))
+                cmd.warn('hubTxt=%s' % (CPL.qstr("failed to query actor %s: %s" % (n, e))))
 
         cmd.finish('')
 
@@ -123,7 +123,7 @@ class hubCommands(InternalCmd.InternalCmd):
                 nub = g.actors[n]
                 nub.listCommandsCmd(cmd, doFinish=False)
             except Exception, e:
-                cmd.warn('hubTxt=%s' % (qstr("failed to query actor %s: %s" % (n, e))))
+                cmd.warn('hubTxt=%s' % (CPL.qstr("failed to query actor %s: %s" % (n, e))))
 
         cmd.finish('')
 
@@ -140,7 +140,7 @@ class hubCommands(InternalCmd.InternalCmd):
             hub.loadWords(words)
         except Exception, e:
             CPL.tback('hub.loadWords', e)
-            cmd.fail('hubTxt=%s' % (qstr(e)))
+            cmd.fail('hubTxt=%s' % (CPL.qstr(e)))
             return
         
         if finish:
@@ -168,13 +168,14 @@ class hubCommands(InternalCmd.InternalCmd):
             kvString = kvAsASCII(k, v)
             cmd.inform(kvString, src="hub.%s" % (src))
         if unmatched:
-            cmd.warn("hubTxt=%s" % (qstr("unmatched %s keys: %s" % (src, ', '.join(unmatched)))))
+            cmd.warn("hubTxt=%s" % (CPL.qstr("unmatched %s keys: %s" % (src, ', '.join(unmatched)))))
         cmd.finish('')
 
     def reallyReallyRestart(self, cmd):
         """ Restart the entire MC. Which among other things kills us now. """
 
-        cmd.warn('hubTxt=%s' % (qstr('Restarting the hub now... bye, bye, and please call back soon!')))
+        cmd.warn('hubTxt=%s' % \
+                 (CPL.qstr('Restarting the hub now... bye, bye, and please call back soon!')))
 
         # Give the poller a chance to flush out the warning.
         g.poller.callMeIn(hub.restart, 1.0)

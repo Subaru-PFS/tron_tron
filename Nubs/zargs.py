@@ -1,3 +1,4 @@
+import g
 import Hub
 import hub
 
@@ -10,7 +11,7 @@ def start(poller):
     d = Hub.ASCIIReplyDecoder(debug=1)
     e = Hub.ASCIICmdEncoder(debug=1, sendCommander=True)
     nub = Hub.ShellNub(poller, ['/usr/bin/env',
-                                'PYTHONPATH=%s/Client:%s' % (hub.home, hub.home),
+                                'PYTHONPATH=%s/Client:%s' % (g.home, g.home),
                                 'clients/%s.py' % (name)],
                        name=name, encoder=e, decoder=d, debug=1)
     hub.addActor(nub)

@@ -41,6 +41,13 @@ class TCCShellNub(ShellNub):
             if not reply:
                 break
 
+            if self.log:
+                try:
+                    txt = reply['RawText']
+                except:
+                    txt = "UNKNOWN INPUT"
+                self.log.log(txt, note='<')
+            
             # Here's the special TCC bit: search for YourUserNum, 
             if self.cid == None:
                 newCID = self.findUserNum(reply['KVs'])

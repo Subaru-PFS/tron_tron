@@ -70,12 +70,12 @@ class tlamps(InternalCmd.InternalCmd):
         lamps = lamps[1:]
 
         if len(lamps) == 0:
-            cmd.fail('lampsTxt=%s' % qstr("tlamps on needs to turn on at least one lamp..."))
+            cmd.fail('lampsTxt=%s' % (CPL.qstr("tlamps on needs to turn on at least one lamp...")))
             return
             
         for l in lamps:
             if not l in self.okLamps:
-                cmd.fail('lampsTxt=%s' % qstr("unknown lamp name: %s" % (l)))
+                cmd.fail('lampsTxt=%s' % (CPL.qstr("unknown lamp name: %s" % (l))))
                 return
             
         states = self._doOn(lamps)
@@ -94,7 +94,7 @@ class tlamps(InternalCmd.InternalCmd):
         lamps = lamps[1:]
         for l in lamps:
             if not l in self.okLamps:
-                cmd.fail('lampsTxt=%s' % (qstr("unknown lamp name: %s" % (l))))
+                cmd.fail('lampsTxt=%s' % (CPL.qstr("unknown lamp name: %s" % (l))))
                 return
             
         states = self._doOff(lamps)

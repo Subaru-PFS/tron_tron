@@ -88,16 +88,18 @@ class ASCIICmdDecoder(CommandDecoder):
         if self.needCID:
             match = self.mctc_re.match(cmdString)
             if match == None:
-                g.hubcmd.fail('ParseError=%s' % qstr('xxx Command from %s could not be parsed: %r' % \
-                                                     (self.name, cmdString)),
+                g.hubcmd.fail('ParseError=%s' % \
+                              (CPL.qstr('xxx Command from %s could not be parsed: %r' % \
+                                        (self.name, cmdString))),
                               src='hub')
                 return None, buf
             d = match.groupdict()
         elif self.needMID:
             match = self.mtc_re.match(cmdString)
             if match == None:
-                g.hubcmd.fail('ParseError=%s' % qstr('Command from %s could not be parsed: %r' % \
-                                                     (self.name, cmdString)),
+                g.hubcmd.fail('ParseError=%s' % \
+                              (CPL.qstr('Command from %s could not be parsed: %r' % \
+                                        (self.name, cmdString))),
                               src='hub')
                 return None, buf
             d = match.groupdict()
@@ -109,8 +111,9 @@ class ASCIICmdDecoder(CommandDecoder):
             self.mid += 1
 
             if match == None:
-                g.hubcmd.fail('ParseError' % qstr('Command from %s could not be parsed: %r' % \
-                                                  (self.name, cmdString)),
+                g.hubcmd.fail('ParseError' % \
+                              (CPL.qstr('Command from %s could not be parsed: %r' % \
+                                       (self.name, cmdString))),
                               src='hub')
                 return None, buf
             else:
