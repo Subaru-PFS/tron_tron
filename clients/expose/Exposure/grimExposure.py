@@ -2,7 +2,7 @@ import os
 import socket
 
 import CPL
-
+import Parsing
 import Exposure
 
 class grimCB(Exposure.CB):
@@ -72,14 +72,10 @@ class grimExposure(Exposure.Exposure):
         # Look for Grim-specific options & arguments.
         #
         req, notMatched, leftovers = cmd.match([('time', float),
-                                                ('comment', str)])
+                                                ('comment', Parsing.dequote)])
         self.instArgs = req
 
-        self.comment = ""
-        self.commentArg = ""
-        if req.has_key('comment'):
-            self.comment = req['comment']
-            self.commentArg = 'comment=%s ' % (CPL.qstr(req['comment']))
+        self.comment = req.get('comment', None)
 
         if expType in ("object", "dark", "flat"):
             if req.has_key('time'):
@@ -106,9 +102,14 @@ class grimExposure(Exposure.Exposure):
     def integrationStarted(self):
         """ Called when the integration is _known_ to have started. """
 
+        outfile = self._basename()
         if self.debug > 1:
-            CPL.log("grimExposure", "starting grim FITS header")
-        self.callback('fits', 'start grim')
+            CPL.log("grimExposure", "starting grim FITS header to %s" % (outfile))
+
+        cmdStr = 'start grim outfile=%s' % (outfile)
+        if self.comment:
+            cmdStr += ' comment=%s' % (CPL.qstr(self.comment))
+        self.callback('fits', cmdStr)
         
     def finishUp(self):
         """ Clean up and close out the FITS files.
@@ -119,12 +120,11 @@ class grimExposure(Exposure.Exposure):
 
         CPL.log("grim.finishUp", "state=%s" % (self.state))
 
-        output = self._basename()
-        if self.debug > 1:
-            CPL.log("grimExposure", "finishing grim FITS header for %s" % (output))
         if self.state != "aborted":
-            self.callback('fits', 'finish grim %s' % (output))
-
+            self.callback('fits', 'finish grim inkey=scratchFile')
+        else:
+            self.callback('fits', 'abort grim')
+            
     def lastFilesKey(self):
         return self.filesKey(keyName="grimFiles")
     

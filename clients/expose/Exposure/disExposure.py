@@ -2,7 +2,7 @@ import os
 import socket
 
 import CPL
-
+import Parsing
 import Exposure
 
 class disCB(Exposure.CB):
@@ -58,33 +58,29 @@ class disExposure(Exposure.Exposure):
 
         # Look for DIS-specific options & arguments.
         #
-        req, notMatched, opt, leftovers = cmd.coverArgs([], ['red', 'blue', 'time', 'comment'])
-        self.instArgs = opt
+        opts, notMatched, leftovers = cmd.match([('red', None), ('blue', None),
+                                                 ('time', float),
+                                                 ('comment', Parsing.dequote)])
 
         # Fetch the camera list. Default to empty, which means both cameras.
         #
         self.cameras = ""
-        if opt.has_key('red'):
-            if not opt.has_key('blue'):
+        if opts.has_key('red'):
+            if not opts.has_key('blue'):
                 self.cameras = "red "
         else:
-            if opt.has_key('blue'):
+            if opts.has_key('blue'):
                 self.cameras = "blue "
             
-        self.comment = ""
+        self.comment = opts.get('comment', None)
         self.commentArg = ""
-        if opt.has_key('comment'):
-            self.comment = opt['comment']
-            self.commentArg = 'comment=%s ' % (CPL.qstr(opt['comment']))
+        if self.comment != None:
+            self.commentArg = 'comment=%s ' % (CPL.qstr(self.comment))
 
         if expType in ("object", "dark", "flat"):
-            if opt.has_key('time'):
-                t = opt['time']
-                try:
-                    self.expTime = float(t)
-                except:
-                    raise Exception("exposure time must be a number (not %s)" % (t))
-            else:
+            try:
+                self.expTime = opts['time']
+            except:
                 raise Exception("%s exposures require a time argument" % (expType))
 
         self.reserveFilenames()
