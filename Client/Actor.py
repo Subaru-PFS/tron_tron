@@ -262,7 +262,7 @@ class Actor(Thread):
                 if cb:
                     cb(all)
                     
-    def XXXsendCommand(self, actor, cmd, callback, responseTo=None, dribble=False, timeout=0):
+    def sendCommand(self, actor, cmd, callback, responseTo=None, dribble=False, timeout=0):
         """ Send command string cmd to the named actor. Optionally indicate which command we are acting
         on behalf of.
         """

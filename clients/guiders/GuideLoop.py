@@ -596,9 +596,9 @@ class GuideLoop(object):
         frame.setImageFromFITSFile(filename)
 
         # We need the maskfile name for the guiderFiles keyword.
-        maskName = self.controller.mask.getMaskFileForFile(filename)
+        maskName, maskbits = self.controller.mask.getMaskForFrame(cmd, filename, frame)
 
-        self.controller.genFilesKey(self.cmd, 'guiderFiles',
+        self.controller.genFilesKey(self.cmd, 'guiderFiles', True,
                                     filename, maskName, None, None, filename)
         
         # Need to interpolate to the middle of the exposure.

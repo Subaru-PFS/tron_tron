@@ -7,7 +7,7 @@ import CPL
 import pyfits
 
 class GuiderMask(object):
-    def __init__(self, cmd, baseFile, maskDir):
+    def __init__(self, cmd, baseFile):
         """ Load ourselves from baseFile, which must be a full-frame, unbinned
         image.
 
@@ -18,38 +18,25 @@ class GuiderMask(object):
         """
 
         self.baseFile = baseFile
-        self.maskDir = maskDir
         self.binning = [0,0]
         self.offset = [-1,-1]
         self.size = [0,0]
 
-        # Create scratch mask directory
-        if not os.path.isdir(self.maskDir):
-            os.makedirs(self.maskDir, mode=0755)
-            
         self.fullSize = self.getImgSize(self.baseFile)
 
         # We could cache all recent subframes, or we could just cache the last one.
         # I'll wager that the last one is good enough,
         #
         self.cachedMask = None
-        self.getMaskForFrame(None, [1,1])
 
         if cmd:
             self.statusCmd(cmd, doFinish=False)
 
-    def getBaseDir(self):
-        """ Return the current image directory for all raw and synthesized images. """
-
-        dateName = CPL.getDateDirName()
-        return os.path.join(self.imagePath, dateName)
-    
     def statusCmd(self, cmd, doFinish=True):
         """ Generate our keys.
         """
             
-        cmd.respond('baseMask=%s' % (CPL.qstr(self.baseFile)))
-        cmd.respond('maskFile=%s' % (CPL.qstr(self.maskFile)))
+        cmd.respond('maskFile=%s' % (CPL.qstr(self.baseFile)))
 
         if doFinish:
             cmd.finish()
@@ -61,25 +48,30 @@ class GuiderMask(object):
         im = f[0].data
         f.close()
 
-        return list(im.getshape())
-    
-    def getMaskForGFrame(self, cmd, gframe):
+        size = im.getshape()
+        del im
+
+        return list(size)
+
+    def getMaskForGFrame(self, cmd, basename, gframe):
         """ Return the mask adjusted for a given GuiderFrame. """
 
-        return self.getMaskForFrame(cmd, *gframe.imgFrame())
+        return self.getMaskForFrame(cmd, basename, *gframe.imgFrame())
     
-    def getMaskForFrame(self, cmd, binning, offset=[0,0], size=None):
+    def getMaskForFrame(self, cmd, basename, binning, offset=[0,0], size=None):
         """ Return the mask adjusted for a given subframe and binning.
         Caches the current mask.
 
         Args:
            cmd        - the controlling Command. We alert if the mask has been changed
+           basename   - a filename which we use as a template for our output file.
            binning    - [x,y] (x should be == y).
            offset     - desired subframe corner [x0, y0], in binned pixels
            size       - desired subframe size [w, h], in binned pixels
            
         Returns:
-           a Numeric mask.
+           - a filename
+           - a Numeric mask.
         """
 
         if size == None:
@@ -95,17 +87,23 @@ class GuiderMask(object):
                binning == self.binning and \
                offset == self.offset and \
                size == self.size:
-            return self.cachedMask
+            return self.cachedFile, self.cachedMask
+
+        # Replace the "name" part of the filename with "mask". e.g.
+        #   "g0123.fits" -> "mask0123.fits"
+        #
+        basedir, basefile = os.path.split(basename)
+        numIdx = 0
+        for i in range(len(basefile)):
+            if basefile[i].isdigit():
+                numIdx = i
+                break
+        basefile = "mask" + basefile[numIdx:]
+        newFile = os.path.join(basedir, basefile)
 
         # Call an external IDL routine which rebins for us. The ugly secret
         # which this papers over is that Numeric stinks.
         #
-        basedir, basefile = os.path.split(self.baseFile)
-        basename, ext = os.path.splitext(basefile)
-        serial = time.strftime("%Y%m%dT%H%M%SZ", time.gmtime())
-        newFile = os.path.join(self.maskDir,
-                               "%s-%s%s" % (basename, serial, ext))
-
         IDLcmd = "echo \"fsubframe, '%s', '%s', %s, %s, %s\" | idl" % (self.baseFile, newFile,
                                                                        offset, size,
                                                                        binning)
@@ -120,16 +118,15 @@ class GuiderMask(object):
         im = f[0].data
         f.close()
         
-        self.maskFile = newFile
+        self.cachedFile = newFile
         self.cachedMask = im <= 0
         self.binning = binning
         self.size = size
         self.offset = offset
 
-        if cmd:
-            cmd.respond('maskFile=%s' % (CPL.qstr(newFile)))
-            
-        return self.cachedMask
+        del im
+        
+        return self.cachedFile, self.cachedMask
 
 if __name__ == "__main__":
     os.environ['IDL_PATH'] = '/export/images/keep/masks:+/usr/local/rsi/local/goddard'
