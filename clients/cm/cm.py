@@ -508,11 +508,11 @@ class CM(Actor.Actor):
 #
 def main(name, eHandler=None, debug=0, test=False):
     if eHandler == None:
-        eHandler = CM(debug=9)
+        eHandler = CM(debug=1)
     eHandler.start()
 
     try:
-        client.run(name=name, cmdQueue=eHandler.queue, background=False, debug=5, cmdTesting=test)
+        client.run(name=name, cmdQueue=eHandler.queue, background=False, debug=1, cmdTesting=test)
     except SystemExit, e:
         CPL.log('expose.main', 'got SystemExit')
         raise

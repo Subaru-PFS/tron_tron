@@ -36,9 +36,24 @@ class AltaGCamera(GCamera.GCamera):
         """
 
         coolerStatus = self.cam.coolerStatus()
+        if self.lastImage == None:
+            fileStatus = 'lastImage='
+        else:
+            fileStatus = 'lastImage="%s"' % (self.lastImage)
+            
+        cmd.respond("%s; %s" % (coolerStatus, fileStatus))
+
+    def coolerStatus(self, cmd, doFinish=True):
+        """ Generate status keywords. Does NOT finish teh command.
+        """
+
+        coolerStatus = self.cam.coolerStatus()
         cmd.respond(coolerStatus)
 
-    def setTemp(self, cmd, temp):
+        if doFinish:
+            cmd.finish()
+
+    def setTemp(self, cmd, temp, doFinish=True):
         """ Adjust the cooling loop.
 
         Args:
@@ -46,8 +61,23 @@ class AltaGCamera(GCamera.GCamera):
            temp - the new setpoint, or None if the loop should be turned off. """
 
         self.cam.setCooler(temp)
-        coolerStatus = self.cam.coolerStatus()
-        cmd.finish(coolerStatus)
+        self.coolerStatus(cmd, doFinish=doFinish)
+        
+    def setFan(self, cmd, level, doFinish=True):
+        """ Adjust the cooling fan level
+
+        Args:
+           cmd   - the controlling command.
+           level - the new fan level. 0..3
+        """
+
+        self.cam.setFan(level)
+        self.coolerStatus(cmd, doFinish=doFinish)
+        
+    def getCCDTemp(self):
+        """ Return the current CCD temperature. """
+
+        return self.cam.read_TempCCD()
     
     def expose(self, cmd, expType, itime, window=None, bin=None, callback=None):
         """ Take an exposure of the given length, optionally binned/windowed.
@@ -70,17 +100,19 @@ class AltaGCamera(GCamera.GCamera):
             self.cam.setWindow(*window)
             self.window = window
 
-        cid = self.cidForCmd(cmd)
-
         doShutter = expType == 'expose'
-        filepath = self._getFilename()
 
         if doShutter:
-            self.cam.expose(itime, filepath)
+            d = self.cam.expose(itime)
         else:
-            self.cam.dark(itime, filepath)
-            
+            d = self.cam.dark(itime)
 
-        return filepath
+        filename = self.writeFITS(cmd, d)
+
+        # Try to recover image memory. 
+        del d
+        
+        return filename
+
 
         

@@ -49,7 +49,7 @@ import CPL
 
 class ExposureActor(Actor.Actor):
     def __init__(self, **argv):
-        Actor.Actor.__init__(self, 'expose', debug=3)
+        Actor.Actor.__init__(self, 'expose', debug=1)
         
         self.knownInstruments = ('dis', 'echelle', 'grim')
 
@@ -203,7 +203,7 @@ class ExposureActor(Actor.Actor):
                 return
             
             path = self.setPath(cmd, inst)
-            exp = ExpSequence(self, cmd, inst, command, path, cnt, debug=9)
+            exp = ExpSequence(self, cmd, inst, command, path, cnt, debug=1)
             self.openExposures[inst] = exp
             exp.run()
         else:
@@ -321,7 +321,7 @@ def main(name, eHandler=None, debug=0, test=False):
     eHandler.start()
 
     try:
-        client.run(name=name, cmdQueue=eHandler.queue, background=False, debug=5, cmdTesting=test)
+        client.run(name=name, cmdQueue=eHandler.queue, background=False, debug=1, cmdTesting=test)
     except SystemExit, e:
         CPL.log('expose.main', 'got SystemExit')
         raise

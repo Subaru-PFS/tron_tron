@@ -12,6 +12,8 @@ startAllConnections(['tcc',
                      'dis', 'disExpose',
                      'grim', 'grimExpose',
                      'echelle', 'echelleExpose',
+                     'gcam', 'tcc2gcam',
+                     'tcc2ecam',
                      'cm', 'cmiccServer',
                      'client', 'cmdin', 'TUI'])
 hub.run()

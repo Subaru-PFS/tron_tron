@@ -10,14 +10,14 @@ def start(poller):
 
     stop()
 
-    d = Hub.ASCIIReplyDecoder(debug=9)
-    e = Hub.ASCIICmdEncoder(debug=9, sendCommander=True)
+    d = Hub.ASCIIReplyDecoder(debug=1)
+    e = Hub.ASCIICmdEncoder(debug=1, sendCommander=True)
     nub = Hub.ShellNub(poller, ['/usr/bin/env',
                                 'PYTHONPATH=%s/Client:%s' % (g.home, g.home),
                                 'clients/guiders/%s.py' % (name)],
                        name=name, encoder=e, decoder=d,
                        logDir=os.path.join(g.logDir, name),
-                       debug=9)
+                       debug=1)
     hub.addActor(nub)
     
 def stop():
