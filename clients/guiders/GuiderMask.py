@@ -44,7 +44,6 @@ class GuiderMask(object):
         dateName = CPL.getDateDirName()
         return os.path.join(self.imagePath, dateName)
     
-            
     def statusCmd(self, cmd, doFinish=True):
         """ Generate our keys.
         """

@@ -50,7 +50,6 @@ class Guider(Actor.Actor):
         
         self._setDefaults()
         self.config = self.defaults.copy()
-
         self._setMask(None, self.config['maskFile'])
     
     def _setDefaults(self):
@@ -90,7 +89,7 @@ class Guider(Actor.Actor):
         tweaks = self.parseCmdTweaks(cmd, self.config)
 
         def cb(cmd, fname, frame, tweaks=None):
-            cmd.respond('imgFile=%s' % (CPL.qstr(fname)))
+            cmd.respond('camFile=%s' % (CPL.qstr(fname)))
             cmd.finish()
             
         self.doCmdExpose(cmd, cb, 'expose', tweaks)
@@ -106,7 +105,7 @@ class Guider(Actor.Actor):
         tweaks = self.parseCmdTweaks(cmd, self.config)
 
         def cb(cmd, fname, frame):
-            cmd.respond('imgFile=%s' % (CPL.qstr(fname)))
+            cmd.respond('darkFile=%s' % (CPL.qstr(fname)))
             cmd.finish()
             
         self.doCmdExpose(cmd, cb, 'dark', tweaks)
@@ -153,7 +152,7 @@ class Guider(Actor.Actor):
 
         isSat, stars = MyPyGuide.findstars(cmd, filename, self.mask, frame, tweaks)
         if not stars:
-            cmd.fail('centroidTxt="no stars found"')
+            cmd.fail('txt="no stars found"')
             return
 
         MyPyGuide.genStarKeys(cmd, stars)
@@ -202,7 +201,7 @@ class Guider(Actor.Actor):
             cmd.fail('centroidTxt="no star found"')
             return
 
-        MyPyGuide.genStarKey(cmd, star)
+        MyPyGuide.genStarKey(cmd, star, keyName='centroid')
         cmd.finish()
         
     centroidCmd.helpText = ('centroid itime=S [window=X0,Y0,X1,Y1] [bin=N] [bin=X,Y] [on=X,Y]',
@@ -249,7 +248,7 @@ class Guider(Actor.Actor):
                 cmd.fail('%sTxt="No guide loop to tweak."' % (self.name))
                 return
             self.guideLoop.tweak(cmd)
-
+            cmd.finish('')
         else:
             if self.guideLoop:
                 cmd.fail('%sTxt="cannot start guiding while guiding"' % (self.name))
@@ -303,7 +302,6 @@ class Guider(Actor.Actor):
 
         self._setMask(cmd, fname)
         
-        cmd.finish('maskFile=%s' % (CPL.qstr(fname)))
     setMaskCmd.helpText = ('setMask [filename]',
                            'load a mask file. Reload existing mask if no file is specified')
         
@@ -392,9 +390,11 @@ class Guider(Actor.Actor):
         """
 
         def _cb(cmd, filename, frame):
+            cmd.respond('camFile=%s'% (CPL.qstr(filename)))
             cb(cmd, filename, frame, **cbArgs)
             
         cmd.warn('debug=%s' % (CPL.qstr("exposing %s(%s) frame=%s" % (type, itime, frame))))
+        
         mycb = self.camera.cbExpose(cmd, _cb, type, itime, frame)
         return mycb
 
@@ -415,8 +415,13 @@ class Guider(Actor.Actor):
     def _setMask(self, cmd, filename):
 	""" Set our mask to the contents of the given filename. """
 
-	self.mask = GuiderMask.GuiderMask(cmd, filename,
-                                          self.config['maskDir'])
+        try:
+            self.mask = GuiderMask.GuiderMask(cmd, filename,
+                                              self.config['maskDir'])
+        except Exception, e:
+            cmd.fail('could not set the mask file: %s')
+
+        cmd.finish('maskFile=%s' % (CPL.qstr(fname)))
         
     def parseWindow(self, w):
         """ Parse a window specification of the form X0,Y0,X1,Y1.
@@ -565,9 +570,39 @@ class Guider(Actor.Actor):
                                                    ('window', self.parseWindow),
                                                    ('radius', float),
                                                    ('thresh', float),
+                                                   ('retry', int),
+                                                   ('restart', str),
                                                    ('cnt', int)])
 
         tweaks.update(matched)
 
         return tweaks
-    
+
+    def genFilesKey(self, cmd, keyName,
+                    fname, maskname, darkname, flatname, finalname):
+        """ Generate an xxxFiles keyword.
+
+        Args:
+            cmd          - the controlling Command to respond to.
+            keyName      - the name of the keyword.
+            fname, maskname, darkname, flatname - the component filenames.
+
+        If the files are in the current active directory, then output relative filenames.
+        Otherwise output absolute filenames.
+        """
+
+        cd = self.currentDir
+
+        files = []
+        for f in fname, maskname, darkname, flatname, finalname:
+            if f == None:
+                files.append('')
+            elif os.path.commonprefix(cd, f) == cd:
+                files.append(f[len(cd)+1:])
+            else:
+                files.append(f)
+
+        qfiles = map(CPL.qstr, files)
+        cmd.respond("%s=%s" % (keyName,
+                               qfiles.join(',')))
+                             

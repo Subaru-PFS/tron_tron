@@ -28,11 +28,12 @@ def findstars(cmd, filename, mask, frame, tweaks, cnt=10):
         filename  - an absolute pathname of a FITS file.
         mask      - a GuiderMask
         frame     - a GuiderFrame for us to molest.
-        tweak     - a dictionary of tweaks. We use ()
+        tweaks    - a dictionary of tweaks.
+        cnt       ? the number of stars to return. 
 
     Returns:
         - the PyGuide.findstars isSat flag
-        - a list of StarInfos
+        - a list of StarInfos, in full CCD coordinates
 
     """
     
@@ -68,6 +69,7 @@ def findstars(cmd, filename, mask, frame, tweaks, cnt=10):
         CPL.log('star', 'star=%s' % (star))
 
         ctr = ij2xy(star.ctr)
+        ctr = frame.imgXY2ccdXY(seed)
         err = ij2xy(star.err)
 
         try:
@@ -103,7 +105,7 @@ def findstars(cmd, filename, mask, frame, tweaks, cnt=10):
             break
 
     del img
-    del mask
+    del maskbits
     
     return isSat, starList
 
@@ -115,11 +117,11 @@ def centroid(cmd, filename, mask, frame, seed, tweaks):
         filename  - an absolute pathname of a FITS file.
         mask      - a GuiderMask
         frame     - a GuiderFrame for us to molest.
-        seed      - the initial position.
+        seed      - the initial [X,Y] position, in full CCD coordinates
         tweak     - a dictionary of tweaks. We use ()
 
     Returns:
-        - one StarInfo, or None
+        - one StarInfo, or None. In full CCD coordinates.
 
     """
     
@@ -154,6 +156,7 @@ def centroid(cmd, filename, mask, frame, seed, tweaks):
         raise
 
     ctr = ij2xy(star.ctr)
+    ctr = frame.imgXY2ccdXY()
     err = ij2xy(star.err)
 
     try:
@@ -184,7 +187,7 @@ def centroid(cmd, filename, mask, frame, seed, tweaks):
     s.asymm = star.asymm
     
     del img
-    del mask
+    del maskbits
     
     return s
 
@@ -202,24 +205,34 @@ def genStarKeys(cmd, stars, keyName='star'):
         genStarKey(cmd, s, i, keyName=keyName)
         i += 1
         
-def genStarKey(cmd, s, idx=0, keyName='star'):
+def genStarKey(cmd, s, idx=None, keyName='star'):
     """ Generate the canonical star keys.
 
     Args:
         cmd     - the Command to respond to.
-        idx     - the index of the star in the star list.
+        idx     - the index of the star in the star list. If None, don't print it.
         s       - the StarInfo
         keyName ? the key name to use. Defaults to 'star'
     """
 
-    cmd.respond('%s=%d,%0.3f,%0.3f, %0.3f,%0.3f,%0.3f, %0.3f,%0.3f,%0.2f,%0.3f, %0.1f,%0.1f,%0.1f' % \
-                (keyName, idx,
-                 s.ctr[0], s.ctr[1],
-                 s.err[0], s.err[1],
-                 s.asymm,
-                 s.fwhm[0], s.fwhm[1], s.angle,
-                 s.chiSq,
-                 s.counts, s.bkgnd, s.ampl))
+    if idx == None:
+        cmd.respond('%s=%0.2f,%0.2f, %0.2f,%0.2f,%0.2f, %0.2f,%0.2f,%0.2f,%0.2f, %0.1f,%0.1f,%0.1f' % \
+                    (keyName,
+                     s.ctr[0], s.ctr[1],
+                     s.err[0], s.err[1],
+                     s.asymm,
+                     s.fwhm[0], s.fwhm[1], s.angle,
+                     s.chiSq,
+                     s.counts, s.bkgnd, s.ampl))
+    else:
+        cmd.respond('%s=%d,%0.2f,%0.2f, %0.2f,%0.2f,%0.2f, %0.2f,%0.2f,%0.2f,%0.2f, %0.1f,%0.1f,%0.1f' % \
+                    (keyName, idx,
+                     s.ctr[0], s.ctr[1],
+                     s.err[0], s.err[1],
+                     s.asymm,
+                     s.fwhm[0], s.fwhm[1], s.angle,
+                     s.chiSq,
+                     s.counts, s.bkgnd, s.ampl))
 
     
     
