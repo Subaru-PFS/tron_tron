@@ -31,6 +31,8 @@ class IOHandler(CPL.Object):
 
         self.poller = poller
 
+        CPL.log("IOHandler.init", "IOHandler(argv=%s)" % (argv))
+        
         # The IO size tweaks would mean something for slow network links.
         #
         self.tryToRead = argv.get('readSize', 4096)
@@ -41,7 +43,7 @@ class IOHandler(CPL.Object):
         self.in_f = self.out_f = None
         self.in_fd = self.out_fd = None
         self.outQueue = []
-        self.queueLock = CPL.LLock(debug=argv.get(debug, 0) > 4)
+        self.queueLock = CPL.LLock(debug = (argv.get('debug', 0) > 4))
         self.setInputFile(argv.get('in_f', None))
         self.setOutputFile(argv.get('out_f', None))
 
@@ -143,7 +145,7 @@ class IOHandler(CPL.Object):
 
         assert s != None, "queueing nothing!"
 
-        self.queueLock.acquire()
+        self.queueLock.acquire(src='queueForOutput')
         try:
             mustRegister = (self.outQueue == [])
 
@@ -163,7 +165,7 @@ class IOHandler(CPL.Object):
             if mustRegister:
                 self.poller.addOutput(self)
         finally:
-            self.queueLock.release()
+            self.queueLock.release(src='queueForOutput')
 
 
     def checkQueue(self):
@@ -268,7 +270,7 @@ class IOHandler(CPL.Object):
             if wrote > self.largestWrite:
                 self.largestWrite = wrote
 
-            self.queueLock.acquire()
+            self.queueLock.acquire(src='mayOutput')
             try:
                 # Either truncate queue[0] or remove it.
                 #
@@ -301,7 +303,7 @@ class IOHandler(CPL.Object):
 
                 self.totalOutputs += 1
             finally:
-                self.queueLock.release()
+                self.queueLock.release(src='mayOutput')
         
     def statusCmd(self, cmd, name, doFinish=True):
         """ Send sundry status information keywords.

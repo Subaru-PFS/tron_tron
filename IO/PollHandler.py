@@ -174,7 +174,7 @@ class PollHandler(CPL.Object):
             eventMask = pollInfo.get('eventMask', 0)
             eventMask |= select.POLLOUT
 
-            changed = not eventMask & select.POLLOUT:
+            changed = not eventMask & select.POLLOUT
         else:
             pollInfo = {}
             lastHandler = None
@@ -190,7 +190,7 @@ class PollHandler(CPL.Object):
         self.lock.release()
 
         # Wake the poller up.
-        if self.loopback and self.changed:
+        if self.loopback and changed:
             os.write(self.loopback, 'O')
         
         if self.debug > 2:

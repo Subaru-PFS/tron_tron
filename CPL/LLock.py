@@ -12,8 +12,8 @@ class LLock(object):
         self.debug = debug
         self.lock = Lock()
         if name == None:
-            name = 'lock-%04d' % (seq)
-            seq += 1
+            name = 'lock-%04d' % (self.seq)
+            self.seq += 1
         self.name = name
         
         if self.debug > 0:
@@ -21,9 +21,12 @@ class LLock(object):
         
     def acquire(self, block=True, src="up"):
         if self.debug > 0:
-            CPL.log("LLock.acquire", "name=%s, block=%s, src=%s" % \
+            CPL.log("LLock.acquiring", "name=%s, block=%s, src=%s" % \
                     (self.name, block, src))
         self.lock.acquire(block)
+        if self.debug > 0:
+            CPL.log("LLock.acquired", "name=%s, block=%s, src=%s" % \
+                    (self.name, block, src))
         
     def release(self, src="up"):
         if self.debug > 0:
