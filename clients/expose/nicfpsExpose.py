@@ -98,7 +98,7 @@ class NicfpsExposureActor(InstExposure.InstExposure):
             CPL.log("NicfpsExposureHandler", "new command: %s" % (cmd.raw_cmd))
 
         anytimeCmds = ('help', 'status', 'getPath', 'setPath')
-        newExpCmds = ('object', 'flat', 'dark')
+        newExpCmds = ('object', 'flat', 'dark', 'test')
         expCmds = ('stop', 'abort', 'zap')
         commands = anytimeCmds + newExpCmds + expCmds
         
@@ -118,7 +118,7 @@ class NicfpsExposureActor(InstExposure.InstExposure):
             return
         
         command = None
-        for expCmd in 'flat', 'object', 'dark', \
+        for expCmd in 'flat', 'object', 'dark', 'test',\
                 'stop', 'abort', \
                 'getPath', 'setPath':
             if req.has_key(expCmd):
@@ -165,7 +165,7 @@ class NicfpsExposureActor(InstExposure.InstExposure):
                 exec("exp.%s(cmd)" % (command))
                 return
 
-        elif command in ('object', 'flat', 'dark'):
+        elif command in ('object', 'flat', 'dark', 'test'):
             if exp != None:
                 cmd.fail('exposeTxt="cannot start a new %s exposure while another is active"' % (self.instName))
                 return

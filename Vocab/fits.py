@@ -350,7 +350,7 @@ class InstFITS(object):
         alt = k[1]
         zd = 90.0 - alt
         try:
-            airmass = 1.0/math.cos(zd)
+            airmass = 1.0/math.cos((zd / 180.0) / math.pi)
         except:
             airmass = 0.0
                 
@@ -379,7 +379,7 @@ class InstFITS(object):
         # instrument angle w.r.t. sky
         k = g.KVs.getKey('tcc', 'ObjInstAng', [0.0,0.0,0.0])
         k = map(float, k)
-        instAng = k[0]
+        instAng = (k[0] / 180.0) * math.pi
 
         # and boresight offset
         k = g.KVs.getKey('tcc', 'Boresight', [0.0,0.0,0.0,0.0,0.0,0.0])
@@ -391,8 +391,8 @@ class InstFITS(object):
         k = map(float, k)
         ra, dec = k[0], k[3]
         
-        self.appendCard(cmd, StringCard('CTYPE1', 'RA--TAN', 'WCS projection'))
-        self.appendCard(cmd, StringCard('CTYPE2', 'DEC-TAN', 'WCS projection'))
+        self.appendCard(cmd, StringCard('CTYPE1', 'RA---TAN', 'WCS projection'))
+        self.appendCard(cmd, StringCard('CTYPE2', 'DEC--TAN', 'WCS projection'))
         
         self.appendCard(cmd, RealCard('CRPIX1', imCtr[0] + boresight[0] * imScale[0], 'WCS reference pixel'))
         self.appendCard(cmd, RealCard('CRPIX2', imCtr[1] + boresight[1] * imScale[1], 'WCS reference pixel'))
@@ -400,10 +400,10 @@ class InstFITS(object):
         self.appendCard(cmd, RealCard('CRVAL1', ra, 'WCS reference sky pos.'))
         self.appendCard(cmd, RealCard('CRVAL2', dec, 'WCS reference sky pos.'))
                         
-        self.appendCard(cmd, RealCard('CD1_1', (1.0 / imScale[0]) * math.cos(instAng)))
-        self.appendCard(cmd, RealCard('CD1_2', -(1.0 / imScale[1]) * math.sin(instAng)))
-        self.appendCard(cmd, RealCard('CD2_1', (1.0 / imScale[0]) * math.sin(instAng)))
-        self.appendCard(cmd, RealCard('CD2_2', (1.0 / imScale[1]) * math.cos(instAng)))
+        self.appendCard(cmd, RealCard('CD1_1', (1.0 / imScale[0]) * math.cos(instAng), 'WCS (1/InstScaleX)*cos(InstAng)'))
+        self.appendCard(cmd, RealCard('CD1_2', (1.0 / imScale[1]) * math.sin(instAng), 'WCS (1/InstScaleY)*sin(InstAng)'))
+        self.appendCard(cmd, RealCard('CD2_1', -(1.0 / imScale[0]) * math.sin(instAng), 'WCS (-1/(InstScaleX)*sin(InstAng)'))
+        self.appendCard(cmd, RealCard('CD2_2', (1.0 / imScale[1]) * math.cos(instAng), 'WCS (1/InstScaleY)*cos(InstAng)'))
         
     def fetchObjectCards(self, cmd):
         objSys = g.KVs.getKey('tcc', 'ObjSys', None)
@@ -415,7 +415,7 @@ class InstFITS(object):
         
         self.fetchCardAs(cmd, 'OBJNAME', 'tcc', 'ObjName', asDeQStr, StringCard, 'Object name, per TCC ObjName')
 
-        self.appendCard(cmd, StringCard('NOTE001', '', 'All coordinates and offsets are from the start of the exposure'))
+        # self.appendCard(cmd, CommentCard('COMMENT', 'All coordinates and offsets are from the start of the exposure'))
         
         self.fetchCardAs(cmd, 'RADECSYS', 'tcc', 'ObjSys', asStr, StringCard, 'Coordinate system, per TCC ObjSys', idx=0)
         self.fetchCardAs(cmd, 'ROTTYPE', 'tcc', 'RotType', asFloat, StringCard, 'TCC RotType')
@@ -427,6 +427,12 @@ class InstFITS(object):
             self.fetchCardAs(cmd, 'RA', 'tcc', 'ObjPos', asRASex, StringCard, 'RA hours, from TCC ObjNetPos', idx=0)
             self.fetchCardAs(cmd, 'DEC', 'tcc', 'ObjPos', asDecSex, StringCard, 'Dec degrees, from TCC ObjNetPos', idx=3)
 
+            try:
+                lst = float(g.KVs.getKey('tcc', 'LST')) / 15.0
+                self.appendCard(cmd, RealCard('LST', lst, 'Local Mean Sidereal time, hours'))
+            except:
+                pass
+            
             self.fetchCardAs(cmd, 'ARCOFFX', 'tcc', 'ObjArcOff', asFloat, RealCard, 'TCC arc offset X', idx=0)
             self.fetchCardAs(cmd, 'ARCOFFY', 'tcc', 'ObjArcOff', asFloat, RealCard, 'TCC arc offset Y', idx=3)
             self.fetchCardAs(cmd, 'OBJOFFX', 'tcc', 'ObjOff', asFloat, RealCard, 'TCC object offset X', idx=0)
@@ -450,9 +456,6 @@ class InstFITS(object):
         self.UTC_TAI = UTC_TAI
         
     def start(self, cmd, inFile):
-        if self.comment != None:
-            self.appendCard(cmd, CommentCard('COMMENT', self.comment))
-
         self._setUTC_TAI(cmd)
         self.fetchObjectCards(cmd)
         self.fetchWeatherCards(cmd)
@@ -516,6 +519,9 @@ class InstFITS(object):
         for c in self.cards.itervalues():
             fits.addCard(c, after=after)
             after = c.name
+
+        if self.comment != None:
+            fits.addCard(CommentCard('COMMENT', self.comment), after='NAXIS2')
 
         if self.outfile == None:
             self.outfile, self.outfileName = tempfile.mkstemp('.fits', "%s-" % (self.name), '/export/images')
@@ -680,10 +686,18 @@ class nicfpsFITS(InstFITS):
     def start(self, cmd, inFile=None):
         InstFITS.start(self, cmd, inFile)
         
-        
         self.fetchInstCards(cmd)
-        
+
+    def fetchInstCards(self, cmd):
+        pass
+
+    
     def prepFITS(self, cmd, fits):
+        """ Hook to let us fiddle with the header directly. """
+
+        fits.deleteCard('EXTEND')
+        
+    def prepFITSXX(self, cmd, fits):
         """ Hook to let us fiddle with the header directly. """
 
         fits.deleteCard('SIDETIME')
@@ -701,7 +715,7 @@ class nicfpsFITS(InstFITS):
         """ Generate gussied up, human-readable versions of the instrument state """
         pass
     
-    def fetchInstCards(self, cmd):
+    def fetchInstCardsXX(self, cmd):
         self.cards['BSCALE'] = RealCard('BSCALE', 1.0)
         self.cards['BZERO'] = RealCard('BZERO', 32768.0)
         
