@@ -118,7 +118,7 @@ class ClientNub(IO.IOHandler):
            s   - the new, but still unbuffered, input.
         """
 
-        if self.debug > 5:
+        if self.debug > 6:
             CPL.log('Nub.copeWithInput', "read: %s" % (s))
 
         # Find and execute _every_ complete input.
@@ -208,7 +208,7 @@ class HubLink(object):
         self.toHub = ClientNub(self.poller, self, host, port,
                                name='client', encoder=encoder, decoder=decoder,
                                replyCallback=self.copeWithInput,
-                               debug=1)
+                               debug=self.debug)
         self.mids = CPL.ID()
         
         # A list of filters through which we pass all input from the hub.
@@ -217,7 +217,7 @@ class HubLink(object):
 
         # Be simple & stupid: lock everything we do with one big lock.
         #
-        self.lock = CPL.LLock(debug=0)
+        self.lock = CPL.LLock(debug=1)
         
         self.fromHub = None
         commandQueue = argv.get('cmdQueue', None)
@@ -225,9 +225,11 @@ class HubLink(object):
         if commandQueue != None:
             if testing:
                 self.fromHub = CommandLink.connect(self.poller, commandQueue,
-                                                   in_f=None, out_f=None, debug=0)
+                                                   in_f=None, out_f=None,
+                                                   debug=self.debug)
             else:
-                self.fromHub = CommandLink.connect(self.poller, commandQueue, debug=0)
+                self.fromHub = CommandLink.connect(self.poller, commandQueue,
+                                                   debug=self.debug)
 
             self.filters.append(commandQueue)
             
