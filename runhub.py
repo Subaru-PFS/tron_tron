@@ -16,6 +16,5 @@ startAllConnections(['client',
                      'nicfps', 'nicfpsExpose',
                      'gcam', 'tcc2gcam',
                      'ecam', 'tcc2ecam',
-                     'cm', 'cmiccServer',
                      'cmdin', 'TUI'])
 hub.run()
