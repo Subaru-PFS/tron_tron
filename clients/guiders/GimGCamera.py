@@ -128,6 +128,7 @@ class GimGCamera(GCamera.GCamera):
         # This is probably where we would annotate the image header.
         #
         shutil.copyfile(oldPath, newPath)
+        os.chown(newPath, 0644)
         return newPath
-        
+    
         

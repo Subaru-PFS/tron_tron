@@ -51,7 +51,7 @@ class GimCtrlConnection(object):
                 break
 
         # We want the OK to be the last line.
-        tlines = buffer.split("\r\n")[:-1]
+        tlines = buffer.split(self.EOL)[:-1]
 
         # Some lines have spurious leading \ns:
         lines = []

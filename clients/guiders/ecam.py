@@ -11,9 +11,9 @@ import client
 import CPL
 import Guider
 import GimGCamera
+import TCCGcam
 
-
-class ecam(Guider.Guider):
+class ecam(Guider.Guider, TCCGcam.TCCGcam):
     """ 
     """
     
@@ -24,26 +24,8 @@ class ecam(Guider.Guider):
                                        **argv)
         Guider.Guider.__init__(self, camera, 'ecam', **argv)
 
-        # Additional commands for the Alta.
-        #
-        self.commands.update({'chooseBrain':  self.doChooseBrain})
-        self.brain = 'mac'
-        
         self._setDefaults()
 
-    def doChooseBrain(self, cmd):
-        raise NotImplementedError("chooseBrain is not yet implemented")
-    
-    def doTccDoread(self, cmd):
-        """ Pass on a 'doread' command from a TCC to our camera. """
-
-        ret = self.camera.rawCmd(cmd, 120)
-        fname = self.camera.copyinNewRawImage()
-
-        cmd.respond('filename="%s"' % (fname))
-        
-        self.echoToTcc(cmd, ret)
-    
     def doInit(self, cmd):
         """ Pass on an 'init' command from a TCC to our camera. """
 
@@ -62,6 +44,19 @@ class ecam(Guider.Guider):
         ret = self.camera.rawCmd(cmd, 10)
         self.echoToTcc(cmd, ret)
     
+    def doChooseBrain(self, cmd):
+        raise NotImplementedError("chooseBrain is not yet implemented")
+    
+    def doTccDoread(self, cmd):
+        """ Pass on a 'doread' command from a TCC to our camera. """
+
+        ret = self.camera.rawCmd(cmd, 120)
+        fname = self.camera.copyinNewRawImage()
+
+        cmd.respond('imgFile="%s"' % (fname))
+        
+        self.echoToTcc(cmd, ret)
+    
     def doTccFindstars(self, cmd):
         """ Pass on a 'findstars' command from a TCC to our camera. """
 
@@ -69,22 +64,18 @@ class ecam(Guider.Guider):
         self.echoToTcc(cmd, ret)
     
     def _setDefaults(self):
-        self.boresightPixel = [286.0, 222.0]
-        self.size = [512, 512]
+        self.defaults['bias'] = CPL.cfg.get('ecam', 'bias')
+        self.defaults['readNoise'] = CPL.cfg.get('ecam', 'readNoise')
+        self.defaults['ccdGain'] = CPL.cfg.get('ecam', 'ccdGain')
+        self.defaults['ccdFrame'] = CPL.cfg.get('ecam', 'ccdFrame')
+        self.defaults['binning'] = CPL.cfg.get('ecam', 'binning')
+        self.defaults['boresight'] = CPL.cfg.get('ecam', 'boresight')
+        self.size = self.defaults['ccdFrame'][2:3]
         self.window = [0,0,511,511]
-        self.binning = [1,1]
-        self.scanRad = 25.0
-        self.guideScale = 0.8
+
         self.GImName = "S300"
         self.GImCamID = 1
-        self.plateScale = 0.134
 
-        self.bias = 1787
-        self.rdNoise = 7.9
-        self.ccdGain = 4.6
-        self.starThresh = 4.5
-        self.defaultStarThresh = self.starThresh
-        
 # Start it all up.
 #
 def main(name, eHandler=None, debug=0, test=False):
