@@ -13,6 +13,7 @@ def start(poller):
     d = Hub.ASCIIReplyDecoder(debug=1)
     e = Hub.ASCIICmdEncoder(debug=1, sendCommander=True)
     nub = Hub.ShellNub(poller, ['/usr/bin/env',
+                                'PATH=/usr/local/bin:/bin:/usr/bin',
                                 'PYTHONPATH=%s/Client:%s' % (g.home, g.home),
                                 'clients/guiders/%s.py' % (name)],
                        name=name, encoder=e, decoder=d,

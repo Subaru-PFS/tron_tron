@@ -254,7 +254,7 @@ class GuideLoop(object):
                 self.failGuiding('could not parse the centerOn position: %s.' % (e))
                 return
 
-            seedPos = frame.ccdXY2imgXY(seedPos)
+            #seedPos = frame.ccdXY2imgXY(seedPos)
             self.cmd.respond('txt="offsetting object at (%d, %d) to the boresight...."' % \
                              (seedPos[0], seedPos[1]))
             try:
@@ -367,21 +367,20 @@ class GuideLoop(object):
         scales = self.tweaks['fitErrorScale']
         scales.reverse()
         xfitFactor = 0.0
+        xoffset = 0.0
         for scale in scales:
             if fitErrors[0] < scale[0]:
                 xfitFactor = scale[1]
                 xoffset = diffPos[0] * xfitFactor
                 break
+
         yfitFactor = 0.0
+        yoffset = 0.0
         for scale in scales:
             if fitErrors[1] < scale[0]:
                 yfitFactor = scale[1]
                 yoffset = diffPos[1] * yfitFactor
                 break
-
-        #distance = math.sqrt(xoffset * xoffset + yoffset * yoffset)
-        #if distance < self.tweaks['minOffset']:
-        #    xoffset = yoffset = 0.0
 
         return [xoffset, yoffset]
                
@@ -471,8 +470,7 @@ class GuideLoop(object):
         #  - Convert each to Observed positions
         #
         refPos = self._GPos2Obs(refGpos)
-        starPos = frame.imgXY2ccdXY(star.ctr)
-        starPos = self._GPos2Obs(starPos)
+        starPos = self._GPos2Obs(star.ctr)
         
         if not refPos \
            or not starPos \

@@ -42,7 +42,11 @@ def findstars(cmd, filename, mask, frame, tweaks, cnt=10):
     fits.close()
 
     frame.setImageFromFITSHeader(header)
-    maskFile, maskBits = mask.getMaskForGFrame(cmd, frame)
+
+    cmd.warn('debug=%s' % (CPL.qstr(frame)))
+    maskfile, maskbits = mask.getMaskForFrame(cmd, filename, frame)
+
+    CPL.log('findstars', 'tweaks=%s' % (tweaks))
     
     try:
         isSat, stars = PyGuide.findStars(
@@ -50,8 +54,8 @@ def findstars(cmd, filename, mask, frame, tweaks, cnt=10):
             tweaks['bias'],
             tweaks['readNoise'],
             tweaks['ccdGain'],
-            dataCut = tweaks['starThresh'],
-            verbosity=0
+            dataCut = tweaks['thresh'],
+            verbosity=1
             )
     except Exception, e:
         cmd.warn('debug=%s' % (CPL.qstr(e)))
@@ -62,13 +66,15 @@ def findstars(cmd, filename, mask, frame, tweaks, cnt=10):
     if cmd and isSat:
         cmd.warn('findstarsSaturated')
 
+    cmd.warn('debug="findstars returned %d stars"' % (len(stars)))
+    
     starList = []
     i=1
     for star in stars:
         CPL.log('star', 'star=%s' % (star))
 
         ctr = ij2xy(star.ctr)
-        ctr = frame.imgXY2ccdXY(seed)
+        ctr = frame.imgXY2ccdXY(ctr)
         err = ij2xy(star.err)
 
         try:
@@ -130,7 +136,7 @@ def centroid(cmd, filename, mask, frame, seed, tweaks):
     fits.close()
 
     frame.setImageFromFITSHeader(header)
-    maskbits = mask.getMaskForGFrame(cmd, frame)
+    maskfile, maskbits = mask.getMaskForFrame(cmd, filename, frame)
 
     # Transform the seed from CCD to image coordinates
     seed = frame.ccdXY2imgXY(seed)
@@ -155,7 +161,7 @@ def centroid(cmd, filename, mask, frame, seed, tweaks):
         raise
 
     ctr = ij2xy(star.ctr)
-    ctr = frame.imgXY2ccdXY()
+    ctr = frame.imgXY2ccdXY(ctr)
     err = ij2xy(star.err)
 
     try:

@@ -1,7 +1,8 @@
-__all__ = ['ImageFrame',
-           'GuiderFrame']
+__all__ = ['ImageFrame']
 
 import pyfits
+
+import CPL
 
 class ImageFrame(object):
     """ Maintain the transformations between:
@@ -68,9 +69,17 @@ class ImageFrame(object):
                           BEGX, BEGY        - for the offset
         """
 
+
+        try:
+            binning = (h['BINX'], h['BINY'])
+        except KeyError:
+            binning = (3,3)
+
+        try:
+            offset = (h['BEGX'], h['BEGY'])
+        except KeyError:
+            offset = (0,0)
             
-        binning = (h['BINX'], h['BINY'])
-        offset = (h['BEGX'], h['BEGY'])
         size = (h['NAXIS1'], h['NAXIS2'])
         
         self.setImageFromFrame(binning, offset, size)
@@ -119,6 +128,10 @@ class ImageFrame(object):
         """ Adjust our size & offset to fit within the CCD frame.
         """
 
+        CPL.log('trimSelf', 'start=%s' % (self))
+        self.frameOffset = list(self.frameOffset)
+        self.frameSize = list(self.frameSize)
+
         # Bottom/left edges
         if self.frameOffset[0] < 0:
             self.frameSize[0] -= self.frameOffset[0]
@@ -133,13 +146,18 @@ class ImageFrame(object):
         if size == 0:
             self.frameSize[0] = self.ccdSize[0] / self.frameBinning[0]
         if self.frameOffset[0] + size > self.ccdSize[0]:
-            self.frameSize[0] = (self.ccdSize / self.frameBinning[0]) - self.frameOffset[0]
+            self.frameSize[0] = (self.ccdSize[0] / self.frameBinning[0]) - self.frameOffset[0]
 
         size = self.frameSize[1] * self.frameBinning[1]
         if size == 0:
             self.frameSize[1] = self.ccdSize[1] / self.frameBinning[1]
         if self.frameOffset[1] + size > self.ccdSize[1]:
-            self.frameSize[1] = (self.ccdSize / self.frameBinning[1]) - self.frameOffset[1]
+            self.frameSize[1] = (self.ccdSize[1] / self.frameBinning[1]) - self.frameOffset[1]
+
+        self.frameOffset = tuple(self.frameOffset)
+        self.frameSize = tuple(self.frameSize)
+
+        CPL.log('trimSelf', 'end=%s' % (self))
         
     def imgXY2ccdXY(self, imgXY):
         """ Convert an image-frame coordinate to a ccd-fram coordinate.
@@ -210,9 +228,24 @@ class ImageFrame(object):
         x = self.frameOffset[0] + self.frameSize[0]/2.0
         y = self.frameOffset[1] + self.frameSize[1]/2.0
 
-        return x, y, \
-               float(self.frameSize[0]), \
-               float(self.frameSize[1])
+        return (x, y), \
+               (float(self.frameSize[0]), \
+                float(self.frameSize[1]))
+
+    def imgFrameAsCornerAndSize(self):
+        """ Return the image frame (offset & size) as a window (x0,y0,x1,y1)
+
+        Args:
+          inclusive   - if true, x1 = 0 includes pixel 0
+
+        Returns:
+          [offsetx, offsety] - frame center, in binned pixels
+          [w, h]             - frame size, in binned pixels
+
+        """
+
+        return (self.frameOffset[0], self.frameOffset[0]),\
+               (self.frameSize[0], self.frameSize[1])
 
     def imgFrameAsWindow(self, inclusive=True):
         """ Return the image frame (offset & size) as a window (x0,y0,x1,y1)
