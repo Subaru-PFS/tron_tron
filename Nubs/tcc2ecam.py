@@ -10,7 +10,7 @@ import time
 import Hub
 import hub
 
-name = 'TC01.TC01'
+name = 'TC01.ecam'
 host = 'apots2.apo.nmsu.edu'
 port = 3010
 

@@ -19,7 +19,8 @@ def acceptTUI(in_f, out_f, addr=None):
     c = Hub.AuthStdinNub(g.poller, in_f, out_f,
                          name='%s-%d' % (name, nubID), 
                          encoder=e, decoder=d, debug=1,
-                         type='TUI', needsAuth=True)
+                         type='TUI', needsAuth=True,
+                         isUser=True)
     c.taster.addToFilter(['*'], (), ['*'])
     hub.addCommander(c)
 

@@ -19,6 +19,7 @@ class GCamera(object):
     def __init__(self, name, path, **argv):
 
         self.name = name
+        self.nameChar = name[0]
         
         # Basic sanity checks _now_
         #
@@ -54,7 +55,7 @@ class GCamera(object):
             os.mkdir(dirName)
             os.chmod(dirName, 0777)
 
-            fileName = "f0001.fits"
+            fileName = "%s0001.fits" % (self.nameChar)
             
             # Create the last.image file
             #
@@ -62,7 +63,7 @@ class GCamera(object):
             f.write('%s\n' % (fileName))
             f.close()
         else:
-            # Create the last.image file
+            # Update the last.image file
             #
             f = open(os.path.join(dirName, "last.image"), "r+")
             lastFileName = f.readline()
@@ -72,7 +73,7 @@ class GCamera(object):
             if id > 9999:
                 raise RuntimeError("guider image number in %s is more than 9999." % (dirName))
             
-            fileName = "f%04d.fits" % (id)
+            fileName = "%s%04d.fits" % (self.nameChar, id)
 
             f.seek(0,0)
             f.write('%s\n' % (fileName))

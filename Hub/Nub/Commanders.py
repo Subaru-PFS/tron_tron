@@ -15,6 +15,13 @@ class CommanderNub(CoreNub.CoreNub):
     """ Base class for ICC connections, where we accept commands from and send replies to the remote end.  """
 
     def __init__(self, poller, **argv):
+        """
+
+        KWArgs:
+           isUser    - if True, we should be listed as a logged-in user.
+           forceUser - override any automatically derived username.
+        """
+
         CoreNub.CoreNub.__init__(self, poller, **argv)
 
         # Note which Replies we want to accept. The default
@@ -23,10 +30,13 @@ class CommanderNub(CoreNub.CoreNub):
         self.taster = Hub.ReplyTaster()
         self.taster.setFilter((), (self.name,), (self.name, "hub"))
 
+        self.isUser = argv.get('isUser', False)
+
         if argv.has_key('forceUser'):
             program, user = argv.get('forceUser').split('.')
             self.setNames(program, user)
-            
+
+        
     def setNames(self, programName, username):
         """ Set our program and usernames. """
 
@@ -38,8 +48,6 @@ class CommanderNub(CoreNub.CoreNub):
     def setName(self, newName):
         """ Change our username(s). """
 
-        # Could just call CoreNub.setName(), but I need to fix deep_reload first.
-        #
         self.name = newName
         self.encoder.setName(self.name)
         self.decoder.setName(self.name)

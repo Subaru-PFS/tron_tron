@@ -21,9 +21,6 @@ class AltaGCamera(GCamera.GCamera):
 
         self.cam = AltaNet.AltaNet(hostName=hostname)
 
-        # Track the name of the last file.
-        self.lastRead = "unknown"
-
         # Track binning and window, since we don't want to have to set them for each exposure.
         self.binning = [None, None]
         self.window = [None, None, None, None]
@@ -92,6 +89,9 @@ class AltaGCamera(GCamera.GCamera):
             The full FITS path.
         """
 
+        #cmd.warn('debug=%s' % (CPL.qstr("alta expose %s %s secs, window=%s, bin=%s" \
+        #                                % (expType, itime, window, bin))))
+        
         # Check format:
         if bin and bin != self.binning:
             self.cam.setBinning(*bin)

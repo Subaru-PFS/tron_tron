@@ -81,7 +81,7 @@ class Guider(Actor.Actor, GuideLoop.GuideLoop):
     def echoToTcc(self, cmd, ret):
         """ If cmd comes from the TCC, pass the ret lines back to it. """
 
-        if cmd.cmdrName == 'TC01.TC01':
+        if cmd.program() == 'TC01':
             for i in range(len(ret)-1):
                 cmd.respond('txtForTcc=%s' % (CPL.qstr(ret[i])))
             cmd.finish('txtForTcc=%s' % (CPL.qstr(ret[-1])))
@@ -91,7 +91,7 @@ class Guider(Actor.Actor, GuideLoop.GuideLoop):
 
         # Optionally handle the command as a GImCtrl
         #
-        if cmd.cmdrName == 'TC01.TC01':
+        if cmd.program() == 'TC01':
             cmd.respond('txtForTcc="init"')
             cmd.finish('txtForTcc="OK"')
             return
@@ -138,12 +138,14 @@ showstatus
         id = int(cmd.argv[-1])
         self.GImCamID = id
         
-        lastImageNum = self.cam.lastImageNum()
+        # lastImageNum = self.cam.lastImageNum()
+        lastImageNum = 'nan'   # self.cam.lastImageNum()
         
         cmd.respond('txtForTcc=%s' % (CPL.qstr(cmd.raw_cmd)))
         cmd.respond('txtForTcc=%s' % (CPL.qstr('%d "%s" %d %d %d nan %s "%s"' % \
                                             (id, self.GImName,
                                              self.size[0], self.size[1], 16,
+                                             lastImageNum,
                                              "camera: ID# name sizeXY bits/pixel temp lastFileNum"))))
         cmd.finish('txtForTcc=" OK"')
 
@@ -215,7 +217,107 @@ showstatus
                                              iTime, self.GImCamID, ccdTemp,
                                              "image: binXY begXY sizeXY expTime camID temp"))))
         cmd.finish('txtForTcc=" OK"')
+
+    def trimUnit(self, x, size):
+        if x < 0:
+            if type(x) == int:
+                return 0
+            else:
+                return 0.0
+        if x > size:
+            return size
+        return x
+
+    def trimCoord(self, x0, x1, size):
+        """ Return the part of an extent that intersects a given [0..size-1]
+        """
+
+        return self.trimUnit(x0, size), self.trimUnit(x1, size)
         
+    def trimRectToFrame(self, x0, y0, x1, y1, frameWidth, frameHeight):
+        """ Return the section of a rectange that intersects a frame.
+
+        Args:
+             x0, y0         - the LL corner of a rectangle
+             x1, y1         - the UR corner of a rectangle
+             frameWidth,
+             frameHeight    - the size of a frame.
+
+        Returns:
+             x0, y0         - the LL corner of a possibly trimmed rectangle
+             x1, y1         - the UR corner of a possibly trimmed rectangle
+        """
+
+        tX0, tX1 = self.trimCoord(x0, x1, frameWidth)
+        tY0, tY1 = self.trimCoord(y0, y1, frameHeight)
+
+        CPL.log("rectTrim", "frame=%d,%d from=%s,%s,%s,%s to %s,%s,%s,%s" % \
+                (frameWidth, frameHeight,
+                 x0, y0, x1, y1,
+                 tX0, tY0, tX1, tY1))
+
+        return tX0, tY0, tX1, tY1
+    
+    def trimPosAndSizeToFrame(self, x0, y0, xSize, ySize, frameWidth, frameHeight):
+        """ Return the section of a pos+size rectange that intersects a frame.
+
+        Args:
+             x0, y0         - the center of a rectangle
+             xSize, ySize   - the size of a rectangle
+             frameWidth,
+             frameHeight    - the size of a frame.
+
+        Returns:
+             x0, y0         - the center of the possibly trimmed rectangle.
+             xSize, ySize   - the size of the possibly trimmed rectangle
+        """
+
+        tX0, tY0, tX1, tY1 = self.trimRectToFrame(x0 - xSize/2.0, y0 - ySize/2.0,
+                                                  x0 + xSize/2.0, y0 + ySize/2.0,
+                                                  frameWidth, frameHeight) 
+
+        return (tX1 + tX0) / 2, (tY1 + tY0) / 2, tX1-tX0, tY1-tY0
+    
+    
+    def maskOutFromPosAndSize(self, mask, x0, y0, xSize, ySize, excludeRect=False):
+        """ Given a mask, a position, and a size, return a mask with the given rectangle masked.
+
+        Args:
+            mask   - a mask numarray (1 == "masked", 0 == "unmasked")
+            x0,y0  - a position
+            xSize,ySize - a size
+            excludeRect - if True, add the inverse of the rectange to the mask
+
+        x0,y0 and xSize,ySize are forced onto the array.
+        """
+
+        if mask == None:
+            return mask
+        
+        mYSize, mXSize = mask.getshape()
+
+        tX0, tY0, tXSize, tYSize = self.trimPosAndSizeToFrame(x0, y0,
+                                                              xSize, ySize,
+                                                              mXSize, mYSize)
+        CPL.log("maskTrim", "frame=%d,%d from=%s,%s,%s,%s to %s,%s,%s,%s" % \
+                (mXSize, mYSize,
+                 x0, y0, xSize, ySize,
+                 tX0, tY0, tXSize, tYSize))
+        
+        mX0 = int(tX0 - tXSize/2.0)
+        mX1 = int(tX0 + tXSize/2.0)
+        mY0 = int(tY0 - tYSize/2.0)
+        mY1 = int(tY0 + tYSize/2.0)
+        if excludeRect:
+            mask2 = mask.copy()
+            mask2[0:mYSize,0:mXSize] = 1
+            mask2[mY0:mY1+1,mX0:mX1+1] = 0
+            mask |= mask2
+        else:
+            mask[mY0:mY1+1,mX0:mX1+1] = 1
+
+        return mask
+    
     def doTccFindstars(self, cmd):
         """ Pretends to be a GImCtrl running 'findstars'
 
@@ -235,33 +337,76 @@ showstatus
         # Parse out what (little) we need: the number of stars and the predicted size.
         #
         try:
-            name, cnt, x0, y0, x1, y1, xPredFWHM, yPredFWHM = cmd.raw_cmd.split()
+            name, cnt, x0, y0, xSize, ySize, xPredFWHM, yPredFWHM = cmd.raw_cmd.split()
         except ValueError, e:
             cmd.fail('gcamTxt="findstars must take all tcc arguments"')
             return
 
-	isSat, stars = PyGuide.findStars(
+        cnt = int(cnt)
+        x0, y0, xSize, ySize, xPredFWHM, yPredFWHM = map(float, (x0, y0, xSize, ySize, xPredFWHM, yPredFWHM))
+        if xSize == 0.0: xSize = self.size[0]
+        if ySize == 0.0: ySize = self.size[1]
+        
+        # Build a mask from:
+        #   self.mask
+        #   the given window
+        mask = self.getMask(bin=self.binForTcc)
+        if mask != None:
+            mask = self.maskOutFromPosAndSize(mask.copy(), x0, y0, xSize, ySize, excludeRect=True)
+
+        #cmd.respond('%sDebug=%s' % (self.name, CPL.qstr('using mask=%s' % (mask))))
+        
+        try:
+            isSat, stars = PyGuide.findStars(
 		data = img,
-                mask=self.mask
-	)
+                mask=mask
+                )
+        except:
+            isSat = False
+            stars = []
 
         if isSat:
             cmd.warn('findstarsSaturated=%s' % (self.name, CPL.qstr(fname)))
-        cmd.respond('findstarsCnt=%d' % (self.name, len(stars)))
+        cmd.respond('findstarsCnt=%d' % (len(stars)))
 
         cmd.respond('txtForTcc=%s' % (CPL.qstr(cmd.raw_cmd)))
+
+        scale = self.plateScale * self.binForTcc[0]
 
         if len(stars) == 0:
             cmd.respond('txtForTcc="no stars found"')
         else:
             i=1
             for star in stars:
-                ctr = self.ij2xy(star.center)
-                cmd.respond('txtForTcc=%s' % (CPL.qstr("%d %d %.3f %.3f nan nan nan nan %10.1f nan %0.2f %0.2f 0" % \
-                                                    (self.binForTcc[0], self.binForTcc[1],
-                                                     ctr[0], ctr[1],
-                                                     star.counts,
-                                                     star.err[1], star.err[0]))))
+                ctr = self.ij2xy(star.ctr)
+
+                try:
+                    shape = PyGuide.starShape(img,
+                                              mask,
+                                              star.ctr)
+                    fwhm = shape.fwhm * scale
+                    chiSq = shape.chiSq
+                    bkgnd = shape.bkgnd
+                    ampl = shape.ampl
+                except:
+                    fwhm = 0.0        # nan does not work.
+                    chiSq = 0.0
+                    bkgnd = 0.0
+                    ampl = 0.0
+                    
+                cmd.respond('findstar=%d,%0.3f,%0.3f, %0.3f,%0.3f,%0.3f, %0.3f,%0.3f,%0.3f, %0.1f,%0.1f,%0.1f' % \
+                            (i, ctr[0], ctr[1],
+                             star.err[1], star.err[1], star.asymm,
+                             fwhm, fwhm, chiSq,
+                             star.counts, bkgnd, ampl))
+                             
+                cmd.respond('txtForTcc=%s' % \
+                            (CPL.qstr("%d %d %0.3f %0.3f %0.3f %0.3f 0.0 0.0 %10.1f 0.0 %0.2f %0.2f 0" % \
+                                      (self.binForTcc[0], self.binForTcc[1],
+                                       ctr[0], ctr[1],
+                                       fwhm, fwhm,
+                                       star.counts,
+                                       star.err[1], star.err[0]))))
                 i += 1
                 if i >= cnt:
                     break
@@ -274,12 +419,7 @@ showstatus
     
     
     def doTest(self, cmd):
-        import RO.DS9
-        display = 'littleidiot:0'
-
-        RO.DS9.DS9Win(doOpen=display)
-
-        cmd.finish()
+        cmd.finish('txtForTcc=" OK"')
 
     def doExpose(self, cmd):
         """ Take a single guider exposure and return it. This overrides but
@@ -311,7 +451,7 @@ showstatus
         """
 
         # Optionally handle the command as a GImCtrl
-        if cmd.cmdrName == 'TC01.TC01':
+        if cmd.program() == 'TC01':
             return self.doTccFindstars(cmd)
             
         fname = self._doCmdExpose(cmd, 'expose', 'findstars')
@@ -558,6 +698,9 @@ showstatus
         
         return centroid
 
+    def getMask(self, bin=[1,1]):
+        return self.mask
+    
     def doClearMask(self, cmd):
         """ Stop using any mask. """
 
@@ -590,18 +733,24 @@ showstatus
             a FITS filename, based from self.imBaseDir
         """
 
-        if len(cmd.argv) != 6:
-            cmd.fail('%sTxt="usage: setMask filename X0 Y0 X1 Y1"' % (self.name))
+        if len(cmd.argv) == 6:
+            fname = cmd.argv[1]
+            x0, y0, x1, y1 = map(int, cmd.argv[2:])
+        elif len(cmd.argv) == 2:
+            fname = cmd.argv[1]
+            x0 = None
+        else:
+            cmd.fail('%sTxt="usage: setMask filename [X0 Y0 X1 Y1]"' % (self.name))
             return
-        fname = cmd.argv[1]
-        x0, y0, x1, y1 = map(int, cmd.argv[2:])
 
         f = pyfits.open(fname)
         im = f[0].data
         f.close()
         
-        self.mask = im < 0
-        self.mask[y0:y1, x0:x1] = 1
+        self.mask = im <= 0
+
+        if x0 != None:
+            self.mask[y0:y1, x0:x1] = 1
         
         cmd.finish('%sMask=%s' % (self.name, CPL.qstr(fname)))
         

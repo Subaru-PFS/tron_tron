@@ -35,7 +35,8 @@ class gcam(Guider.Guider):
         self.guideScale = 0.8
         self.GImName = "Alta-E6"
         self.GImCamID = 1
-
+        self.plateScale = 0.138
+        
     def doSetTemp(self, cmd):
         """ Handle setTemp command.
 
