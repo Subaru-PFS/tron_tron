@@ -25,11 +25,12 @@ class FITS:
     #
     standardCards = ('SIMPLE', 'BITPIX', 'NAXIS', 'NAXIS1', 'NAXIS2', 'END')
 
-    def __init__(self, inputFile=None, lazyData=False):
+    def __init__(self, inputFile=None, lazyData=False, alwaysAllowOverwrite=False):
         self.cardOrder = []
         self.cards = {}
         self.commentIdx = 1        
-
+        self.alwaysAllowOverwrite = alwaysAllowOverwrite
+        
         self.image = None
         
         if inputFile != None:
@@ -52,6 +53,8 @@ class FITS:
         the existing header.
         """
 
+        allowOverwrite = allowOverwrite or self.alwaysAllowOverwrite
+            
         # Commentary cards get special treatment.
         name = self.getCardName(card)
         
@@ -79,14 +82,13 @@ class FITS:
                  
         self.cardOrder.insert(idx, name)
         self.cards[name] = card
-
             
     def getCardName(self, card):
         """ Extract or create a unique card name. For non-commentary cards, just return the Card's name.
             For commentary cards, create a unique name.
         """
         
-        if isinstance(card, Cards.CommentCard):
+        if isinstance(card, Cards.CommentCard) or card.name in ('COMMENT', 'HISTORY'):
             while 1:
                 name = "%s-%04d" % (card.name[:3], self.commentIdx)
                 self.commentIdx += 1
@@ -231,8 +233,8 @@ class FITS:
                 file.write(' ' * extraLen)
             file.flush()
 
-import sys
-if __name__ == "__main__":
+def main():
+    import sys
     f = FITS()
     print "1....6...." * 8 + ":"
     c = Cards.StringCard('ABC',

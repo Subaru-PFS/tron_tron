@@ -5,6 +5,7 @@ import Actor
 import disExposure
 import echelleExposure
 import grimExposure
+import nicfpsExposure
 
 class ExpSequence(Actor.Acting):
     def __init__(self, actor, cmd, inst, expType, path, cnt, **argv):

@@ -28,18 +28,20 @@ class nicfpsCB(Exposure.CB):
             CPL.log("nicfpsCB.cbDribble", "res=%s" % (res))
         try:
             # Check for new exposureState:
-            maybeNewState = res.KVs.get('exposureState', None)
+            maybeNewState = res.KVs.get('exposureStatus', None)
+            CPL.log("nicfpsCB.cbDribble", "exposureStatus=%s" % (maybeNewState))
             newState = None
 
             # Extract the expected duration from the exposureState keyword
             if maybeNewState != None:
-                maybeNewState, estimatedTime = eval(maybeNewState, {}, {})
+                maybeNewState, length = maybeNewState
+                length = float(length)
+                CPL.log("nicfpsCB.cbDribble", "newState=%s, length=%0.2f" % (maybeNewState, length))
                 
                 if maybeNewState in ('clearing', 'reading'):
                     newState = maybeNewState
                 elif maybeNewState == 'integrating':
                     newState = maybeNewState
-                    cmd.warn('debug="starting exposure"')
                     self.exposure.integrationStarted()
                 elif maybeNewState == 'aborted':
                     CPL.log("nicfps.dribble", "aborted what=%s newState=%s" % (self.what, maybeNewState))
@@ -50,7 +52,6 @@ class nicfpsCB(Exposure.CB):
                         newState = "done"
                 elif maybeNewState == 'done':
                     newState = maybeNewState
-                    cmd.warn('debug="finishing exposure"')
                     self.exposure.finishUp()
                     
             if newState != None:
@@ -162,7 +163,7 @@ class nicfpsExposure(Exposure.Exposure):
         """ Start a single object exposure. Requires several self. variables. """
 
         cb = nicfpsCB(None, self.sequence, self, type)
-        r = self.callback("nicfps", "expose time=%0.2f" % (self.expTime),
+        r = self.callback("nicfps", "expose object time=%0.2f" % (self.expTime),
                           callback=cb.cbDribble, responseTo=self.cmd, dribble=True)
         
     def object(self):
