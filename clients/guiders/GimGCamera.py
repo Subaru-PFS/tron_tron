@@ -1,5 +1,6 @@
 __all__ = ['GimGCamera']
 
+import shutil
 import os.path
 
 import client
@@ -111,5 +112,15 @@ class GimGCamera(GCamera.GCamera):
 
         return os.path.join(self.inPath, l)
     
+    def copyinNewRawImage(self):
+        """ Copy (and annotate) the latest raw GimCtrl image into the new directory."""
+        
+        oldPath = self._getLastImageName()
+        newPath = self._getFilename()
+
+        # This is probably where we would annotate the image header.
+        #
+        shutil.copyfile(oldPath, newPath)
+        return newPath
         
         

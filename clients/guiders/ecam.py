@@ -38,6 +38,10 @@ class ecam(Guider.Guider):
         """ Pass on a 'doread' command from a TCC to our camera. """
 
         ret = self.camera.rawCmd(cmd, 120)
+        fname = self.camera.copyinNewRawImage()
+
+        cmd.respond('filename="%s"' % (fname))
+        
         self.echoToTcc(cmd, ret)
     
     def doInit(self, cmd):
@@ -75,7 +79,7 @@ class ecam(Guider.Guider):
         self.guideScale = 0.8
         self.GImName = "S300"
         self.GImCamID = 1
-        
+        self.plateScale = 0.134
         
 # Start it all up.
 #

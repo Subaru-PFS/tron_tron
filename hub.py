@@ -73,7 +73,7 @@ def init():
     g.perms = Auth.Auth(permsCmd, debug=9)
     
     #   - A dictionary of Commander Nubs, indexed by unique ID.
-    g.commanders = NubDict('Commanders')
+    g.commanders = CmdrDict('Commanders')
     # g.listeners = g.commanders
 
     #   - A dictionary of Actor Nubs, indexed by name
@@ -243,6 +243,26 @@ class NubDict(OrderedDict):
 
         cmd.inform("%s=%s" % (self.name, ','.join(names)))
 
+class CmdrDict(NubDict):
+    """ Like NubDict, but generate a 'users' keyword, depending on
+    the state of the nub's isUser attribute.
+    """
+    
+    def listSelf(self, cmd=None):
+        names = []
+        userNames = []
+        for n in self.itervalues():
+            names.append(CPL.qstr(n.name))
+            if n.isUser:
+                userNames.append(CPL.qstr(n.name))
+                
+        if not cmd:
+            cmd = g.hubcmd
+
+        cmd.inform("%s=%s" % (self.name, ','.join(names)))
+        cmd.inform("users=%s" % (','.join(userNames)))
+
+    
 def addNubToDict(nub, nubDict):
     """ Add a new nub to the given dict. The nub's ID must not be the same as for any existing nub. """
 
