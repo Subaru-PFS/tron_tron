@@ -4,7 +4,6 @@ import shutil
 import os.path
 
 import pyfits
-
 import client
 import CPL
 import GCamera
@@ -56,7 +55,12 @@ class GimCtrlGCamera(GCamera.GCamera):
             cmdStr.strip()
         cmd.warn("debug=%r" % (cmdStr))
         
-        return self.conn.sendCmd(cmdStr, timeout)
+        return self.sendCmdTxt(cmdStr, timeout)
+        
+    def sendCmdTxt(self, cmdTxt, timeout):
+        """ Send a command string directly to the controller. """
+
+        return self.conn.sendCmd(cmdTxt, timeout)
         
     def genExposeCommand(self, cmd, expType, itime, frame):
         """ Generate the command line for a given exposure.
@@ -126,6 +130,7 @@ class GimCtrlGCamera(GCamera.GCamera):
             cb(cmd, filename, frame)
             
         # Trigger exposure
+        cmd.warn('debug=%s' % (CPL.qstr("exposure command: %s" % (cmdLine))))
         return self.conn.sendExposureCmd(cmd, cmdLine, itime, _cb)
 
     def getLastImageName(self, cmd):
@@ -158,7 +163,3 @@ class GimCtrlGCamera(GCamera.GCamera):
         
         return newPath
 
-        #
-        shutil.copyfile(oldPath, newPath)
-        os.chmod(newPath, 0644)
-        return newPath

@@ -11,6 +11,7 @@ import CPL
 import Guider
 import GimCtrlGCamera
 import TCCGcam
+import GuideFrame
 
 class ecam(Guider.Guider, TCCGcam.TCCGcam):
     """ 
@@ -25,6 +26,8 @@ class ecam(Guider.Guider, TCCGcam.TCCGcam):
                                                **argv)
         Guider.Guider.__init__(self, camera, 'ecam', **argv)
         TCCGcam.TCCGcam.__init__(self, **argv)
+
+        self.commands.update({'rawCmd':    self.doRawCmd})
         
     def _setDefaults(self):
         Guider.Guider._setDefaults(self)
@@ -50,8 +53,18 @@ class ecam(Guider.Guider, TCCGcam.TCCGcam):
         ret = self.camera.rawCmd(cmd, 10)
         self.echoToTcc(cmd, ret)
     
-    def doChooseBrain(self, cmd):
-        raise NotImplementedError("chooseBrain is not yet implemented")
+    def doRawCmd(self, cmd):
+        """ Pass on a raw command to our camera. """
+
+        rawCmd = cmd.raw_cmd
+        space = rawCmd.find(' ')
+        if space >= 0:
+            rawCmd = rawCmd[space:]
+            
+        ret = self.camera.sendCmdTxt(rawCmd, 30)
+	for i in range(len(ret)):
+	    cmd.respond('rawTxt=%s' % (CPL.qstr(ret[i])))
+	cmd.finish()
     
     def doTccDoread(self, cmd):
         """ Pass on a 'doread' command from a TCC to our camera. """
@@ -66,11 +79,13 @@ class ecam(Guider.Guider, TCCGcam.TCCGcam):
 
         ret = self.camera.rawCmd(cmd, 120)
         fname = self.camera.copyinNewRawImage()
+        frame = GuideFrame.ImageFrame(self.size)
+        frame.setImageFromFITSFile(fname)
 
         self.imgForTcc = fname
-        self.binForTcc = int(xBin), int(yBin)
+        self.frameForTcc = frame
         
-        cmd.respond('imgFile="%s"' % (fname))
+        cmd.respond('camFile="%s"' % (fname))
         
         self.echoToTcc(cmd, ret)
     

@@ -52,21 +52,13 @@ pro fsubframe,infileName,outfileName,offset,size,binning
                                 ; pixels.
 
   binnedData = rebin(inData, size)
-
-                                ; Now scale the possibly trimmed data.
-                                ; First, force the data to be a true 0 or 1 mask.
-                                ; Convert that to a floating point array
-                                ; so that we can decide how much masking
-                                ; in the input array yields a mask pixel
-  inData = float(inData ne 0)
-
                                 ; If half the input pixels were masked, generate
                                 ; an masked output pixel.
                                 ; For consistency, save to an "unsigned int" fits file.
                                 ; It may be safe, or even desirable, to save a byte array,
                                 ; but numarray can be quirky.
 
-  binnedData = uint(binnedData gt 0.5)
+  binnedData = uint(binnedData)
 
   mwrfits, binnedData, outfileName, iscale=[1.0, 32768.0], /create
 
