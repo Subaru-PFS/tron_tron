@@ -8,7 +8,8 @@ def startAllConnections(names=[]):
         hub.startNub(n)
     
 hub.init()
-startAllConnections(['tcc',
+startAllConnections(['client',
+                     'tcc',
                      'dis', 'disExpose',
                      'grim', 'grimExpose',
                      'echelle', 'echelleExpose',
@@ -16,5 +17,5 @@ startAllConnections(['tcc',
                      'gcam', 'tcc2gcam',
                      'ecam', 'tcc2ecam',
                      'cm', 'cmiccServer',
-                     'client', 'cmdin', 'TUI'])
+                     'cmdin', 'TUI'])
 hub.run()
