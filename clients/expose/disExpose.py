@@ -54,6 +54,10 @@ class DisExposureActor(Actor.Actor):
         
         # The single active sequence.
         self.sequence = None
+
+        # For status requests, keep the last sequence around.
+        self.lastSequence = None
+        
         self.paths = {}
         self.instName = 'dis'
 
@@ -185,6 +189,7 @@ class DisExposureActor(Actor.Actor):
             
             path = self.setPath(cmd)
             exp = ExpSequence(self, cmd, self.instName, command, path, cnt, debug=1)
+            self.lastSequence = self.sequence
             self.sequence = exp
             exp.run()
         else:
@@ -192,14 +197,18 @@ class DisExposureActor(Actor.Actor):
             return
 
     def status(self, cmd):
-        """
+        """ Return status keyword describing the state of any existing sequence.
         """
 
         CPL.log('status', "starting status")
-        
-        if self.sequence != None:
+
+        seq = self.sequence
+        if not seq:
+            seq = self.lastSequence
+            
+        if seq != None:
             CPL.log('status', "status on %r" % (self.instName))
-            seqState, expstate = self.sequence.getKeys()
+            seqState, expstate = seq.getKeys()
             cmd.respond("%s; %s" % (seqState, expstate))
 
         cmd.finish('')
@@ -234,7 +243,7 @@ class DisExposureActor(Actor.Actor):
         """ Extract all the pathname parts from the command and configure (or create) the ExpPath. """
 
         req, notMatched, leftovers = cmd.match([('name', str),
-                                                ('seq', int),
+                                                ('seq', str),
                                                 ('places', int)])
         path = self.getPath(cmd)
         
@@ -252,6 +261,7 @@ class DisExposureActor(Actor.Actor):
         cmd = seq.cmd
 
         try:
+            self.lastSequence = self.sequence
             del self.sequence
             self.sequence = None
         except Exception, e:
@@ -265,6 +275,7 @@ class DisExposureActor(Actor.Actor):
         cmd = seq.cmd
 
         try:
+            self.lastSequence = self.sequence
             del self.sequence
             self.sequence = None
         except Exception, e:

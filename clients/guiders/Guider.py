@@ -354,11 +354,11 @@ showstatus
         # Build a mask from:
         #   self.mask
         #   the given window
-        mask = self.getMask(bin=self.binForTcc)
+        mask = self.getMask(bin=self.binForTcc, optImg=img)
         if mask != None:
             mask = self.maskOutFromPosAndSize(mask.copy(), x0, y0, xSize, ySize, excludeRect=True)
-
-        #cmd.respond('%sDebug=%s' % (self.name, CPL.qstr('using mask=%s' % (mask))))
+        else:
+            cmd.warn('%sTxt="no mask available"')
         
         try:
             isSat, stars = PyGuide.findStars(
@@ -706,8 +706,28 @@ showstatus
         
         return centroid
 
-    def getMask(self, bin=[1,1]):
-        return self.mask
+    def getMask(self, bin=[1,1], img=None, optImg=None):
+        """ Return a numarray mask appropriate to the given binning.
+
+        Args:
+             bin      - the desired binning factor.
+             img      - an image to base the mask on. Overrides any builtin mask.
+             optImg   - an image file to use if no builtin mask (or img= file) is available.
+
+        Note that we use the opposite sign convention for mask files than numarray does.
+        """
+
+        # First, override everything with img if specified.
+        if img:
+            mask = img <= 0
+        else:
+            mask = self.mask
+
+        # Next, use optImg if no other mask is available.
+        if not mask and optImg:
+            mask = optImg <= 0
+            
+        return mask
     
     def doClearMask(self, cmd):
         """ Stop using any mask. """

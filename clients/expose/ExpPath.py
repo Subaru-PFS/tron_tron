@@ -127,6 +127,11 @@ class ExpPath(object):
         name = name.strip()
         userDir, name = self.normalizeDir('', name)
         self._checkDir(userDir)
+
+        # Require a trailing period.
+        if len(name) == 0 or name[-1] != '.':
+            name += "."
+            
         CPL.log("ExpPath", "dir=%s, name=%s" % (userDir, name))
         
         # Make sure the fully fleshed out userpath does not escape from our root directory.
@@ -146,16 +151,18 @@ class ExpPath(object):
            Error
         """
 
-        if number == 'next':
-            self.number = number
-            return
+        if type(number) == type(''):
+            number = number.lower()
+            if number in ('next', 'nextbydir', 'nextbyfile'):
+                self.number = number
+                return
         
         # Make sure the number & places args are integers
         #
         try:
             number = int(number)
         except Exception, e:
-            raise CPL.Error("sequence number is not really a number: %s" % (number))
+            raise CPL.Error("sequence number is neither a number nor 'next', 'nextByFile', or 'nextByDir': %s" % (number))
         
         self.number = number
         
@@ -243,22 +250,99 @@ class ExpPath(object):
             return 999
 
         return fnum+1
+
+    def _getNumberFromFilename(self, fname):
+        """ Return the numeric part of a filename, as an integer.
+
+        Some assumptions about the filename:
+          - leading directories are optional.
+          - the filename has at least two periods, and the last two bound the file number.
+          - the file number, as extracted, can have trailing non-numeric text.
+        """
+
+        try:
+            fparts = fname.split('.')
+            fnumPart = fparts[-2]
+
+            # OK, strip off any non-numeric stuff
+            while len(fnumPart) > 0 and not fnumPart[-1].isdigit():
+                fnumPart = fnumPart[:-1]
+                
+            fnum = int(fnumPart)
+        except Exception, e:
+            raise Exception("unexpected filename with no number: %r parts=%s" % (fname, fnumParts))
+
+        return fnum
+    
+    def _getNextNumberFromFilelist(self, files):
+        """ Return the next highest file number after those in a list of files.
+        """
         
-        
+        if len(files) == 0:
+            return 1
+
+        fileNumbers = map(self._getNumberFromFilename, files)
+        fileNumbers.sort()
+
+        CPL.log("_getNextNumberFromFilelist", "%d files = %s" % (len(files), files))
+        CPL.log("_getNextNumberFromFilelist", "%d fileNumbers = %s" % (len(fileNumbers), fileNumbers))
+        lastNumber = fileNumbers[-1]
+
+        return lastNumber + 1
+
+    def _getNextNumberByFile(self):
+        """ Given a presumably safe internal configuration, find the next available sequence number.
+
+        Basically, sort the list of files that match all but the .suffix pattern, grab the trailing
+        integer from the last match, and add one.
+
+        glob just does not work -- switch to filtering with regexps.
+        """
+
+        pattern = os.path.join(self.rootDir, self.programDir, self.userDir,
+                               "%s[0-9][0-9]*%s" % (self.name, self.suffix))
+        files = glob.glob(pattern)
+
+        CPL.log("getNextNumberByFile", "pattern=%s, %d files" % (pattern, len(files)))
+
+        return self._getNextNumberFromFilelist(files)
+    
+    def _getNextNumberByDir(self):
+        """ Given a presumably safe internal configuration, find the next available sequence number.
+
+        Basically, sort the list of files that match all but the .suffix pattern, grab the trailing
+        integer from the last match, and add one.
+
+        glob just does not work -- switch to filtering with regexps.
+        """
+
+        pattern = os.path.join(self.rootDir, self.programDir, self.userDir, "*%s" % (self.suffix))
+        files = glob.glob(pattern)
+
+        CPL.log("getNextNumberByDir", "pattern=%s, %d files" % (pattern, len(files)))
+
+        return self._getNextNumberFromFilelist(files)
+    
     def _getNumber(self):
         """ Return the next sequence number. Find the next free file if necessary. """
         
         if self.number == 'next':
             n = self._getNextNumber()
+        elif self.number == 'nextbydir':
+            n = self._getNextNumberByDir()
+        elif self.number == 'nextbyfile':
+            n = self._getNextNumberByFile()
         else:
             n = self.number
+
+        CPL.log("_getNumber", "n = %s" % (n))
 
         return "%0*d" % (self.places, n)
     
     def _incrNumber(self):
         """ Increment the sequence number. """
         
-        if self.number != 'next':
+        if type(self.number) == int:
             self.number += 1
 
     def _adjustProgramDir(self):
