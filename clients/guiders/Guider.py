@@ -392,7 +392,7 @@ showstatus
                     shape = PyGuide.starShape(img,
                                               mask,
                                               star.ctr)
-                    fwhm = shape.fwhm * scale
+                    fwhm = shape.fwhm
                     chiSq = shape.chiSq
                     bkgnd = shape.bkgnd
                     ampl = shape.ampl
@@ -423,8 +423,12 @@ showstatus
 
     def doStatus(self, cmd):
         self.camera.status(cmd)
-        cmd.finish()
-    
+
+        if self.mask:
+            maskFile = self.mask
+        else:
+            maskFile = ''
+        cmd.finish('maskFile=%s' % (CPL.qstr(maskFile)))
     
     def doTest(self, cmd):
         cmd.finish('txtForTcc=" OK"')
@@ -724,7 +728,7 @@ showstatus
             mask = self.mask
 
         # Next, use optImg if no other mask is available.
-        if not mask and optImg:
+        if mask == None and optImg != None:
             mask = optImg <= 0
             
         return mask
@@ -754,6 +758,14 @@ showstatus
         self.mask = im
         cmd.finish('%sMask=%s' % (self.name, CPL.qstr(fname)))
         
+
+    def _setMask(self, fname):
+        f = pyfits.open(fname)
+        im = f[0].data
+        f.close()
+        
+        self.mask = im <= 0
+
     def doSetMask(self, cmd):
         """ Load a mask to apply.
 
@@ -761,24 +773,13 @@ showstatus
             a FITS filename, based from self.imBaseDir
         """
 
-        if len(cmd.argv) == 6:
+        if len(cmd.argv) == 2:
             fname = cmd.argv[1]
-            x0, y0, x1, y1 = map(int, cmd.argv[2:])
-        elif len(cmd.argv) == 2:
-            fname = cmd.argv[1]
-            x0 = None
         else:
-            cmd.fail('%sTxt="usage: setMask filename [X0 Y0 X1 Y1]"' % (self.name))
+            cmd.fail('%sTxt="usage: setMask filename"' % (self.name))
             return
 
-        f = pyfits.open(fname)
-        im = f[0].data
-        f.close()
-        
-        self.mask = im <= 0
-
-        if x0 != None:
-            self.mask[y0:y1, x0:x1] = 1
+        self._setMask(fname)
         
         cmd.finish('%sMask=%s' % (self.name, CPL.qstr(fname)))
         
