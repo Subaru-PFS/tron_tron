@@ -11,40 +11,39 @@ import client
 import CPL
 import Guider
 import AltaGCamera
+import TCCGcam
 
-class gcam(Guider.Guider):
+class gcam(Guider.Guider, TCCGcam.TCCGcam):
     def __init__(self, **argv):
         camera = AltaGCamera.AltaGCamera('gcam',
-                                         '/export/images/gcam',
-                                         'na2alta.apo.nmsu.edu', **argv)
+                                         CPL.cfg.get('gcam', 'imagePath'),
+                                         CPL.cfg.get('gcam', 'cameraHostname'),
+                                         **argv)
         Guider.Guider.__init__(self, camera, 'gcam', **argv)
-
+        TCCGcam.TCCGcam.__init__(self, **argv)
+        
         # Additional commands for the Alta.
         #
         self.commands.update({'setTemp':    self.doSetTemp,
-                              'setFan':     self.doSetFan,
-                              'setThresh':  self.doSetThresh})
+                              'setFan':     self.doSetFan})
 
         self._setDefaults()
         
     def _setDefaults(self):
-        self.boresight = [512.0, 512.0]
-        self.size = [1024, 1024]
-        self.binning = [3,3]
-        self.window = [0,0,340,340]
-        self.scanRad = 10.0
-        self.guideScale = 0.8
+        self.defaults['bias'] = CPL.cfg.get('gcam', 'bias')
+        self.defaults['readNoise'] = CPL.cfg.get('gcam', 'readNoise')
+        self.defaults['ccdGain'] = CPL.cfg.get('gcam', 'ccdGain')
+        self.defaults['ccdFrame'] = CPL.cfg.get('gcam', 'ccdFrame')
+        self.defaults['binning'] = CPL.cfg.get('gcam', 'binning')
+        self.defaults['boresight'] = CPL.cfg.get('gcam', 'boresight')
+        self.defaults['maskFile'] = CPL.cfg.get('gcam', 'maskFile')
+
+        self.size = self.defaults['ccdFrame'][2:3]
+        
         self.GImName = "Alta-E6"
         self.GImCamID = 1
 
-        self.plateScale = 0.138
-        self.bias = 1787
-        self.rdNoise = 21.3
-        self.ccdGain = 1.6
-        self.starThresh = 4.5
-        self.defaultStarThresh = self.starThresh
-
-        self._setMask('/export/images/keep/masks/na2.fits')
+        self._setMask(self.defaults['maskFile'])
         
     def doSetTemp(self, cmd):
         """ Handle setTemp command.
@@ -96,33 +95,7 @@ class gcam(Guider.Guider):
         self.camera.coolerStatus(cmd)
         cmd.finish()
             
-    def doSetThresh(self, cmd):
-        """ Handle setThresh command, which sets the stddev factor to consider a blob a star.
-
-        CmdArgs:
-           int    - the new 
-        """
-
-        parts = cmd.raw_cmd.split()
-        if len(parts) != 2:
-            cmd.fail('%sTxt="usage: setThresh value."')
-            return
-
-        try:
-            t = float(parts[1])
-        except:
-            cmd.fail('%sTxt="setThresh value must be a number"')
-            return
-
-        self.starThresh = t
-        cmd.finish('starThreshold=%0.2f' % (self.starThresh))
         
-    def _guideExpose(self):
-        pass
-    
-    def _guideOffset(self):
-        pass
-    
 # Start it all up.
 #
 def main(name, eHandler=None, debug=0, test=False):

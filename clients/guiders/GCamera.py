@@ -30,6 +30,8 @@ class GCamera(object):
         self.exposeCmd = None
 
         self.lastImage = None
+        self.lastDir = None
+        self.lastID = None
         
     def _getFilename(self):
         """ Return the next available filename.
@@ -53,9 +55,10 @@ class GCamera(object):
         dirName = os.path.join(self.path, dateString)
         if not os.path.isdir(dirName):
             os.mkdir(dirName)
-            os.chmod(dirName, 0777)
+            os.chmod(dirName, 0755)
 
-            fileName = "%s0001.fits" % (self.nameChar)
+            id = 1
+            fileName = "%s%04d.fits" % (self.nameChar, id)
             
             # Create the last.image file
             #
@@ -69,7 +72,7 @@ class GCamera(object):
             lastFileName = f.readline()
             lastID = int(lastFileName[1:5], 10)
             id = lastID + 1
-
+            
             if id > 9999:
                 raise RuntimeError("guider image number in %s is more than 9999." % (dirName))
             
@@ -81,12 +84,18 @@ class GCamera(object):
 
         fullPath = os.path.join(dirName, fileName)
         self.lastImage = fullPath
+        self.lastDir = dirName
+        self.lastID = id
+        
         return fullPath
 
     def lastImageNum(self):
         """ Return the last image number taken, or 'nan'."""
 
-        return 'nan'
+        if self.lastID == None:
+            return 'nan'
+        else:
+            return "%04d" % (self.lastID)
 
     def cidForCmd(self, cmd):
         return "%s.%s" % (cmd.fullname, self.name)
@@ -106,7 +115,10 @@ class GCamera(object):
 
         filename = self._getFilename()
         f = file(filename, 'w')
-
+        os.chmod(filename, 0644)
+        
+        basename = os.path.basename(filename)
+        
         w, h = d['size']
         
         cards = ["%-80s" % ('SIMPLE  = T'),
@@ -120,6 +132,7 @@ class GCamera(object):
                  "%-80s" % ("IMAGETYP= '%s'" % d['type']),
                  "%-80s" % ('EXPTIME = %0.2f' % d['iTime']),
                  "%-80s" % ('CCDTEMP = %0.1f' % (self.getCCDTemp())),
+                 "%-80s" % ("FILENAME= '%s'" % (basename)),
                  "%-80s" % ('END')]
 
         # Write out all our header cards
@@ -140,7 +153,7 @@ class GCamera(object):
 
         f.close()
         
-        cmd.respond('filename="%s"' % (filename))
+        cmd.respond('imgFile="%s"' % (filename))
         
         return filename
     

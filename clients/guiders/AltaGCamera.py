@@ -28,11 +28,11 @@ class AltaGCamera(GCamera.GCamera):
     def zap(self, cmd):
         pass
     
-    def status(self, cmd):
+    def status(self, cmd, doFinish=True):
         """ Generate status keywords. Does NOT finish teh command.
         """
 
-        coolerStatus = self.cam.coolerStatus()
+        coolerStatus = self.cam.coolerStatus(doFinish=doFinish)
         if self.lastImage == None:
             fileStatus = 'lastImage='
         else:
