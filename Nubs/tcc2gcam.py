@@ -24,7 +24,7 @@ def start(poller):
     stop()
 
     d = Hub.RawCmdDecoder('gcam', EOL='\r', debug=9)
-    e = Hub.RawReplyEncoder(keyName='RawTxt', EOL='\r', debug=9)
+    e = Hub.RawReplyEncoder(keyName='txtForTcc', EOL='\r', debug=9)
     nub = Hub.SocketCommanderNub(poller, host, port,
                        name=name, encoder=e, decoder=d,
                        debug=9)

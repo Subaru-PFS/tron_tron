@@ -87,8 +87,9 @@ class Guider(Actor.Actor, GuideLoop.GuideLoop):
         
         # Optionally handle the command as a GImCtrl
         if cmd.cmdrName == 'TC01.TC01':
-            cmd.respond('RawTxt="init"')
-            cmd.finish('RawTxt="OK"')
+            cmd.respond('txtForTcc="init"')
+            cmd.finish('txtForTcc="OK"')
+            return
         
         cmd.finish()
         
@@ -103,18 +104,18 @@ showstatus
 
         """
         
-        cmd.respond('RawTxt=%s' % (CPL.qstr(cmd.raw_cmd)))
-        cmd.respond("RawTxt=%s" % (CPL.qstr('%d "%s" %d %d %d %0.2f nan "%s"' % \
+        cmd.respond('txtForTcc=%s' % (CPL.qstr(cmd.raw_cmd)))
+        cmd.respond("txtForTcc=%s" % (CPL.qstr('%d "%s" %d %d %d %0.2f nan "%s"' % \
                                             (self.GImCamID, self.GImName,
                                              self.size[0], self.size[1], 16,
                                              self.camera.cam.read_TempCCD(),
                                              "camera: ID# name sizeXY bits/pixel temp lastFileNum"))))
-        cmd.respond('RawTxt=%s' % (CPL.qstr('%d %d %d %d %d %d nan 0 nan "%s"' % \
+        cmd.respond('txtForTcc=%s' % (CPL.qstr('%d %d %d %d %d %d nan 0 nan "%s"' % \
                                             (1, 1, 0, 0, 0, 0,
                                              "image: binXY begXY sizeXY expTime camID temp"))))
-        cmd.respond('RawTxt=%s' % (CPL.qstr('8.00 1000 "%s"' % \
+        cmd.respond('txtForTcc=%s' % (CPL.qstr('8.00 1000 "%s"' % \
                                             ("params: boxSize (FWHM units) maxFileNum"))))
-        cmd.finish('RawTxt=" OK"')
+        cmd.finish('txtForTcc=" OK"')
     
     def doTccSetcam(self, cmd):
         """ Respond to a tcc 'setcam N' command.
@@ -132,12 +133,12 @@ showstatus
         id = int(cmd.argv[-1])
         self.GImCamID = id
         
-        cmd.respond('RawTxt=%s' % (CPL.qstr(cmd.raw_cmd)))
-        cmd.respond('RawTxt=%s' % (CPL.qstr('%d "%s" %d %d %d nan nan "%s"' % \
+        cmd.respond('txtForTcc=%s' % (CPL.qstr(cmd.raw_cmd)))
+        cmd.respond('txtForTcc=%s' % (CPL.qstr('%d "%s" %d %d %d nan nan "%s"' % \
                                             (id, self.GImName,
                                              self.size[0], self.size[1], 16,
                                              "camera: ID# name sizeXY bits/pixel temp lastFileNum"))))
-        cmd.finish('RawTxt=" OK"')
+        cmd.finish('txtForTcc=" OK"')
 
     def doTccDoread(self, cmd):
         """ Respond to a tcc 'doread' cmd.
@@ -156,7 +157,7 @@ showstatus
         try:
             type, iTime, xBin, yBin, xCtr, yCtr, xSize, ySize = cmd.raw_cmd.split()
         except:
-            cmd.fail('RawTxt=%s' % (CPL.qstr("Could not parse command %s" % (cmd.raw_cmd))))
+            cmd.fail('txtForTcc=%s' % (CPL.qstr("Could not parse command %s" % (cmd.raw_cmd))))
             return
 
         try:
@@ -175,21 +176,21 @@ showstatus
                 xSize = self.size[0] / xBin
             if ySize == 0:
                 ySize = self.size[1] / yBin
-                
+
             bin = [xBin, yBin]
             window = [int(xCtr - (xSize/2)),
                       int(yCtr - (ySize/2)),
                       int(xCtr + (xSize/2) + 0.5),
                       int(yCtr + (ySize/2) + 0.5)]
         except:
-            cmd.fail('RawTxt=%s' % (CPL.qstr("Could not interpret command %s" % (cmd.raw_cmd))))
+            cmd.fail('txtForTcc=%s' % (CPL.qstr("Could not interpret command %s" % (cmd.raw_cmd))))
             return
 
         try:
             exp = self._doExpose(cmd, type, iTime, bin, window)
         except Exception, e:
             raise
-            cmd.fail('RawTxt=%s' % (CPL.qstr('Could not make an exposure: %s' % (e))))
+            cmd.fail('txtForTcc=%s' % (CPL.qstr('Could not make an exposure: %s' % (e))))
             return
 
         cmd.respond('imgFile=%s' % (CPL.qstr(exp)))
@@ -200,22 +201,22 @@ showstatus
         self.binForTcc = xBin, yBin
         
         ccdTemp = self.camera.cam.read_TempCCD()
-        cmd.respond('RawTxt=%s' % (CPL.qstr(cmd.raw_cmd)))
-        cmd.respond('RawTxt=%s' % (CPL.qstr('%d %d %d %d %d %d %0.2f %d %0.2f %s' % \
+        cmd.respond('txtForTcc=%s' % (CPL.qstr(cmd.raw_cmd)))
+        cmd.respond('txtForTcc=%s' % (CPL.qstr('%d %d %d %d %d %d %0.2f %d %0.2f %s' % \
                                             (bin[0], bin[1],
                                              window[0], window[1], window[2], window[3],
                                              iTime, self.GImCamID, ccdTemp,
                                              "image: binXY begXY sizeXY expTime camID temp"))))
-        cmd.finish('RawTxt=" OK"')
+        cmd.finish('txtForTcc=" OK"')
         
     def doTccFindstars(self, cmd):
         """ Pretends to be a GImCtrl running 'findstars'
 
         findstars            1      171.0      171.0     1024.0     1024.0        3.5        3.5
             yields:
-        i RawText="findstars            1      171.0      171.0     1024.0     1024.0        3.5        3.5"
-        i RawText="3 3   213.712 144.051   5.73 4.90 77.5   192.1 5569.1 328.0   0.008 0.008   0"
-        : RawText=" OK"
+        findstars            1      171.0      171.0     1024.0     1024.0        3.5        3.5
+        3 3   213.712 144.051   5.73 4.90 77.5   192.1 5569.1 328.0   0.008 0.008   0
+        OK
         """
 
         fname = self.imgForTcc
@@ -227,33 +228,35 @@ showstatus
         # Parse out what (little) we need: the number of stars and the predicted size.
         #
         cmdParts = cmd.raw_cmd.split()
-        cnt = cmdParts[1]
-        predX = cmdParts[-2]
-        predY = cmdParts[-1]
+        cnt, x0, y0, x1, y1, xPredFWHM, yPredFWHM = cmdParts = cmdParts
 
-	isSat, sd = PyGuide.findStars(
+	isSat, stars = PyGuide.findStars(
 		data = img,
                 mask=self.mask
 	)
 
         if isSat:
-            cmd.warn('%sFindstarsSaturated=%s' % (self.name, CPL.qstr(fname)))
-        cmd.respond('%sFindstarsCnt=%d' % (self.name, len(sd)))
+            cmd.warn('findstarsSaturated=%s' % (self.name, CPL.qstr(fname)))
+        cmd.respond('findstarsCnt=%d' % (self.name, len(stars)))
 
-        cmd.respond('RawTxt=%s' % (CPL.qstr(cmd.raw_cmd)))
-        
-        i=1
-        for counts, ctr, rad, totPts in sd:
-            ctr = self.ij2xy(ctr)
-            cmd.respond('RawTxt=%s' % (CPL.qstr("%d %d %.3f %.3f nan nan nan nan %10.1f nan nan nan 0" % \
-                                                (self.binForTcc[0], self.binForTcc[1],
-                                                 ctr[0], ctr[1],
-                                                 counts))))
-            i += 1
-            if i >= cnt:
-                break
+        cmd.respond('txtForTcc=%s' % (CPL.qstr(cmd.raw_cmd)))
+
+        if len(stars) == 0:
+            cmd.respond('txtForTcc="no stars found"')
+        else:
+            i=1
+            for star in stars:
+                ctr = self.ij2xy(star.center)
+                cmd.respond('txtForTcc=%s' % (CPL.qstr("%d %d %.3f %.3f nan nan nan nan %10.1f nan %0.2f %0.2f 0" % \
+                                                    (self.binForTcc[0], self.binForTcc[1],
+                                                     ctr[0], ctr[1],
+                                                     star.counts,
+                                                     star.err[1], star.err[0]))))
+                i += 1
+                if i >= cnt:
+                    break
             
-        cmd.finish('RawTxt=" OK"')
+        cmd.finish('txtForTcc=" OK"')
 
     def doStatus(self, cmd):
         self.camera.status(cmd)
@@ -368,11 +371,12 @@ showstatus
             seed = self.parseCoord(cmd.argDict['on'])
             
 
-        measCtr, nCounts, nPts = self._doCentroid(cmd, seed, fname)
-        cmd.respond('%sCentroid=%0.2f,%0.2f,%d,%d' % \
-                    (self.name,
-                     measCtr[0], measCtr[1],
-                     nCounts, nPts))
+        centroid = self._doCentroid(cmd, seed, fname)
+        measCtr = ij2xy(centroid.center)
+        cmd.respond('centroid=%0.2f,%0.2f,%0.2f,%0.2f,%d,%d' % \
+                    (measCtr[0], measCtr[1],
+                     centroid.error[1], centroid.error[0], 
+                     centroid.counts, centroid.pix))
 
         cmd.finish()
         return
@@ -507,9 +511,12 @@ showstatus
                 return
             time = matched['time']
 
-            # Need to add windowing and binning -- CPL
             window = None
             bin = None
+            if matched.has_key('bin'):
+                bin = self.parseBin(matched['bin'])
+            if matched.has_key('window'):
+                window = self.parseWindow(matched['window'])
 
             return self._doExpose(cmd, type, time, bin, window, callback)
 
@@ -532,16 +539,16 @@ showstatus
         fits = pyfits.open(fname)
         img = fits[0].data
         fits.close()
-	isSat, sd = PyGuide.findStars(
-		data = img
+	isSat, stars = PyGuide.findStars(
+            data = img
 	)
 
         if isSat:
             cmd.warn('%sFindstarsSaturated=%s' % (self.name, CPL.qstr(fname)))
-        if len(sd) == 0:
+        if len(stars) == 0:
             return None
         else:
-            return self.ij2xy(sd[0][1])
+            return self.ij2xy(stars[0].center)
         
     def _doCentroid(self, cmd, seedPos, fname=None, scanRad=None):
         """ Takes a single guider exposure and centroids on the given position. This overrides but
@@ -562,13 +569,13 @@ showstatus
                                           (seedPos[0], seedPos[1], scanRad,
                                            len(img), fname))))
         ds9 = cmd.argDict.get('ds9', False)
-        measCtr, nCounts, nPts = PyGuide.centroid(img,
-                                                  self.mask,
-                                                  self.xy2ij(seedPos),
-                                                  scanRad,
-                                                  ds9=ds9)
+        centroid = PyGuide.centroid(img,
+                                    self.mask,
+                                    self.xy2ij(seedPos),
+                                    scanRad,
+                                    ds9=ds9)
         
-        return self.ij2xy(measCtr), nCounts, nPts
+        return centroid
 
     def doClearMask(self, cmd):
         """ Stop using any mask. """
