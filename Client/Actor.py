@@ -48,7 +48,8 @@ class Actor(Thread):
         self.queue = FilterQueue.ActorFilter(name=self.name, debug=self.debug)
 
         self.mid = 1
-        self.commands = RO.Alg.OrderedDict.OrderedDict({'help':self.doHelp})
+        self.commands = RO.Alg.OrderedDict.OrderedDict({'help':self.helpCmd,
+                                                        'dbg' : self.debugCmd})
 
         # Generic help template.
         #
@@ -73,8 +74,29 @@ class Actor(Thread):
             
         return funcHelp
 
+
+    def debugCmd(self, cmd):
+        """ Execute a command
+        """
+
+        cmdTxt = cmd.raw_cmd.strip()
+        cmdTxt = cmdTxt[4:].strip()
         
-    def doHelp(self, cmd):
+        CPL.log("%sDebugCmd" % (self.name), "cmd = %r" % (cmdTxt))
+        if cmdTxt == "":
+            cmd.finish("Eval=%s" % (CPL.qstr("")))
+            return
+    
+        try:
+            ret = eval(cmdTxt)
+        except Exception, e:
+            cmd.fail('%sEvalError=%s' % (self.name, CPL.qstr(e)))
+            raise
+    
+        cmd.finish("%sEval=%s" % (self.name, CPL.qstr(ret)))
+        CPL.log("%s.debugCmd" % (self.name), "ret = %r" % (ret))
+        
+    def helpCmd(self, cmd):
         """ Return help strings.
 
         CmdArgs:
@@ -126,7 +148,7 @@ class Actor(Thread):
             cmd.respond("helpTxt=%*s - %s" % (maxlen, 
                                               CPL.qstr(syn), CPL.qstr(body)))
         cmd.finish('')
-    doHelp.helpText = ("help", "you got it!")
+    helpCmd.helpText = ("help", "you got it!")
 
     def _parse(self, cmd):
         """ Default parsing behavior. Simply calls a Command's handler.

@@ -403,7 +403,7 @@ class HubLink(object):
 
         self.lock.acquire(src="listen")
         try:
-            self.filter.append(f)
+            self.filters.append(f)
         finally:
             self.lock.release()
 
@@ -413,6 +413,12 @@ class HubLink(object):
         """ Unregister a filter. """
 
         self.lock.acquire(src="finishedWith")
+
+        if id not in self.filters:
+            CPL.log("HubLink.finishedWith", "no filter: %s" % (id))
+            self.lock.release()
+            return
+        
         try:
             self.filters.remove(id)
         finally:

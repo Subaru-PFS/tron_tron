@@ -45,6 +45,9 @@ class GimGCamera(GCamera.GCamera):
         
         return self.conn.sendCmd(cmdStr, timeout)
         
+    def status(self, cmd, doFinish=True):
+        pass
+    
     def genExposeCommand(self, cmd, expType, itime, window=None, bin=None):
         """ Generate the command line for a given exposure.
 

@@ -6,6 +6,7 @@ import time
 
 import client
 import CPL
+import GuideFrame
 import MyPyGuide
 
 class GuideLoop(object):
@@ -40,20 +41,34 @@ class GuideLoop(object):
         # What to add to TCC times to get Unix seconds
         self.tccDtime = -3506716800.0 - 32.0
 
-        client.listenFor('tcc', ['MoveItems', 'Moved'], self.listenToMoveItems)
-        client.listenFor('tcc', ['TCCStatus'], self.listenToTCCStatus)
-        client.listenFor('tcc', ['Boresight'], self.listenToTCCBoresight)
-        client.listenFor('tcc', ['GImCtr'], self.listenToTCCImCtr)
-        client.listenFor('tcc', ['GImScale'], self.listenToTCCImScaler)
+        self.listeners = []
+        self.listeners.append(client.listenFor('tcc', ['MoveItems', 'Moved'], self.listenToMoveItems))
+        self.listeners.append(client.listenFor('tcc', ['TCCStatus'], self.listenToTCCStatus))
+        self.listeners.append(client.listenFor('tcc', ['Boresight'], self.listenToTCCBoresight))
+        self.listeners.append(client.listenFor('tcc', ['GImCtr'], self.listenToTCCImCtr))
+        self.listeners.append(client.listenFor('tcc', ['GImScale'], self.listenToTCCImScale))
 
         # Force a couple of updates:
         client.call("tcc", "show inst/full") # ImCtr, ImScale
         client.call("tcc", "show object") # Boresight
         
+    def __str__(self):
+        return "GuideLoop(guiding=%s, listeners=%s)" % (self.guiding, self.listeners)
+    
+    def cleanup(self):
+        self.guiding = False
+        for i in range(len(self.listeners)):
+            CPL.log("GuideLoop.cleanup", "deleting listener %s" % (self.listeners[0]))
+            self.listeners[0].stop()
+            del self.listeners[0]
+        
+        
     def failGuiding(self, why):
         """ Stop guiding, 'cuz something went wrong.
         This must only be called when the loop has stopped.
         """
+
+        self.cleanup()
 
         self.cmd.respond('guiding=%s' % CPL.qstr(self.guiding))
         self.cmd.fail('%sTxt=%s' % (self.controller.name, CPL.qstr(why)))
@@ -64,6 +79,8 @@ class GuideLoop(object):
         This must only be called when the loop has stopped.
         """
 
+        self.cleanup()
+        
         self.cmd.finish('guiding=%s' % CPL.qstr(self.guiding))
         self.controller.guideLoopIsStopped()
         
@@ -144,6 +161,8 @@ class GuideLoop(object):
             pos[5] += self.tccDtime
 
         self.boresightOffset = pos
+        self.cmd.warn('debug="set boresight offset to (%0.2f, %0.2f)"' % \
+                      (self.boresightOffset[0], self.boresightOffset[1]))
     
     def listenToTCCImCtr(self, reply):
         """ Set the guider/instrument center pixel.
@@ -151,6 +170,8 @@ class GuideLoop(object):
 
         k = reply.KVs['GImCtr']
         self.boresight = map(float, k)
+        self.cmd.warn('debug="set boresight pos to (%0.2f, %0.2f)"' % \
+                      (self.boresight[0], self.boresight[1]))
         
     def listenToTCCImScale(self, reply):
         """ Set the guider/instrument scales.
@@ -158,29 +179,9 @@ class GuideLoop(object):
 
         k = reply.KVs['GImScale']
         self.imScale = map(float, k)
+        self.cmd.warn('debug="set imscale to (%0.2f, %0.2f)"' % \
+                      (self.imScale[0], self.imScale[1]))
         
-    def getBoresight(self, t=None):
-        """ Figure out the boresight position for a given time.
-
-        The effective boresight is the sum of the instrument/guider center and the
-        boresight offset. 
-
-        Args:
-             T       - time, in Unix seconds, to reckon the boresight at.
-        """
-
-        if t == None:
-            t = time.time()
-
-        xPos = self.boresight[0] + \
-               self.imScale[0] * (self.boresightOffset[0] + \
-                                  (t - self.boresightOffset[2]) * self.boresightOffset[1])
-        yPos = self.boresight[1] + \
-               self.imScale[1] * (self.boresightOffset[3] + \
-                                  (t - self.boresightOffset[5]) * self.boresightOffset[4])
-
-        return xPos, yPos
-    
     def _doGuide(self):
         """ Actually start guiding.
 
@@ -194,6 +195,8 @@ class GuideLoop(object):
         If neither is specified, run a findstars and guide on the "best" return.
         """
 
+        CPL.log("_doGuide", "tweaks=%s" % (self.tweaks))
+        
         self.guiding = True
         self.controller.doCmdExpose(self.cmd, self._firstExposure, 'expose', self.tweaks)
 
@@ -233,13 +236,22 @@ class GuideLoop(object):
             # Simply start nudging the nearest object to the boresight to the boresight
             #
             self.guidingType = 'boresight'
-            self.refpos = self._GPos2ICRS(self.getBoresight())
+            try:
+                self.refpos = self._GPos2ICRS(self.getBoresight())
+            except:
+                self.failGuiding('could not establish the boresight.')
+                return
+                
         elif centerOn:
             # if "centerOn" is specified, offset the given position to the boresight,
             # then continue nudging it there.
             #
             self.guidingType = 'boresight'
-            seedPos = self.controller.parseCoord(centerOn)
+            try:
+                seedPos = self.controller.parseCoord(centerOn)
+            except Exception, e:
+                self.failGuiding('could not parse the centerOn position: %s.' % (e))
+                return
 
             self.cmd.respond('txt="offsetting object to the boresight...."')
             try:
@@ -251,16 +263,26 @@ class GuideLoop(object):
                 self.failGuiding(e)
                 return
 
-            self.refpos = self._GPos2ICRS(self.getBoresight())
-            ret = self._centerUp(cmd, star, scaleFunc=None, offsetType='calib')
-            if not ret:
-                self.failGuiding('could not move the specified object to the boresight.')
+            try:
+                self.refpos = self._GPos2ICRS(self.getBoresight())
+                offsetCmd = self._genOffsetCmd(cmd, star, frame, offsetType='calib', doScale=False)
+                if self.cmd.argDict.has_key('noMove'):
+                    self.cmd.warn('%sTxt="NOT sending tcc %s"' % (self.controller.name, cmdTxt))
+                else:
+                    client.call('tcc', cmdTxt, cid=self.controller.cidForCmd(self.cmd))
+            except Exception, e:
+                self.failGuiding(e)
                 return
             
         elif gstar:
             # if "gstar" is specified, use that as the guide star.
             #
-            seedPos = self.controller.parseCoord(gstar)
+            try:
+                seedPos = self.controller.parseCoord(gstar)
+            except Exception, e:
+                self.failGuiding(e)
+                return
+                
             try:
                 star = MyPyGuide.centroid(self.cmd, filename, self.controller.mask,
                                           frame, seedPos, self.tweaks)
@@ -271,19 +293,28 @@ class GuideLoop(object):
                 return
 
             self.guidingType = 'field'
-            self.refpos = self._GPos2ICRS(star.ctr)
+
+            try:
+                self.refpos = self._GPos2ICRS(star.ctr)
+            except Exception, e:
+                self.failGuiding('could not establish the star coordinates: %s' % (e))
+
         else:
             # otherwise use the "best" object as the guide star.
             #
-            isSat, stars = MyPyGuide.findstars(self.cmd, filename, self.controller.mask,
-                                               frame, self.tweaks)
-            if not stars:
-                self.failGuiding("no stars found")
-                return
+            try:
+                isSat, stars = MyPyGuide.findstars(self.cmd, filename, self.controller.mask,
+                                                   frame, self.tweaks)
+                if not stars:
+                    self.failGuiding("no stars found")
+                    return
 
-            startPos = stars[0].ctr
-            self.guidingType = 'field'
-            self.refpos = self._GPos2ICRS(startPos)
+                startPos = stars[0].ctr
+                self.guidingType = 'field'
+                self.refpos = self._GPos2ICRS(startPos)
+            except Exception, e:
+                self.failGuiding('could not establish guide star coordinates: %s' % (e))
+                return
 
         #  4) start the guiding loop:
         #
@@ -314,7 +345,7 @@ class GuideLoop(object):
         self.controller.doCmdExpose(self.cmd, self._handleGuiderFrame,
                                     'expose', tweaks=self.tweaks)
         
-    def scaleOffset(self, star, diffPos)
+    def scaleOffset(self, star, diffPos):
         """ Scale the effective offset.
 
         Args:
@@ -341,14 +372,6 @@ class GuideLoop(object):
             
         return [diffPos[0] * xfitFactor, \
                diffPos[1] * yfitFactor]
-
-    def _getExpectedPos(self, t=None):
-        """ Return the expected position of the guide star. """
-
-        if self.guidingType == 'field':
-            return self._ICRS2GPos(self.refpos)
-        else:
-            return self.getBoresight(t)
 
     def _initTrailing(self):
         """ Initialize toy test trailing for the Echelle. """
@@ -379,7 +402,29 @@ class GuideLoop(object):
 
         return [0.0, self.trailingOffset]
 
+    def getBoresight(self, t=None):
+        """ Figure out the boresight position for a given time.
 
+        The effective boresight is the sum of the instrument/guider center and the
+        boresight offset. 
+
+        Args:
+             T       - time, in Unix seconds, to reckon the boresight at.
+        """
+
+        if t == None:
+            t = time.time()
+
+        xPos = self.boresight[0] + \
+               self.imScale[0] * (self.boresightOffset[0] + \
+                                  (t - self.boresightOffset[2]) * self.boresightOffset[1])
+        yPos = self.boresight[1] + \
+               self.imScale[1] * (self.boresightOffset[3] + \
+                                  (t - self.boresightOffset[5]) * self.boresightOffset[4])
+
+        self.cmd.warn('debug="boresight is at (%0.2f, %0.2f)"' % (xPos, yPos))
+        return xPos, yPos
+    
     def _getRefPosition(self):
         """ Return the current reference position in alt/az -- the position
         we want to be at. """
@@ -388,13 +433,22 @@ class GuideLoop(object):
             return self._ICRS2Obs(self.refpos)
         else:
             return self._GPos2Obs(self.getBoresight())
-    
-    def _centerUp(self, cmd, star, refGpos, offsetType='guide', doScale=True):
-        """ Move the given star to/towards the ref pos.
+
+    def _getExpectedPos(self, t=None):
+        """ Return the expected position of the guide star. """
+
+        if self.guidingType == 'field':
+            return self._ICRS2GPos(self.refpos)
+        else:
+            return self.getBoresight(t)
+
+    def _genOffsetCmd(self, cmd, star, frame, refGpos, offsetType='guide', doScale=True, fname=''):
+        """ Generate the TCC offset command between the given star and refGpos
         
         Args:
             cmd        - the command that controls us.
             star       - the star that we wwant to move.
+            frame      - the ImageFrame that star the embedded in.
             refGpos    - the position to move to/towards
             offsetType - 'guide' or 'calibration'
             doScale    - if True, filter the offset according to self.tweaks
@@ -404,26 +458,28 @@ class GuideLoop(object):
         #  - Convert each to Observed positions
         #
         refPos = self._GPos2Obs(refGpos)
-        starPos = self._GPos2Obs(star.ctr)
+        starPos = frame.imgXY2ccdXY(star.ctr)
+        starPos = self._GPos2Obs(starPos)
         
         if not refPos \
            or not starPos \
            or None in refPos \
            or None in starPos:
             self.failGuiding("Could not convert a coordinate")
-            return False
+            return ''
 
+        # Optionally trail the star across or up&down the slit.
         trailOffset = self._getTrailOffset()
         refPos = [refPos[0] + trailOffset[0],
                   refPos[1] + trailOffset[1]]
         
         #  - Diff the Observed positions
         #
-        diffPos = [starPos[0] - refPos[0], \
-                   starPos[1] - refPos[1]]
+        baseDiffPos = [starPos[0] - refPos[0], \
+                       starPos[1] - refPos[1]]
 
         if doScale:
-            diffPos = self.scaleOffset(cmd, star, diffPos)
+            diffPos = self.scaleOffset(star, baseDiffPos)
 
         #  - Generate the offset. Threshold computed & uncomputed
         #
@@ -432,32 +488,60 @@ class GuideLoop(object):
         if diffSize > (CPL.cfg.get('telescope', 'maxUncomputedOffset', default=10.0) / (60*60)):
             flag += "/computed"
 
-        if diffSize <= (self.tweaks.get('minOffset', 0.15) / (60*60)):
+        if diffSize <= (self.tweaks.get('minOffset', 0.1) / (60*60)):
             self.cmd.warn('%sDebug=%s' % \
                                  (self.controller.name,
                                   CPL.qstr('SKIPPING diff=%0.6f,%0.6f' % (diffPos[0],
                                                                           diffPos[1]))))
-            return True
-        
-        self.cmd.warn('%sDebug=%s' % (self.controller.name,
-                                             CPL.qstr('diff=%0.6f,%0.6f' % (diffPos[0],
-                                                                            diffPos[1]))))
+            return ''
+
+        if fname:
+            self.cmd.warn('debug=%s' % (CPL.qstr('offset=%0.2f,%0.2f act=%0.2f,%0.2f file=%s' % \
+                                                 (baseDiffPos[0] * 3600, baseDiffPos[1] * 3600,
+                                                  diffPos[0] * 3600, diffPos[1] * 3600,
+                                                  fname))))
+            
         # Offsets are by default relative.
         #
-        cmd = 'offset %s %0.6f,%0.6f %s' % (offsetType, diffPos[0], diffPos[1], flag),
+        cmdTxt = 'offset %s %0.6f,%0.6f %s' % (offsetType, diffPos[0], diffPos[1], flag)
+        return cmdTxt
+    
+    def _centerUp(self, cmd, star, frame, refGpos, offsetType='guide', doScale=True, fname=''):
+        """ Move the given star to/towards the ref pos.
+        
+        Args:
+            cmd        - the command that controls us.
+            star       - the star that we wwant to move.
+            frame      - the GuideFrame star is embedded in.
+            refGpos    - the position to move to/towards
+            offsetType - 'guide' or 'calibration'
+            doScale    - if True, filter the offset according to self.tweaks
+        """
 
-        if self.cmd.argDict.has_key('noMove'):
-            cmd.warn('%sTxt="NOT sending tcc %s"' % (self.controller.name, cmd))
+        cmdTxt = self._genOffsetCmd(cmd, star, frame, refGpos, offsetType, doScale, fname=fname)
+        if self.cmd.argDict.has_key('noMove') or not cmdTxt:
+            self.cmd.warn('%sTxt="NOT sending tcc %s"' % (self.controller.name, cmdTxt))
+            self._guideLoopTop()
         else:
-            client.call('tcc', cmd, cid=self.controller.cidForCmd(cmd))
+            self.cmd.warn('debug=%s' % (CPL.qstr('starting offset: %s' % (cmdTxt))))
+            cb = client.callback('tcc', cmdTxt, self._doneOffsetting, cid=self.controller.cidForCmd(self.cmd))
 
-        return True
 
+    def _doneOffsetting(self, ret):
+        """ Callback called at the end of the guide offset.
+        """
+
+        if not ret.ok:
+            self.failGuiding('guide offset failed')
+
+        self._guideLoopTop()
+        
     def getNextTrackedFilename(self, startName):
         """ If our command requests a filename, we need to read a sequence of files.
         """
 
         if self.trackFilename == None:
+            self.cmd.warn('debug=%s' % (CPL.qstr("tracking filenames from %s" % (startName))))
             self.trackFilename = startName
             return startName
 
@@ -469,9 +553,11 @@ class GuideLoop(object):
         newname = "%s%04d%s" % (basename, idx, ext)
         self.trackFilename = newname
 
+        self.cmd.warn('debug=%s' % (CPL.qstr("tracked filename: %s" % (newname))))
+
         return newname
         
-    def _handleGuiderFrame(self, cmd, filename, frame):
+    def _handleGuiderFrame(self, cmd, filename, frame, tweaks=None):
         """ Given a new guider frame, calculate and apply the Guide offset and launch
         a new guider frame.
         """
@@ -480,12 +566,11 @@ class GuideLoop(object):
             self.stopGuiding()
             return
         
-        self.cmd.warn('%sDebug=%s' % (self.controller.name,
-                                      CPL.qstr('new file=%s, frame=%s' % \
-                                               (filename, frame))))
+        self.cmd.warn('debug=%s' % (CPL.qstr('new file=%s, frame=%s' % \
+                                             (filename, frame))))
 
         if self.telHasBeenMoved:
-            self.cmd.warn('%sTxt=%s' % \
+            self.cmd.warn('txt=%s' % \
                           (CPL.qstr("guiding deferred: %s" % (self.telHasBeenMoved))))
             self.telHasBeenMoved = False
             self._guideLoopTop()
@@ -493,11 +578,13 @@ class GuideLoop(object):
         
         if self.cmd.argDict.has_key('file'):
             fname = self.getNextTrackedFilename(self.cmd.argDict['file'])
+            frame = GuideFrame.ImageFrame(self.controller.size)
+            frame.setImageFromFITSFile(fname)
         else:                           # USE res.KVs['imgFile']!
             fname = self.controller.camera.getLastImageName(self.cmd)
 
         # Need to interpolate to the middle of the exposure.
-        refPos = self._getExpectedPos(),
+        refPos = self._getExpectedPos()
         try:
             star = MyPyGuide.centroid(self.cmd, fname, self.controller.mask,
                                       frame, refPos, tweaks=self.tweaks)
@@ -507,15 +594,10 @@ class GuideLoop(object):
             self.failGuiding(e)
             return
 
-        self.cmd.warn('%sDebug=%s' % (self.controller.name,
-                                      CPL.qstr('center=%0.2f, %0.2f' % (star.ctr[0],
-                                                                        star.ctr[1]))))
-        ret = self._centerUp(self.cmd, star, refPos)
-        if not ret:
-            self.failGuiding('could not offset')
-            return
-        
-        self._guideLoopTop()
+
+        self.cmd.warn('debug=%s' % (CPL.qstr('center=%0.2f, %0.2f' % (star.ctr[0],
+                                                                      star.ctr[1]))))
+        self._centerUp(self.cmd, star, frame, refPos, fname=fname)
         
     def _extractCnvPos(self, res):
         """ Extract and convert the converted position from a tcc convert.
@@ -526,27 +608,34 @@ class GuideLoop(object):
         Makes no attempt to handle velocities.
         """
 
-        self.cmd.respond('%sDebug=%s' % (self.controller.name,
-                                                CPL.qstr('cnvPos ret = %s' % repr(res))))
-
         cvtPos = res.KVs.get('ConvPos', None)
+        # self.cmd.respond('debugTxt=%s' % (CPL.qstr('cnvPos=%s' % (cvtPos))))
+
         if cvtPos == None:
             return None, None
         else:
             try:
                 cvtPos = map(float, cvtPos)
             except Exception, e:
-                self.cmd.warn("%sTxt=%s" % \
-                                     (CPL.qstr("Failed to parse CONVERT output: %r" % (cvtPos))))
+                self.cmd.warn("txt=%s" % \
+                              (CPL.qstr("Failed to parse CONVERT output: %r" % (cvtPos))))
                 return None, None
                 
             return cvtPos[0], cvtPos[3]
-    
+
+    def _checkCoordinates(self, pos):
+        """ Check whether pos is a valid pair of valid coordinates. """
+
+        if "%s" % pos[0] == 'nan' or "%s" % pos[1] == 'nan':
+            raise RuntimeError('undefined coordinates')
+        
+        
     def _GPos2ICRS(self, pos):
         """ Convert a Guide frame coordinate to an ICRS coordinate. """        
-        
-        self.cmd.respond('%sDebug=%s' % (self.controller.name,
-                                                CPL.qstr("gpos2ICRS pos=%r" % (pos,))))
+
+        # self.cmd.respond('debug=%s' % (CPL.qstr("gpos2ICRS pos=%r" % (pos,))))
+
+        self._checkCoordinates(pos)
         ret = client.call("tcc", "convert %0.5f,%0.5f gimage icrs" % (pos[0], pos[1]),
                           cid=self.controller.cidForCmd(self.cmd))
         return self._extractCnvPos(ret)
@@ -561,8 +650,9 @@ class GuideLoop(object):
             cvtpos1, cvtpos2
         """
 
-        self.cmd.respond('%sDebug=%s' % (self.controller.name,
-                                                CPL.qstr("gpos2Obs pos=%r" % (pos,))))        
+        # self.cmd.respond('debug=%s' % (CPL.qstr("gpos2Obs pos=%r" % (pos,))))        
+        self._checkCoordinates(pos)
+
         ret = client.call("tcc", "convert %0.5f,%0.5f gimage obs" % (pos[0], pos[1]),
                           cid=self.controller.cidForCmd(self.cmd))
         return self._extractCnvPos(ret)
@@ -570,18 +660,20 @@ class GuideLoop(object):
     def _ICRS2Obs(self, pos):
         """ Convert an ICRS coordinate to an Observed coordinate. """
 
-        self.cmd.respond('%sDebug=%s' % (self.controller.name,
-                                                CPL.qstr("ICRS2Obs pos=%r" % (pos,))))        
-        ret = client.call("tcc", "convert %0.5f,%0.5f icrs obs" % (pos[0]. pos[1]),
+        # self.cmd.respond('debug=%s' % (CPL.qstr("ICRS2Obs pos=%r" % (pos,))))        
+        self._checkCoordinates(pos)
+
+        ret = client.call("tcc", "convert %0.5f,%0.5f icrs obs" % (pos[0], pos[1]),
                           cid=self.controller.cidForCmd(self.cmd))
         return self._extractCnvPos(ret)
 
     def _ICRS2GPos(self, pos):
         """ Convert an ICRS coordinate to a guider frame coordinate. """
 
-        self.cmd.respond('%sDebug=%s' % (self.controller.name,
-                                                CPL.qstr("ICRS2Obs pos=%r" % (pos,))))        
-        ret = client.call("tcc", "convert %0.5f,%0.5f icrs gimage" % (pos[0]. pos[1]),
+        # self.cmd.respond('debug=%s' % (CPL.qstr("ICRS2GPos pos=%r" % (pos,))))        
+        self._checkCoordinates(pos)
+
+        ret = client.call("tcc", "convert %0.5f,%0.5f icrs gimage" % (pos[0], pos[1]),
                           cid=self.controller.cidForCmd(self.cmd))
         return self._extractCnvPos(ret)
     

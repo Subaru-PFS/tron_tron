@@ -43,6 +43,9 @@ import CPL
 
 interpreter = 0
 
+class CmdResponse(object):
+    pass
+
 class CmdQueueReader(threading.Thread):
     """ Arrange a free running thread to read commands from the hub and dispatch
         them to a given handler.
@@ -147,7 +150,7 @@ def call(tgt, cmd, debug=0, cid=0, timeout=None):
     if debug > 3:
         CPL.log("call", "back from hubLink.call")
         
-    res = {}
+    res = CmdResponse()
     lines = []
     KVs = OrderedDict.OrderedDict()
     
@@ -158,25 +161,25 @@ def call(tgt, cmd, debug=0, cid=0, timeout=None):
         
         if debug > 3:
             CPL.log('call', 'get: %s' % (resp,))
-        lines.append(resp.KVs)
+        lines.append(resp)
         KVs.update(resp.KVs)
         
         flag = resp.flag
         if flag == ':':
-            res['ok'] = True
+            res.ok = True
             break
         if flag in 'fF':
-            res['ok'] = False
+            res.ok = False
             break
 
-    res['lines'] = lines
-    res['KVs'] = KVs
+    res.lines = lines
+    res.KVs = KVs
     hubLink.finishedWith(q)
     
     if interpreter:
-        for l in res['lines']:
+        for l in res.lines:
             print l.pretty()
-        if res['ok'] != True:
+        if res.ok != True:
             print "FAILED"
     else:
         return res
@@ -227,6 +230,12 @@ class Callback(threading.Thread):
         
         self.start()
 
+    def __str__(self):
+        return "Callback(id=%s, q=%s)" % (id(self), self.hubQueue)
+    
+    def _del_(self):
+        CPL.log("Callback.__del__", "deleting Callback: %s" % (self))
+        
     def stop(self):
         """ Stop ourselves and exit.
 
@@ -240,7 +249,8 @@ class Callback(threading.Thread):
         self.hubQueue.put(None)
         
     def run(self):
-        res = {}
+        CPL.log("Callback.run", "starting Callback: %s" % (self))
+        res = CmdResponse()
         lines = []
         KVs = {}
         
@@ -249,8 +259,9 @@ class Callback(threading.Thread):
             resp = self.hubQueue.get()
             if self.keepRunning == False:
                 break
-            
-            CPL.log('callback.run', 'get: %s' % (resp,))
+
+            if self.debug > 4:
+                CPL.log('Callback.run', 'get: %s' % (resp,))
 
             if self.dribble:
                 if self.callback:
@@ -264,19 +275,18 @@ class Callback(threading.Thread):
             if self.checkFlag:
                 flag = resp.flag
                 if flag == ':':
-                    res['ok'] = True
+                    res.ok = True
                     break
                 if flag in 'fF':
-                    res['ok'] = False
+                    res.ok = False
                     break
 
-        if self.debug > 0:
-            CPL.log("Callback.run", "stopping %s" % (self))
+        CPL.log("Callback.run", "stopping %s" % (self))
         hubLink.finishedWith(self.hubQueue)
 
         if not self.dribble and self.callback:
-            res['lines'] = lines
-            res['KVs'] = KVs
+            res.lines = lines
+            res.KVs = KVs
             self.callback(res)
     
 class TimerCallback(threading.Thread):
@@ -316,15 +326,15 @@ class TimerCallback(threading.Thread):
             tick = self.hubQueue.get()
             if self.keepRunning == False:
                 break
-            
-            CPL.log('timerCallback.run', 'get: %s' % (tick,))
+
+            if self.debug > 4:
+                CPL.log('timerCallback.run', 'get: %s' % (tick,))
 
             self.callback()
             break
 
         if self.debug > 0:
             CPL.log("Callback.run", "stopping %s" % (self))
-        hubLink.finishedWith(self.hubQueue)
 
 def timer(howLong, callback, debug=0):
     """ Arrange for callback to be called in howLong seconds."""
