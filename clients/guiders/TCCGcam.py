@@ -246,6 +246,9 @@ showstatus
         isSat, stars = MyPyGuide.findstars(cmd, self.imgForTcc, self.mask,
                                            self.frameForTcc, tweaks)
 
+        if not stars:
+            cmd.respond('txtForTcc="no stars found"')
+
         i = 0
         for s in stars:
 

@@ -80,42 +80,9 @@ def findstars(cmd, filename, mask, frame, tweaks, cnt=10):
     for star in stars:
         CPL.log('star', 'star=%s' % (star))
 
-        # Convert back to full-frame coordinates.
-        #ctr = ij2xy(star.ctr)
-        ctr = frame.imgXY2ccdXY(star.xyCtr)
-        #err = ij2xy(star.err)
-        err = star.xyErr[0] * binning[0], \
-              star.xyErr[1] * binning[1]           
-
-        try:
-            shape = PyGuide.starShape(img,
-                                      maskbits,
-                                      star.xyCtr)
-            fwhm = shape.fwhm * binning[0]
-            chiSq = shape.chiSq
-            bkgnd = shape.bkgnd
-            ampl = shape.ampl
-        except Exception, e:
-            cmd.warn("findstarsTxt=%s" % \
-                     (CPL.qstr("starShape failed, vetoing star at %0.2f,%0.2f: %s" % \
-                               (ctr[0], ctr[1], e))))
+        s = starshape(cmd, frame, img, maskbits, star)
+        if not s:
             continue
-            fwhm = 0.0        # nan does not work.
-            chiSq = 0.0
-            bkgnd = 0.0
-            ampl = 0.0
-
-        s = StarInfo()
-        s.ctr = ctr
-        s.err = err
-        s.fwhm = (fwhm, fwhm)
-        s.angle = 0.0
-        s.counts = star.counts
-        s.bkgnd = bkgnd
-        s.ampl = ampl
-        s.chiSq = chiSq
-        s.asymm = star.asymm
-        
         starList.append(s)
             
         i += 1
@@ -180,6 +147,24 @@ def centroid(cmd, filename, mask, frame, seed, tweaks):
         cmd.warn('debug=%s' % (CPL.qstr(e)))
         raise
 
+    s = starshape(cmd, frame, img, maskbits, star)
+    
+    del img
+    del maskbits
+    
+    return s
+
+def starshape(cmd, frame, img, maskbits, star):
+    """ Generate a StarInfo structure which contains everything about a star.
+
+    Args:
+        cmd       - the controlling Command
+        frame     - an ImageFrame
+        img       - a 2d numarray image
+        maskbits  - ditto
+        star      - PyGuide centroid info.
+    """
+    
     binning = frame.frameBinning
 
     ctr = frame.imgXY2ccdXY(star.xyCtr)
@@ -216,9 +201,6 @@ def centroid(cmd, filename, mask, frame, seed, tweaks):
     s.ampl = ampl
     s.chiSq = chiSq
     s.asymm = star.asymm
-    
-    del img
-    del maskbits
     
     return s
 
