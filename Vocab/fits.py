@@ -391,7 +391,7 @@ class InstFITS(object):
         
     def start(self, cmd, inFile):
         if self.comment != None:
-            self.appendCard(cmd, CommentCard('COMMENT', self.comment))
+            self.appendCard(cmd, CommentCard('COMMENT', self.comment), allowOverWrite=True)
 
         self._setUTC_TAI(cmd)
         self.fetchObjectCards(cmd)
@@ -604,6 +604,7 @@ class nicfpsFITS(InstFITS):
     """
 
     def __init__(self, cmd, **argv):
+        argv['alwaysAllowOverwrite'] = True
         InstFITS.__init__(self, cmd, **argv)
         self.instName = 'nicfps'
         
@@ -623,7 +624,7 @@ class nicfpsFITS(InstFITS):
         self.fetchCardAs(cmd, 'FILTER1M', 'nicfps', 'FILTER_POS', asInt, IntCard, 'The physical position of filter wheel 1', idx=0)
         self.fetchCardAs(cmd, 'FILTER2M', 'nicfps', 'FILTER_POS', asInt, IntCard, 'The physical position of filter wheel 2', idx=1)
         self.fetchCardAs(cmd, 'FILTER3M', 'nicfps', 'FILTER_POS', asInt, IntCard, 'The physical position of filter wheel 3', idx=2)
-        self.fetchCardAs(cmd, 'FILTER', 'nicfps', 'FILTER_DONE' asStr, StringCard, 'The name of the current filter')
+        self.fetchCardAs(cmd, 'FILTER', 'nicfps', 'FILTER_DONE', asStr, StringCard, 'The name of the current filter')
         
         self.fetchCardAs(cmd, 'TEMP1VAL', 'nicfps', 'TEMPS', asFloat, RealCard, 'Temperature sensor 1, in degK', idx=0)
         self.fetchCardAs(cmd, 'TEMP2VAL', 'nicfps', 'TEMPS', asFloat, RealCard, 'Temperature sensor 2, in degK', idx=1)
@@ -632,13 +633,12 @@ class nicfpsFITS(InstFITS):
         self.fetchCardAs(cmd, 'PRESSURE', 'nicfps', 'PRESSURE', asFloat, RealCard, 'Dewar pressure, in torr')
 
         etalonInBeam = g.KVs.getKey('nicfps', 'FP_OPATH', 'Unknown')
-        self.cards.append(StringCard('FPINBEAM', etalonInBeam, 'Is the FP etalon in the beam?'))
+        self.cards['FPINBEAM'] = StringCard('FPINBEAM', etalonInBeam, 'Is the FP etalon in the beam?')
         if etalonInBeam == 'In':
             self.fetchCardAs(cmd, 'FPMODE', 'nicfps', 'FP_MODE', asStr, StringCard, 'FP operating mode')
             self.fetchCardAs(cmd, 'FPX', 'nicfps', 'FP_X', asFloat, RealCard, 'REQUESTED X etalon spacing in steps')
             self.fetchCardAs(cmd, 'FPY', 'nicfps', 'FP_Y', asFloat, RealCard, 'REQUESTED Y etalon spacing in steps')
             self.fetchCardAs(cmd, 'FPZ', 'nicfps', 'FP_Z', asFloat, RealCard, 'ACTUAL Z etalon spacing in steps')
-
 
     def TS(self, t, format="%Y-%m-%d %H:%M:%S", zone="", goodTo=1):
         """ Return a formatted timestamp for t
