@@ -1,5 +1,6 @@
 import os
 import socket
+import time
 
 import CPL
 import Parsing
@@ -48,8 +49,8 @@ class nicfpsCB(Exposure.CB):
                     if self.exposure.aborting:
                         newState = "aborted"
                     else:
-                        self.exposure.finishUp()
                         newState = "done"
+                        self.exposure.finishUp()
                 elif maybeNewState == 'done':
                     newState = maybeNewState
                     self.exposure.finishUp()
@@ -82,9 +83,12 @@ class nicfpsExposure(Exposure.Exposure):
             else:
                 raise Exception("%s exposures require a time argument" % (expType))
 
+        # Where NICFPS puts its image files.
+        self.rawDir = '/export/images/nicfps/forTron'
+
         self.reserveFilenames()
         self.aborting = False
-        
+
     def reserveFilenames(self):
         """ Reserve filenames, and set .basename.
         """
@@ -92,6 +96,9 @@ class nicfpsExposure(Exposure.Exposure):
         # self.cmd.warn('debug=%s' % (CPL.qstr("reserve: %s" % self.path)))
         self.pathParts = self.path.getFilenameInParts(keepPath=True)
 
+        # HACK - squirrel away a directory listing to compare with later.
+        self.startDirList = os.listdir(self.rawDir)
+        
     def _basename(self):
         return os.path.join(*self.pathParts)
 
@@ -106,7 +113,45 @@ class nicfpsExposure(Exposure.Exposure):
         if self.comment:
             cmdStr += ' comment=%s' % (CPL.qstr(self.comment))
         self.callback('fits', cmdStr)
+
+    def getNewRawFile(self):
+        """ Wait for a new raw file to appear and be completed. """
+
+        self.cmd.warn('debug="waiting for new NICFPS file in %s; %d files"' % \
+                      (self.rawDir, len(self.startDirList)))
+
+        # How long to wait for a new image file
+        loopTime = 30.0
+
+        # How often to check for a new file:
+        waitTime = 0.5
         
+        while 1:
+            newList = os.listdir(self.rawDir)
+            self.cmd.warn('debug="NICFPS exposure: %d files"' % (len(newList)))
+            if len(newList) != len(self.startDirList):
+                break
+
+            loopTime -= waitTime
+            if loopTime <= 0.0:
+                self.state = 'aborted'
+                self.cmd.fail('errorTxt="NICFPS exposure timed out."')
+                return
+            time.sleep(waitTime)
+
+        # Now find the new file and wait for the readout to complete.
+        newList.sort()
+        newFile = os.path.join(self.rawDir, newList[-1])
+        self.cmd.warn('debug="NICFPS exposure: %s"' % (newFile))
+
+        finalSize = 2102400L
+        while 1:
+            stat = os.stat(newFile)
+            if stat[6] == finalSize:
+                return newFile
+            time.sleep(0.1)
+        self.cmd.warn('debug="full NICFPS exposure: %s"' % (newFile))
+            
     def finishUp(self):
         """ Clean up and close out the FITS files.
 
@@ -114,12 +159,9 @@ class nicfpsExposure(Exposure.Exposure):
         
         """
 
-        rawDir = '/export/images/nicfps/forTron'
-        
         CPL.log("nicfps.finishUp", "state=%s" % (self.state))
 
-        self.cmd.warn('debug="waiting for new NICFPS file in %s"' % (rawDir))
-        rawFile = os.path.join(rawDir, 'zzzz.fits')
+        rawFile = self.getNewRawFile()
         
         if self.state != "aborted":
             self.callback('fits', 'finish nicfps infile=%s' % (rawFile))

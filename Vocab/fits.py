@@ -11,7 +11,8 @@ import CPL
 import Parsing
 from RO.Alg.OrderedDict import OrderedDict
 from Hub.KV.KVDict import *
-from Misc.FITS import *
+import Misc.FITS
+from Misc.FITS.Cards import *
 import Vocab.InternalCmd as InternalCmd
 
 class fits(InternalCmd.InternalCmd):
@@ -231,7 +232,7 @@ class InstFITS(object):
     """ The common FITS routines.
     """
 
-    def __init__(self, cmd, **argv):
+    def __init__(self, cmd, flipSign=False, **argv):
         self.cmd = cmd
         self.debug = argv.get('debug', 0)
         self.cards = OrderedDict()
@@ -242,7 +243,9 @@ class InstFITS(object):
         self.outfileName = None
         self.infile = None
         self.outfile = None
-
+        self.allowOverwrite = argv.get('alwaysAllowOverwrite', False)
+        self.flipSign = flipSign
+        
         outfileName = argv.get('outfile', None)
         if outfileName:
             self.createOutfile(cmd, outfileName)
@@ -331,6 +334,7 @@ class InstFITS(object):
         cards = []
         cards.append(StringCard('OBSERVAT', 'APO', 'Per the IRAF observatory list.'))
         cards.append(StringCard('TELESCOP', '3.5m'))
+        cards.append(StringCard('INSTRUME', self.instName, 'Instrument name'))
         cards.append(RealCard('LATITUDE', 32.780361, 'Latitude of telescope base'))
         cards.append(RealCard('LONGITUD', -105.820417, 'Longitude of telescope base'))
 
@@ -341,13 +345,65 @@ class InstFITS(object):
         self.fetchCardAs(cmd, 'HUMIDITY', 'tcc', 'Humidity', asFloat, RealCard, 'Humidity, fraction')
 
     def fetchTelescopeCards(self, cmd):
+        k = g.KVs.getKey('tcc', 'AxePos', [0.0,0.0,0.0])
+        k = map(float, k)
+        alt = k[1]
+        zd = 90.0 - alt
+        try:
+            airmass = 1.0/math.cos(zd)
+        except:
+            airmass = 0.0
+                
         self.fetchCardAs(cmd, 'TELAZ', 'tcc', 'AxePos', asFloat, RealCard, 'TCC AxePos azimuth', idx=0)
         self.fetchCardAs(cmd, 'TELALT', 'tcc', 'AxePos', asFloat, RealCard, 'TCC AxePos altitude', idx=1)
         self.fetchCardAs(cmd, 'TELROT', 'tcc', 'AxePos', asFloat, RealCard, 'TCC AxePos rotator', idx=2)
         self.fetchCardAs(cmd, 'TELFOCUS', 'tcc', 'SecFocus', asFloat, RealCard, 'TCC SecFocus')
+        self.appendCard(cmd, RealCard('ZD', zd, 'Zenith distance'))
+        self.appendCard(cmd, RealCard('AIRMASS', airmass, '1/cos(ZD)'))
         
         self.fetchCardAs(cmd, 'BOREOFFX', 'tcc', 'Boresight', asFloat, RealCard, 'TCC boresight offset X', idx=0)
         self.fetchCardAs(cmd, 'BOREOFFY', 'tcc', 'Boresight', asFloat, RealCard, 'TCC boresight offset Y', idx=3)
+
+    def fetchWCSCards(self, cmd):
+        """ Add WCS cards to ourselves. Requires that we be tracking.
+        """
+
+        # fetch instrument scale
+        k = g.KVs.getKey('tcc', 'IImScale', [1.0,1.0])
+        imScale = map(float, k)
+        
+        # and center
+        k = g.KVs.getKey('tcc', 'IImCtr', [123.0,123.0])
+        imCtr = map(float, k)
+        
+        # instrument angle w.r.t. sky
+        k = g.KVs.getKey('tcc', 'ObjInstAng', [0.0,0.0,0.0])
+        k = map(float, k)
+        instAng = k[0]
+
+        # and boresight offset
+        k = g.KVs.getKey('tcc', 'Boresight', [0.0,0.0,0.0,0.0,0.0,0.0])
+        k = map(float, k)
+        boresight = k[0], k[3]
+
+        # RA * dec
+        k = g.KVs.getKey('tcc', 'ObjNetPos', [0.0,0.0,0.0,0.0,0.0,0.0])
+        k = map(float, k)
+        ra, dec = k[0], k[3]
+        
+        self.appendCard(cmd, StringCard('CTYPE1', 'RA--TAN', 'WCS projection'))
+        self.appendCard(cmd, StringCard('CTYPE2', 'DEC-TAN', 'WCS projection'))
+        
+        self.appendCard(cmd, RealCard('CRPIX1', imCtr[0] + boresight[0] * imScale[0], 'WCS reference pixel'))
+        self.appendCard(cmd, RealCard('CRPIX2', imCtr[1] + boresight[1] * imScale[1], 'WCS reference pixel'))
+                        
+        self.appendCard(cmd, RealCard('CRVAL1', ra, 'WCS reference sky pos.'))
+        self.appendCard(cmd, RealCard('CRVAL2', dec, 'WCS reference sky pos.'))
+                        
+        self.appendCard(cmd, RealCard('CD1_1', (1.0 / imScale[0]) * math.cos(instAng)))
+        self.appendCard(cmd, RealCard('CD1_2', -(1.0 / imScale[1]) * math.sin(instAng)))
+        self.appendCard(cmd, RealCard('CD2_1', (1.0 / imScale[0]) * math.sin(instAng)))
+        self.appendCard(cmd, RealCard('CD2_2', (1.0 / imScale[1]) * math.cos(instAng)))
         
     def fetchObjectCards(self, cmd):
         objSys = g.KVs.getKey('tcc', 'ObjSys', None)
@@ -362,6 +418,9 @@ class InstFITS(object):
         self.appendCard(cmd, StringCard('NOTE001', '', 'All coordinates and offsets are from the start of the exposure'))
         
         self.fetchCardAs(cmd, 'RADECSYS', 'tcc', 'ObjSys', asStr, StringCard, 'Coordinate system, per TCC ObjSys', idx=0)
+        self.fetchCardAs(cmd, 'ROTTYPE', 'tcc', 'RotType', asFloat, StringCard, 'TCC RotType')
+        self.fetchCardAs(cmd, 'ROTPOS', 'tcc', 'RotPos', asFloat, RealCard, 'User-specified rotation wrt ROTTYPE')
+
         if tracking:
             self.fetchCardAs(cmd, 'EQUINOX', 'tcc', 'ObjSys', asFloat, RealCard, 'Equinox, per TCC ObjSys', idx=1)
             self.fetchCardAs(cmd, 'OBJANGLE', 'tcc', 'ObjInstAng', asFloat, RealCard, 'Angle from inst x,y to sky', idx=0)
@@ -374,11 +433,12 @@ class InstFITS(object):
             self.fetchCardAs(cmd, 'OBJOFFY', 'tcc', 'ObjOff', asFloat, RealCard, 'TCC object offset Y', idx=3)
             self.fetchCardAs(cmd, 'CALOFFX', 'tcc', 'CalibOff', asFloat, RealCard, 'TCC calibration offset X', idx=0)
             self.fetchCardAs(cmd, 'CALOFFY', 'tcc', 'CalibOff', asFloat, RealCard, 'TCC calibration offset Y', idx=3)
+            try:
+                self.fetchWCSCards(cmd)
+            except Exception, e:
+                cmd.warn('errorTxt=%s' % (CPL.qstr("Failed to generate WCS cards: %s" % (e))))
+            
 
-        self.fetchCardAs(cmd, 'ROTTYPE', 'tcc', 'RotType', asFloat, StringCard, 'TCC RotType')
-        self.fetchCardAs(cmd, 'ROTPOS', 'tcc', 'RotPos', asFloat, RealCard, 'User-specified rotation wrt ROTTYPE')
-        
- 
     def _setUTC_TAI(self, cmd):
         """ Note the current UTC-TAI offset.
         """
@@ -391,7 +451,7 @@ class InstFITS(object):
         
     def start(self, cmd, inFile):
         if self.comment != None:
-            self.appendCard(cmd, CommentCard('COMMENT', self.comment), allowOverWrite=True)
+            self.appendCard(cmd, CommentCard('COMMENT', self.comment))
 
         self._setUTC_TAI(cmd)
         self.fetchObjectCards(cmd)
@@ -409,13 +469,21 @@ class InstFITS(object):
             return
 
         try:
-            inFITS = FITS(inputFile=inFile)
+            inFITS = Misc.FITS.FITS(inputFile=inFile, alwaysAllowOverwrite=self.allowOverwrite)
         except Exception, e:
             cmd.fail('fitsTxt=%s' % (CPL.qstr("Could not read FITS file %s: %s" % (inFile, e))))
             return False
-        
+
+        if self.flipSign:
+            inFITS.flipSign()
+            
         self.finishHeader(cmd, inFITS)
-        
+
+    def prepFITS(self, cmd, fits):
+        """ Hook to let us fiddle with the header directly. """
+
+        pass
+    
     def finishHeader(self, cmd, fits):
         """ Finish off a given FITS header by adding our keys, then writing out a new file.
 
@@ -424,9 +492,10 @@ class InstFITS(object):
             fits    - a FITS object.
         """
 
+        self.prepFITS(cmd, fits)
+        
         siteCards = self.fetchSiteCards(cmd)
         timeCards = self.fetchTimeCards(cmd)
-
 
         cmd.inform('fitsDebug=%s' % (CPL.qstr("Generating fits file %s" % (self.outfileName))))
 
@@ -435,7 +504,7 @@ class InstFITS(object):
 
         # Site cards first
         for c in siteCards:
-            fits.addCard(c, after=after)
+            fits.addCard(c, after=after, allowOverwrite=True)
             after = c.name
 
         # Time cards next
@@ -506,7 +575,6 @@ class grimFITS(InstFITS):
         
     def start(self, cmd, inFile=None):
         InstFITS.start(self, cmd, inFile)
-        self.cards['INSTRUME'] = StringCard('INSTRUME', self.instName, 'Instrument name')
 
         self.fetchInstCards(cmd)
         
@@ -605,20 +673,38 @@ class nicfpsFITS(InstFITS):
 
     def __init__(self, cmd, **argv):
         argv['alwaysAllowOverwrite'] = True
+        argv['flipSign'] = True
         InstFITS.__init__(self, cmd, **argv)
         self.instName = 'nicfps'
         
     def start(self, cmd, inFile=None):
         InstFITS.start(self, cmd, inFile)
-        self.cards['INSTRUME'] = StringCard('INSTRUME', self.instName, 'Instrument name')
-
+        
+        
         self.fetchInstCards(cmd)
         
+    def prepFITS(self, cmd, fits):
+        """ Hook to let us fiddle with the header directly. """
+
+        fits.deleteCard('SIDETIME')
+        fits.deleteCard('OBJEPOCH')
+        fits.deleteCard('AIRMASS')
+        fits.deleteCard('HA')
+        fits.deleteCard('FILTER1')
+        fits.deleteCard('FILTER2')
+        fits.deleteCard('OBJECT')
+        fits.deleteCard('TELRA')
+        fits.deleteCard('TELDEC')
+        fits.deleteCard('OBSERVER')
+    
     def fetchNiceInstCards(self, cmd):
         """ Generate gussied up, human-readable versions of the instrument state """
         pass
     
     def fetchInstCards(self, cmd):
+        self.cards['BSCALE'] = RealCard('BSCALE', 1.0)
+        self.cards['BZERO'] = RealCard('BZERO', 32768.0)
+        
         self.fetchNiceInstCards(cmd)
         
         self.fetchCardAs(cmd, 'FILTER1M', 'nicfps', 'FILTER_POS', asInt, IntCard, 'The physical position of filter wheel 1', idx=0)
@@ -726,7 +812,6 @@ class echelleFITS(InstFITS):
         
     def start(self, cmd, inFile=None):
         InstFITS.start(self, cmd, inFile)
-        self.cards['INSTRUME'] = StringCard('INSTRUME', self.instName, 'Instrument name')
         
     def fetchInstCards(self, cmd):
         pass

@@ -51,15 +51,15 @@ class InternalCmd(object):
         cmdWord = words[0]
         cmdHandler = self.commands.get(cmdWord, None)
         if cmdHandler == None:
-            cmd.fail('%sTxt=%s' % (self.name, CPL.qstr("No command named %s" % (cmdWord))))
+            cmd.fail('%sTxt=%s' % \
+                     (self.name, CPL.qstr("No command named %s" % (cmdWord))))
             return
 
         try:
             cmdHandler(cmd)
         except Exception, e:
             cmd.fail('%sTxt=%s' % (self.name, CPL.qstr(e, tquote='"')))
-            raise
-            #return
+            return
 
     def statusCmd(self, cmd, doFinish=True):
         """ """
