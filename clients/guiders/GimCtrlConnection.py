@@ -1,6 +1,8 @@
 import socket
 import sys
 
+import client
+
 class GimCtrlConnection(object):
     """ Encapsulate a control connection to a GimCtrl Mac.
     
@@ -23,6 +25,8 @@ class GimCtrlConnection(object):
         self.s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.s.connect((host, port),)
 
+        self.exposeCmd = None
+        
     def sendCmd(self, cmdString, timeout):
         """ Send a command and wait for the entire response.
 
@@ -60,4 +64,59 @@ class GimCtrlConnection(object):
 
         return lines
     
-    
+    def sendExposureCmd(self, cmd, cmdString, expTime, callback):
+        """ Start an exposure, and arrange for a callback to be called after the exposure is done.
+        Args:
+            cmd       - the controlling Command
+            cmdString - the command to send to the controller.
+            callback  - the function to call as callback(cmd, command-return-string)
+        """
+
+        if self.exposeCmd != None:
+            raise RuntimeError("Already exposing")
+
+        self.exposeCmd = (cmd, callback)
+        
+        self.timeout = 2.0
+        self.s.settimeout(self.timeout)
+
+        sys.stderr.write("======== GimCtrl sending: %s\n" % (cmdString))
+        self.s.send(cmdString + self.EOL)
+
+        timer = expTime
+        if timer <= 0:
+            timer = 0.1
+            
+        client.timer(timer, self.timerCallback, debug=5)
+
+    def timerCallback(self):
+        """ Handle timer 
+        """
+
+        self.s.settimeout(10.0)
+        buffer = ""
+        while 1:
+            try:
+                ret = self.s.recv(50000)
+            except Exception, e:
+                self.exposeCmd = None
+                raise RuntimeError("sendCmd timed out: %s" % (e))
+            
+            sys.stderr.write("======== GimCtrl got: %r\n" % (ret))
+            buffer += ret
+            if buffer[-7:] == "\r\n OK\r\n":
+                break
+
+        # We want the OK to be the last line.
+        tlines = buffer.split(self.EOL)[:-1]
+
+        # Some lines have spurious leading \ns:
+        lines = []
+        for l in tlines:
+            lines.append(l.replace('\n', ''))
+
+        cmd, callback = self.exposeCmd
+        self.exposeCmd = None
+
+        callback(cmd, lines)
+

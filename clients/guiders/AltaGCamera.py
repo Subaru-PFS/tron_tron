@@ -76,29 +76,34 @@ class AltaGCamera(GCamera.GCamera):
 
         return self.cam.read_TempCCD()
     
-    def expose(self, cmd, expType, itime, window=None, bin=None):
+    def expose(self, cmd, expType, itime, frame):
         """ Take an exposure of the given length, optionally binned/windowed.
 
         Args:
             expType  - 'dark' or 'expose'
             itime    - seconds to integrate for
-            window   ? optional window spec (X0, Y0, X1, Y1)
-            bin      ? optional binning spec (X, Y)
+            frame    - ImageFrame
 
         Returns:
             The full FITS path.
         """
 
-        #cmd.warn('debug=%s' % (CPL.qstr("alta expose %s %s secs, window=%s, bin=%s" \
-        #                                % (expType, itime, window, bin))))
+        cmd.warn('debug=%s' % (CPL.qstr("alta expose %s %s secs, window=%s, bin=%s" \
+                                        % (expType, itime, window, bin))))
         
         # Check format:
-        if bin and bin != self.binning:
-            self.cam.setBinning(*bin)
-            self.binning = bin
-        if window and window != self.window:
-            self.cam.setWindow(*window)
-            self.window = window
+        if frame:
+            bin = self.frameBinning
+            if bin != self.binning:
+                self.cam.setBinning(*bin)
+                self.binning = bin
+            window = self.imgFrameAsWindow()
+            if window != self.window:
+                twindow = window[:]
+                twindow[2] -= 1
+                twindow[3] -= 1
+                self.cam.setWindow(*twindow)
+                self.window = twindow
 
         doShutter = expType == 'expose'
 

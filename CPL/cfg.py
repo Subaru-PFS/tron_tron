@@ -4,18 +4,30 @@
 __all__ = ['init', 'get', 'flush']
 
 import os
+import sys
 
-def init(path):
+cfgCache = None
+
+def init(path=None):
     """ Initialize the cfg space.
     
     Args:
         path     - the directory inside which all the cfg files are kept.
     """
+
     global cfgPath
+    
+    if path == None:
+        path = os.environ.get('CONFIG_DIR', None)
+
+    if path == None:
+        raise RuntimeError("Cannot initialize configuration module: no path given")
     
     cfgPath = path
     flush()
 
+    sys.stderr.write("initialized configuration under %s\n" % (cfgPath))
+    
 def flush():
     """ Clear any existing configuration cache.
     """
@@ -33,7 +45,10 @@ def get(space, var, default=__nodef):
         var       - the name of the variable to get.
         default   ? if set, and var is not in space, return this.
     """
-    
+
+    if cfgCache == None:
+        init()
+        
     try:
         s = cfgCache[space]
     except:

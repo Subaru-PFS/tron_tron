@@ -149,7 +149,7 @@ def call(tgt, cmd, debug=0, cid=0, timeout=None):
         
     res = {}
     lines = []
-    keys = OrderedDict.OrderedDict()
+    KVs = OrderedDict.OrderedDict()
     
     while 1:
         # resp is:
@@ -159,7 +159,7 @@ def call(tgt, cmd, debug=0, cid=0, timeout=None):
         if debug > 3:
             CPL.log('call', 'get: %s' % (resp,))
         lines.append(resp.KVs)
-        # keys.update(resp.KVs)
+        KVs.update(resp.KVs)
         
         flag = resp.flag
         if flag == ':':
@@ -170,7 +170,7 @@ def call(tgt, cmd, debug=0, cid=0, timeout=None):
             break
 
     res['lines'] = lines
-    # res['keys'] = keys
+    res['KVs'] = KVs
     hubLink.finishedWith(q)
     
     if interpreter:
@@ -242,7 +242,8 @@ class Callback(threading.Thread):
     def run(self):
         res = {}
         lines = []
-
+        KVs = {}
+        
         self.keepRunning = True
         while self.keepRunning:
             resp = self.hubQueue.get()
@@ -258,7 +259,8 @@ class Callback(threading.Thread):
                     print resp
             else:
                 lines.append(resp.KVs)
-
+                KVs.update(resp.KVs)
+                
             if self.checkFlag:
                 flag = resp.flag
                 if flag == ':':
@@ -274,8 +276,67 @@ class Callback(threading.Thread):
 
         if not self.dribble and self.callback:
             res['lines'] = lines
+            res['KVs'] = KVs
             self.callback(res)
     
+class TimerCallback(threading.Thread):
+    """ Arrange for input from a Queue to trigger a callback.
+
+    Args:
+        q         - the queue to read from
+        callback  - the function to call with the results. Can be None
+    """
+    
+    def __init__(self, q, callback, checkFlag=True, debug=0, **argv):
+        threading.Thread.__init__(self, **argv)
+        self.setDaemon(1)
+
+        self.debug = debug
+        self.hubQueue = q
+        self.callback = callback
+        
+        self.start()
+
+    def stop(self):
+        """ Stop ourselves and exit.
+
+        We (the thread) are blocked on input from the queue. So we set a flag that
+        we test after a read, then generate a dummy element in the queue.
+
+        Of course, this can only be called from a different thread from the one bocked on read...
+        """
+        
+        self.keepRunning = False
+        self.hubQueue.put(None)
+        
+    def run(self):
+
+        self.keepRunning = True
+        while self.keepRunning:
+            tick = self.hubQueue.get()
+            if self.keepRunning == False:
+                break
+            
+            CPL.log('timerCallback.run', 'get: %s' % (tick,))
+
+            self.callback()
+            break
+
+        if self.debug > 0:
+            CPL.log("Callback.run", "stopping %s" % (self))
+        hubLink.finishedWith(self.hubQueue)
+
+def timer(howLong, callback, debug=0):
+    """ Arrange for callback to be called in howLong seconds."""
+    
+    q = hubLink.timer(howLong, debug=debug)
+    cb = TimerCallback(q, callback, debug=debug)
+
+    if debug > 0:
+        CPL.log("callback", "launched callback thread for %s" % (cmd))
+    
+    return cb
+
 def callback(tgt, cmd, callback=None, dribble=False, cid=None, debug=0):
     """ Arrange for a command to be sent, with the result sent asynchronously to the given callback function.
 

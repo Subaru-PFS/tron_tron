@@ -25,7 +25,7 @@
 ;
 ; EXAMPLE:
 ;
-; frebin_mask, 'na2.fits', 'na2-3x3.fits', [80,90], [40,50], [3x3]
+; fsubframe, 'na2.fits', 'na2-3x3.fits', [80,90], [40,50], [3x3]
 ;
 ; MODIFICATION HISTORY:
 ;
@@ -35,25 +35,31 @@ pro fsubframe,infileName,outfileName,offset,size,binning
 
                                 ; Read in the unbinned mask file and figure its size
   inData = mrdfits(infileName, /unsigned)
-  fullSize = (size(inData))[1:2]
 
-                                ; 
-                                ; Find out if we need to trim the input array: rebin 
-                                ; only scales by integer factors.
-  binnedSize = fullSize / binning
-  trimSize = binnedSize * binning
+                                ; Cut out a properly sized piece of
+                                ; the unbinned input.
+  unbinnedOffset = offset * binning
+  unbinnedSize = size * binning
+  x0 = unbinnedOffset[0]
+  y0 = unbinnedOffset[1]
+  x1 = x0 + unbinnedSize[0] - 1
+  y1 = y0 + unbinnedSize[1] - 1
 
-  if not array_equal(trimSize, fullSize) then begin
-      inData = inData[0:trimSize[0]-1, 0:trimSize[1]-1]
-  end
+  inData = inData[x0:x1, y0:y1]
+  
+                                ; Rebin the input. Note that the input
+                                ; to rebin must be in integral binned
+                                ; pixels.
+
+  binnedData = rebin(inData, size)
+
                                 ; Now scale the possibly trimmed data.
                                 ; First, force the data to be a true 0 or 1 mask.
                                 ; Convert that to a floating point array
                                 ; so that we can decide how much masking
                                 ; in the input array yields a mask pixel
   inData = float(inData ne 0)
-  binnedData = rebin(inData, binnedSize)
-  
+
                                 ; If half the input pixels were masked, generate
                                 ; an masked output pixel.
                                 ; For consistency, save to an "unsigned int" fits file.

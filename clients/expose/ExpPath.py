@@ -386,14 +386,13 @@ class ExpPath(object):
                 raise CPL.Error("I don't trust the directory %s" % \
                                 (CPL.qstr(dirName, tquote="'")))
 
-            # Ugh. there is a bug in makedirs: it only chmods the lowest directory, and leaves
-            # higher ones are 0755.
+            # Ugh. there is a bug in makedirs: it only chmods the lowest directory.
             #
             os.makedirs(dirName)
             progDir = os.path.join(self.rootDir, programDir)
             tDir = dirName
             while 1:
-                os.chmod(tDir, 0777)
+                os.chmod(tDir, 0755)
                 if tDir == progDir:
                     break
                 tDir, dummy = os.path.split(tDir)
@@ -488,7 +487,7 @@ class ExpPath(object):
 
         name = self.nextFilename()
         try:
-            f = os.open(name, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0666)
+            f = os.open(name, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0644)
         except Exception, e:
             raise CPL.Error("could not create file %s" % (name))
 
