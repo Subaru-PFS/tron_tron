@@ -180,15 +180,23 @@ class DisExposureActor(Actor.Actor):
                 return
 
             # req, notMatched, opt, leftovers = cmd.coverArgs(['n'])
-            req, notMatched, leftovers = cmd.match([('n', int)])
+            req, notMatched, leftovers = cmd.match([('n', int),
+                                                    ('startNum', int),
+                                                    ('totNum', int)])
             
             cnt = req.get('n', 1)
             if not cnt > 0:
                 cmd.fail('exposeTxt="argument to \'n\' option must be a positive integer"')
                 return
-            
+
+            seqArgv = {}
+            if 'startNum' in req:
+                seqArgv['startNum'] = req['startNum']
+            if 'totNum' in req:
+                seqArgv['totNum'] = req['totNum']
+                
             path = self.setPath(cmd)
-            exp = ExpSequence(self, cmd, self.instName, command, path, cnt, debug=1)
+            exp = ExpSequence(self, cmd, self.instName, command, path, cnt, debug=1, **seqArgv)
             self.lastSequence = self.sequence
             self.sequence = exp
             exp.run()
@@ -253,7 +261,7 @@ class DisExposureActor(Actor.Actor):
             path.setNumber(req['seq'])
         if req.has_key('places'):
             path.setPlaces(req['places'])
-            
+
         return path
 
     def seqFinished(self, seq):

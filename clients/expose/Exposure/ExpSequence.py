@@ -22,6 +22,9 @@ class ExpSequence(Actor.Acting):
         self.argv = argv
         self.state = "running"
 
+        self.startNum = argv.get('startNum', None)
+        self.totNum = argv.get('totNum', cnt)
+        
         self.exposure = None
         self.path.newSequence()
         
@@ -41,15 +44,26 @@ class ExpSequence(Actor.Acting):
             expTime = self.exposure.expTime
         else:
             expTime = 0.0
-            
+
+        # Possibly lie about how we are progressing
+        #
+        if self.startNum != None:
+            cnt = (self.cnt - self.cntLeft) + (self.startNum - 1)
+        else:
+            cnt = self.cnt - self.cntLeft
+
+        state = self.state
+        if state == 'done' and self.totNum != cnt:
+            state = 'subsequence done'
+
         seqState = "%sSeqState=%s,%s,%0.1f,%d,%d,%s" % \
                    (self.inst,
                     CPL.qstr(self.cmd.fullname),
                     CPL.qstr(self.expType),
                     expTime,
-                    self.cnt - self.cntLeft,
-                    self.cnt,
-                    CPL.qstr(self.state))
+                    cnt,
+                    self.totNum,
+                    CPL.qstr(state))
 
         return seqState
     
@@ -66,6 +80,7 @@ class ExpSequence(Actor.Acting):
         """ Generate all the keys describing our last and next files. """
 
         self.returnStateKey()
+        self.cmd.respond('comment=%s' % (CPL.qstr(self.exposure.comment)))
         # self.returnPathKey()
         self.cmd.respond(self.path.getKey())
         

@@ -72,8 +72,10 @@ class disExposure(Exposure.Exposure):
                 self.cameras = "blue "
             
         self.comment = ""
+        self.commentArg = ""
         if opt.has_key('comment'):
-            self.comment='comment=%s ' % (CPL.qstr(opt['comment']))
+            self.comment = opt['comment']
+            self.commentArg = 'comment=%s ' % (CPL.qstr(opt['comment']))
 
         if expType in ("object", "dark", "flat"):
             if opt.has_key('time'):
@@ -147,7 +149,7 @@ class disExposure(Exposure.Exposure):
          
         cb = disCB(None, self.sequence, self, "bias", debug=2)
         r = self.callback("dis", "expose bias basename=%s %s %s" % \
-                          (self._basename(), self.cameras, self.comment),
+                          (self._basename(), self.cameras, self.commentArg),
                           callback=cb.cbDribble, responseTo=self.cmd, dribble=True)
         
     def object(self):
@@ -155,7 +157,7 @@ class disExposure(Exposure.Exposure):
 
         cb = disCB(None, self.sequence, self, "object", debug=2)
         r = self.callback("dis", "expose object time=%s basename=%s %s %s" % \
-                          (self.expTime, self._basename(), self.cameras, self.comment),
+                          (self.expTime, self._basename(), self.cameras, self.commentArg),
                           callback=cb.cbDribble, responseTo=self.cmd, dribble=True)
         
     def flat(self):
@@ -163,7 +165,7 @@ class disExposure(Exposure.Exposure):
 
         cb = disCB(None, self.sequence, self, "flat", debug=2)
         r = self.callback("dis", "expose flat time=%s basename=%s %s %s" % \
-                          (self.expTime, self._basename(), self.cameras, self.comment),
+                          (self.expTime, self._basename(), self.cameras, self.commentArg),
                           callback=cb.cbDribble, responseTo=self.cmd, dribble=True)
         
     def dark(self):
@@ -171,7 +173,7 @@ class disExposure(Exposure.Exposure):
 
         cb = disCB(None, self.sequence, self, "dark", debug=2)
         r = self.callback("dis", "expose dark time=%s basename=%s %s %s" % \
-                          (self.expTime, self._basename(), self.cameras, self.comment),
+                          (self.expTime, self._basename(), self.cameras, self.commentArg),
                           callback=cb.cbDribble, responseTo=self.cmd, dribble=True)
         
     def stop(self, cmd, **argv):

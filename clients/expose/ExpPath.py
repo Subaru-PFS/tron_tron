@@ -34,7 +34,7 @@ class ExpPath(object):
                        }
                        
     def __init__(self, cmdrID, inst,
-                 userDir="", name="test.", number=1, places=4,
+                 userDir="", name="test.", number='nextByDir', places=4,
                  needSize=10000000, suffix=".fits", rootDir="/export/images"):
 
         """ Define an image filename sequence:
@@ -85,7 +85,7 @@ class ExpPath(object):
         self.suffix = suffix
 
         self.forcePathUpdate = False
-
+        
     def newSequence(self):
         self.forcePathUpdate = True
         
@@ -375,8 +375,18 @@ class ExpPath(object):
             if self._isSneakyDir(dirName):
                 raise CPL.Error("I don't trust the directory %s" % \
                                 (CPL.qstr(dirName, tquote="'")))
+
+            # Ugh. there is a bug in makedirs: it only chmods the lowest directory, and leaves
+            # higher ones are 0755.
+            #
             os.makedirs(dirName)
-            os.chmod(dirName, 0777)
+            progDir = os.path.join(self.rootDir, programDir)
+            tDir = dirName
+            while 1:
+                os.chmod(tDir, 0777)
+                if tDir == progDir:
+                    break
+                tDir, dummy = os.path.split(tDir)
 
         self.programDir = programDir
         self.forcePathUpdate = False
