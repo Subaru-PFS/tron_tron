@@ -43,7 +43,7 @@ class GCamera(object):
 
         now = time.time()
         localNow = now - time.altzone
-        localNowMinus12H = local - (12 * 3600)
+        localNowMinus12H = localNow - (12 * 3600)
         
         dateString = time.strftime("%Y-%m-%d", time.gmtime(localNowMinus12H))
         timeString = time.strftime("%H%M%S", time.gmtime(now))
