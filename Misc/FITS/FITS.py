@@ -6,6 +6,7 @@
 
 import Cards
 import numarray
+import pixel16
 
 class FITS:
     """ A simple no extension image FITS file.
@@ -64,10 +65,13 @@ class FITS:
         if self.cards.has_key(name):
             if not allowOverwrite:
                 raise KeyError("cannot overwrite existing card for '%s'" % (name))
+            idx = self.cardOrder.index(name)
             self.cardOrder.remove(name)
             del self.cards[name]
+        else:
+            idx = len(self.cardOrder)
+            
         
-        idx = len(self.cardOrder)
         if before != None:
             try:
                 idx = self.cardOrder.index(before)
@@ -157,6 +161,8 @@ class FITS:
             if len(cardData) != 80:
                 raise RuntimeError("Could not completely read the imput FITS file")
             idx += 1
+            if cardData[0] == ' ':
+                continue
             if cardData[:8] == 'END     ':
                 break
             
@@ -210,6 +216,11 @@ class FITS:
         self.depth = depth
         
         self.image = pixels
+        
+    def flipSign(self):
+        """ Convert our data from signed to unsigned pixels. Does not change BZERO/BSCALE"""
+        
+        pixel16.uflip(self.image)
         
     def writeToFile(self, file):
         """ Write ourselves to the given file. """
@@ -350,4 +361,24 @@ def main():
 
     f1 = open("/home/cloomis/build/pyfits/gzzz.fit", "w+")
     inF.writeToFile(f1)
+    
+if __name__ == "__main__":
+    fin = open('/Users/cloomis/Desktop/zzzz.fits')
+    fout = open('/Users/cloomis/Desktop/zout.fits', 'w+')
+    
+    f = FITS()
+    f.readFromFile(fin)
+    fin.close()
+    
+    f.flipSign()
+    f.addCard(Cards.RealCard('BSCALE', 1.0), after='NAXIS2')
+    f.addCard(Cards.RealCard('BZERO', 32768.0), after='BSCALE')
+    
+    f.addCard(Cards.CommentCard('COMMENT', "CPL's comment"))
+    f.addCard(Cards.StringCard('INSTRUME', "NICFPS"), allowOverwrite=True)
+    
+    f.writeToFile(fout)
+    
+    
+    
     
