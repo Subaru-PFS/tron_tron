@@ -7,3 +7,5 @@ from tcmd import *
 from tback import *
 from Logfile import *
 from LLock import *
+import cfg
+import strcvt

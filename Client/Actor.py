@@ -52,9 +52,7 @@ class Actor(Thread):
 
         # Generic help template.
         #
-        self.helpText = ("%s COMMAND" % (self.name),
-                         "   COMMAND is one of:",
-                         )
+        self.helpText = ("%s COMMAND" % (self.name), "   COMMAND is one of:")
 
     def _getFuncHelp(self, name):
         """ Return a command handler's list of help string, or make up a list.
@@ -108,10 +106,27 @@ class Actor(Thread):
             for c in self.commands:
                 helpList += self._getFuncHelp(c)
 
-        for l in helpList:
-            cmd.respond("%sTxt=%s" % (self.name, CPL.qstr(l)))
+        # Prepass to get the lengths of the command synopses
+        maxlen = 0
+        for help in helpList:
+            if type(help) == type(''):
+                l = len(help)
+            else:
+                l = len(help[0])
+            if l > maxlen:
+                maxlen = l
+
+        for help in helpList:
+            if type(help) == type(''):
+                syn, body = help, ''
+            elif len(help) == 1:
+                syn, body = help[0], ''
+            else:
+                syn, body = help[0], help[1:]
+            cmd.respond("helpTxt=%*s - %s" % (maxlen, 
+                                              CPL.qstr(syn), CPL.qstr(body)))
         cmd.finish('')
-    doHelp.helpText = ("     help         - you got it!",)
+    doHelp.helpText = ("help", "you got it!")
 
     def _parse(self, cmd):
         """ Default parsing behavior. Simply calls a Command's handler.
