@@ -424,11 +424,11 @@ showstatus
     def doStatus(self, cmd):
         self.camera.status(cmd)
 
-        if self.mask:
-            maskFile = self.mask
+        if self.maskfile != None:
+            maskfile = self.maskfile
         else:
-            maskFile = ''
-        cmd.finish('maskFile=%s' % (CPL.qstr(maskFile)))
+            maskfile = ''
+        cmd.finish('maskfile=%s' % (CPL.qstr(maskfile)))
     
     def doTest(self, cmd):
         cmd.finish('txtForTcc=" OK"')
@@ -737,27 +737,8 @@ showstatus
         """ Stop using any mask. """
 
         self.mask = None
-        cmd.finish('%sMask=None')
-
-    def XXdoSetMask(self, cmd):
-        """ Load a mask to apply.
-
-        CmdArgs:
-            a FITS filename, based from self.imBaseDir
-        """
-
-        if len(cmd.argv) != 2:
-            cmd.fail('%sTxt="usage: setMask FILENAME"' % (self.name))
-            return
-        fname = cmd.argv[-1]
-
-        f = pyfits.open(fname)
-        im = f[0].data
-        f.close()
-        
-        self.mask = im
-        cmd.finish('%sMask=%s' % (self.name, CPL.qstr(fname)))
-        
+        self.maskfile = None
+        cmd.finish('maskfile=None')
 
     def _setMask(self, fname):
         f = pyfits.open(fname)
@@ -765,7 +746,8 @@ showstatus
         f.close()
         
         self.mask = im <= 0
-
+        self.maskfile = fname
+        
     def doSetMask(self, cmd):
         """ Load a mask to apply.
 
@@ -781,7 +763,7 @@ showstatus
 
         self._setMask(fname)
         
-        cmd.finish('%sMask=%s' % (self.name, CPL.qstr(fname)))
+        cmd.finish('maskfile=%s' % (self.name, CPL.qstr(fname)))
         
     def doSetBoresight(self, cmd):
         """ Define the boresight

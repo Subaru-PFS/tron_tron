@@ -44,7 +44,7 @@ class gcam(Guider.Guider):
         self.starThresh = 4.5
         self.defaultStarThresh = self.starThresh
 
-        self.setMask('/export/images/keep/masks/na2.fits')
+        self._setMask('/export/images/keep/masks/na2.fits')
         
     def doSetTemp(self, cmd):
         """ Handle setTemp command.
