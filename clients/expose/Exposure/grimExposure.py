@@ -76,8 +76,10 @@ class grimExposure(Exposure.Exposure):
         self.instArgs = req
 
         self.comment = ""
+        self.commentArg = ""
         if req.has_key('comment'):
-            self.comment='comment=%s ' % req['comment']
+            self.comment = req['comment']
+            self.commentArg = 'comment=%s ' % (CPL.qstr(req['comment']))
 
         if expType in ("object", "dark", "flat"):
             if req.has_key('time'):
@@ -95,6 +97,7 @@ class grimExposure(Exposure.Exposure):
         """ Reserve filenames, and set .basename.
         """
 
+        # self.cmd.warn('debug=%s' % (CPL.qstr("reserve: %s" % self.path)))
         self.pathParts = self.path.getFilenameInParts(keepPath=True)
 
     def _basename(self):
@@ -110,8 +113,7 @@ class grimExposure(Exposure.Exposure):
     def finishUp(self):
         """ Clean up and close out the FITS files.
 
-        This is HORRIBLE! -- we are blocking at a) the worst time for the exposure, and b) in a way
-        that can block _other_ instruments!  FIX THIS!!!
+        This is HORRIBLE! -- we are blocking at the worst time for the exposure. FIX THIS!!!
         
         """
 
@@ -123,7 +125,13 @@ class grimExposure(Exposure.Exposure):
         if self.state != "aborted":
             self.callback('fits', 'finish grim %s' % (output))
 
-    def filesKey(self):
+    def lastFilesKey(self):
+        return self.filesKey(keyName="grimFiles")
+    
+    def newFilesKey(self):
+        return self.filesKey(keyName="grimNewFiles")
+    
+    def filesKey(self, keyName="grimFiles"):
         """ Return a fleshed out key variable describing our files.
 
         We return all the parts separately, in a form that can be
@@ -136,15 +144,15 @@ class grimExposure(Exposure.Exposure):
         if userDir != '':
             userDir += os.sep
             
-        return "grimFiles=%s,%s,%s,%s,%s,%s" % \
-               (CPL.qstr(self.cmd.cmdrName),
+        return "%s=%s,%s,%s,%s,%s,%s" % \
+               (keyName,
+                CPL.qstr(self.cmd.cmdrName),
                 CPL.qstr('tycho.apo.nmsu.edu'),
                 CPL.qstr(self.pathParts[0] + os.sep),
                 CPL.qstr(self.pathParts[1] + os.sep),
                 CPL.qstr(userDir),
                 CPL.qstr(self.pathParts[-1]))
-                
-        
+
     def bias(self):
         """ Start a single bias. Requires several self. variables. """
 

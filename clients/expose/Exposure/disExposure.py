@@ -142,7 +142,6 @@ class disExposure(Exposure.Exposure):
                 CPL.qstr(self.pathParts[1] + os.sep),
                 CPL.qstr(userDir),
                 blueFile, redFile)
-                
         
     def bias(self):
         """ Start a single bias. Requires several self. variables. """

@@ -34,25 +34,23 @@
 
 import inspect
 import pprint
+import os
 import sys
 import time
 import traceback
 
 import client
 import Command
-import Actor
+import InstExposure
 import ExpPath
 from Exposure import ExpSequence
 import CPL
 
 
-class GrimExposureActor(Actor.Actor):
+class GrimExposureActor(InstExposure.InstExposure):
     def __init__(self, **argv):
-        Actor.Actor.__init__(self, 'grimExpose', debug=1)
+        InstExposure.InstExposure.__init__(self, 'grimExpose', debug=1)
         
-        # The single active sequence.
-        self.sequence = None
-        self.paths = {}
         self.instName = 'grim'
 
         self.helpText = ("grimExpose COMMAND [ARGS]",
@@ -173,108 +171,31 @@ class GrimExposureActor(Actor.Actor):
                 return
 
             # req, notMatched, opt, leftovers = cmd.coverArgs(['n'])
-            req, notMatched, leftovers = cmd.match([('n', int)])
+            req, notMatched, leftovers = cmd.match([('n', int),
+                                                    ('startNum', int),
+                                                    ('totNum', int)],)
             
             cnt = req.get('n', 1)
             if not cnt > 0:
                 cmd.fail('exposeTxt="argument to \'n\' option must be a positive integer"')
                 return
-            
+
+            seqArgv = {}
+            if 'startNum' in req:
+                seqArgv['startNum'] = req['startNum']
+            if 'totNum' in req:
+                seqArgv['totNum'] = req['totNum']
+                
             path = self.setPath(cmd)
-            exp = ExpSequence(self, cmd, self.instName, command, path, cnt, debug=1)
+            exp = ExpSequence(self, cmd, self.instName, command, path, cnt,
+                              debug=1,
+                              **seqArgv)
+            self.lastSequence = self.sequence
             self.sequence = exp
             exp.run()
         else:
             cmd.fail('exposeTxt="command %s has not even been imagined"' % (CPL.qstr(command, tquote="'")))
             return
-
-    def status(self, cmd):
-        """
-        """
-
-        CPL.log('status', "starting status")
-        
-        if self.sequence != None:
-            CPL.log('status', "status on %r" % (self.instName))
-            seqState, expstate = self.sequence.getKeys()
-            cmd.respond("%s; %s" % (seqState, expstate))
-
-        cmd.finish('')
-    
-    def getIDKey(self, cmd):
-        """ Return the key describing a given command and instrument. """
-
-        return "exposeID=%s,%s" % (CPL.qstr(cmd.program()), CPL.qstr(self.instName))
-
-    def returnKeys(self, cmd):
-        """ Generate all the keys describing our next file. """
-        
-        # IDKey = self.getIDKey(cmd, inst)
-        pathKey = self.getPath(cmd).getKey()
-            
-        #response = "%s; %s" % (IDKey, pathKey)
-        
-        cmd.respond(pathKey)
-        
-    def getPath(self, cmd):
-        """ Return an existing or new ExpPath for the given program+instrument. """
-        
-        id = cmd.program()
-        try:
-            path = self.paths[id]
-        except KeyError, e:
-            path = ExpPath.ExpPath(cmd.cmdrName, self.instName)
-            self.paths[id] = path
-
-        return path
-    
-    def setPath(self, cmd):
-        """ Extract all the pathname parts from the command and configure (or create) the ExpPath. """
-
-        req, notMatched, leftovers = cmd.match([('name', str),
-                                                ('seq', int),
-                                                ('places', int)])
-        path = self.getPath(cmd)
-        
-        if req.has_key('name'):
-            path.setName(req['name'])
-        if req.has_key('seq'):
-            path.setNumber(req['seq'])
-        if req.has_key('places'):
-            path.setPlaces(req['places'])
-            
-        return path
-
-    def seqFinished(self, seq):
-        inst = seq.inst
-        cmd = seq.cmd
-
-        try:
-            del self.sequence
-            self.sequence = None
-        except Exception, e:
-            CPL.log("seqFinished", "exposure sequence for %s was not found." % (self.instName))
-            return
-        
-        cmd.finish('')
-
-    def seqFailed(self, seq, reason):
-        inst = seq.inst
-        cmd = seq.cmd
-
-        try:
-            del self.sequence
-            self.sequence = None
-        except Exception, e:
-            CPL.log("seqFailed", "exposure sequence for %s was not found." % (self.instName))
-            return
-        
-        cmd.fail(reason)
-
-    def normalizeInstname(self, name):
-        """ Return the canonical name for a given instrument. """
-
-        return name
 
 # Start it all up.
 #

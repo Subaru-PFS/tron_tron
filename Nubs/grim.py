@@ -53,7 +53,7 @@ def acceptGrim(in_f, out_f, addr=None):
     
     nubID = g.nubIDs.gimme()
     
-    d = Hub.BinaryReplyDecoder(debug=1, scratchDir='/export/images/scratch',
+    d = Hub.BinaryReplyDecoder(debug=0, scratchDir='/export/images/scratch',
                                BZERO=22768.0, signFlip=True)
     e = Hub.BinaryCmdEncoder(debug=1)
     c = Hub.ActorNub(g.poller,

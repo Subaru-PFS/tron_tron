@@ -86,6 +86,10 @@ class ExpPath(object):
 
         self.forcePathUpdate = False
         
+    def __str__(self):
+        return "ExpPath(rootDir=%s, userDir=%s, name=%s, number=%s)" % \
+               (self.rootDir, self.userDir, self.name, self.number)
+    
     def newSequence(self):
         self.forcePathUpdate = True
         
