@@ -36,11 +36,17 @@ class GCamera(object):
 
         This is where we create any necessary directories. And we do that expensively,
         by checking for each file whether the right directory exists.
+
+        We want the directories to change at local noon and be named after the
+        new day's date. 
         """
 
-        now = time.gmtime()
-        dateString = time.strftime("%Y-%m-%d", now)
-        timeString = time.strftime("%H%M%S", now)
+        now = time.time()
+        localNow = now - time.altzone
+        localNowMinus12H = local - (12 * 3600)
+        
+        dateString = time.strftime("%Y-%m-%d", time.gmtime(localNowMinus12H))
+        timeString = time.strftime("%H%M%S", time.gmtime(now))
 
         dirName = os.path.join(self.path, dateString)
         if not os.path.isdir(dirName):
