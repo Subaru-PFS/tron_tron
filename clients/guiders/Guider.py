@@ -32,6 +32,8 @@ class Guider(Actor.Actor):
         Actor.Actor.__init__(self, guiderName, **argv)
 
         self.commands.update({'status':     self.statusCmd,
+                              'doread':     self.exposeCmd,
+                              'dodark':     self.darkCmd,
                               'expose':     self.exposeCmd,
                               'dark':       self.darkCmd,
                               'centroid':   self.centroidCmd,
@@ -58,23 +60,36 @@ class Guider(Actor.Actor):
         for name in ('bias',
                      'readNoise', 'ccdGain',
                      'ccdSize', 'binning',
-                     'thresh', 'radius',
+                     'thresh', 'radius', 'radMult',
                      'maskFile', 'imagePath',
                      'fitErrorScale'):
             self.defaults[name] = CPL.cfg.get(self.name, name)
         self.size = self.defaults['ccdSize']
         self.defaults['minOffset'] = CPL.cfg.get('telescope', 'minOffset')
 
-    def statusCmd(self, cmd):
+    def genPGStatusKeys(self, cmd):
+        """ Generate the default PyGuide status keys. """
+        
+        cmd.respond("fsDftThresh=%0.1f; fsDftRadMult=%0.1f" % (self.config['thresh'],
+                                                               self.config['radMult']))
+        cmd.respond("centDftRadius=%0.1f" % (self.config['radius']))
+
+    def statusCmd(self, cmd, doFinish=True):
         """ Returns camera and guide loop status keywords. """
 
         self.camera.statusCmd(cmd, doFinish=False)
         self.mask.statusCmd(cmd, doFinish=False)
+
+        self.genPGStatusKeys(cmd)
 	
         if self.guideLoop:
             self.guideLoop.doStatus(cmd, doFinish=False)
-
-        cmd.finish("guiding=%s" % (CPL.qstr(self.guideLoop != None)))
+        else:
+            cmd.respond('guiding="off"')
+            
+        if doFinish:
+            cmd.finish()
+                    
     statusCmd.helpText = ('status', 'returns many status keywords.')
     
     def exposeCmd(self, cmd):
@@ -133,6 +148,8 @@ class Guider(Actor.Actor):
             return self.doTccFindstars(cmd)
 
         tweaks = self.parseCmdTweaks(cmd, self.config)
+        cmd.respond("fsActThresh=%0.1f; fsActRadMult=%0.1f" % (tweaks['thresh'],
+                                                               tweaks['radMult']))
         
         # Get the image and call the real findstars routine.
         self.doCmdExpose(cmd, self._findstarsCB, 'expose', tweaks=tweaks)
@@ -174,6 +191,7 @@ class Guider(Actor.Actor):
             return self.doTccCentroid(cmd)
 
         tweaks = self.parseCmdTweaks(cmd, self.config)
+        cmd.respond("centActRadius=%0.1f" % (tweaks['radius']))
         
         # Get the image
         self.doCmdExpose(cmd, self._centroidCB, 'expose', tweaks=tweaks)
@@ -321,7 +339,13 @@ class Guider(Actor.Actor):
            stateName=value
         """
 
+        kwBase = (self.config['radius'], self.config['radMult'], self.config['thresh'])
         self.config = self.parseCmdTweaks(cmd, self.config)
+        kwNew = (self.config['radius'], self.config['radMult'], self.config['thresh'])
+
+        if kwBase != kwNew:
+            self.genPGStatusKeys(cmd)
+            
 	cmd.finish('')
                    
     def doCmdExpose(self, cmd, cb, type, tweaks):
@@ -348,15 +372,21 @@ class Guider(Actor.Actor):
                                                     ('bin', str),
                                                     ('file', str)])
 
-        if matched.has_key('file'):
-            filename = self.findFile(cmd, matched['file'])
-            if not filename:
+        # Extra double hack: have a configuration override to the filenames. And
+        # if that does not work, look for a command option override.
+        filename = self.config.get('forceFile', None)
+        if not filename and matched.has_key('file'):
+            filename = matched['file']
+
+        if filename:
+            imgFile = self.findFile(cmd, filename)
+            if not imgFile:
                 cmd.fail('%sTxt=%s' % (self.name,
-                                       CPL.qstr("No such file: %s" % (matched['file']))))
+                                       CPL.qstr("No such file: %s" % (filename))))
                 return
 
             frame = GuideFrame.ImageFrame(self.size)
-            frame.setImageFromFITSFile(filename)
+            frame.setImageFromFITSFile(imgFile)
 
             tweaks['newFile'] = False
             cb(cmd, filename, frame, tweaks=tweaks)
@@ -540,8 +570,10 @@ class Guider(Actor.Actor):
                                                    ('ccdGain', float),
                                                    ('radius', float),
                                                    ('thresh', float),
+                                                   ('radMult', float),
                                                    ('retry', int),
                                                    ('restart', str),
+                                                   ('forceFile', str),
                                                    ('cnt', int)])
 
         tweaks.update(matched)
