@@ -90,7 +90,6 @@ class GuideLoop(object):
 
         self.cleanup()
 
-        self.genStateKey()
         self.cmd.fail('%sTxt=%s' % (self.controller.name, CPL.qstr(why)))
         self.controller.guideLoopIsStopped()
 
@@ -100,8 +99,7 @@ class GuideLoop(object):
         """
 
         self.cleanup()
-        
-        self.genStateKey()
+ 
         self.controller.guideLoopIsStopped()
         
     def run(self):
@@ -241,6 +239,7 @@ class GuideLoop(object):
         gstar = self.cmd.argDict.get('gstar')
         boresight = self.cmd.argDict.get('boresight', 'nope')
         boresight = boresight != 'nope'
+        noGuide =  self.cmd.argDict.has_key('noGuide')
         
         if (boresight or centerOn) and gstar:
             self.failGuiding('cannot specify both field and boresight guiding.')
@@ -279,15 +278,22 @@ class GuideLoop(object):
                 return
 
             try:
-                self.refPVT = self._GPos2ICRS(self.getBoresight())
+                refpos = self.getBoresight()
+                self.refPVT = self._GPos2ICRS(refpos)
                 CCDstar = MyPyGuide.star2CCDXY(star, frame)
-                cmdTxt = self._genOffsetCmd(cmd, CCDstar, frame, offsetType='calib', doScale=False)
+                cmdTxt = self._genOffsetCmd(cmd, CCDstar, frame, refpos, offsetType='guide', doScale=False)
                 if self.cmd.argDict.has_key('noMove'):
                     self.cmd.warn('%sTxt="NOT sending tcc %s"' % (self.controller.name, cmdTxt))
                 else:
                     client.call('tcc', cmdTxt, cid=self.controller.cidForCmd(self.cmd))
             except Exception, e:
                 self.failGuiding(e)
+                return
+
+            # If we just want to center up and confirm the star, shortcut here
+            if noGuide:
+                self.tweaks['noGuide'] = True
+                self._guideLoopTop()
                 return
             
         elif gstar:
@@ -336,7 +342,7 @@ class GuideLoop(object):
 
         #  4) start the guiding loop:
         #
-        self.cmd.respond('guiding=True')
+        self.genStateKey()
         self._guideLoopTop()
         
     def _guideLoopTop(self):
@@ -487,7 +493,7 @@ class GuideLoop(object):
         xPos = self.boresight[0] + self.imScale[0] * bsPos[0]
         yPos = self.boresight[1] + self.imScale[1] * bsPos[1]
 
-        self.cmd.warn('debug="boresight is at (%0.2f, %0.2f)"' % (xPos, yPos))
+        # self.cmd.warn('debug="boresight is at (%0.2f, %0.2f)"' % (xPos, yPos))
         return xPos, yPos
 
     def _getExpectedPos(self, t=None):
@@ -540,7 +546,9 @@ class GuideLoop(object):
 
         if doScale:
             diffPos = self.scaleOffset(star, baseDiffPos)
-
+        else:
+            diffPos = baseDiffPos
+            
         #  - Generate the offset. Threshold computed & uncomputed
         #
         diffSize = math.sqrt(diffPos[0] * diffPos[0] + diffPos[1] * diffPos[1])
@@ -614,7 +622,8 @@ class GuideLoop(object):
         self.trackFilename = newname
 
         self.cmd.warn('debug=%s' % (CPL.qstr("tracked filename: %s" % (newname))))
-
+        time.sleep(2.0)
+        
         return newname
         
     def _handleGuiderFrame(self, cmd, filename, frame, tweaks=None):
@@ -626,8 +635,8 @@ class GuideLoop(object):
             self.stopGuiding()
             return
         
-        self.cmd.warn('debug=%s' % (CPL.qstr('new guide camera file=%s, frame=%s' % \
-                                             (filename, frame))))
+        #self.cmd.warn('debug=%s' % (CPL.qstr('new guide camera file=%s, frame=%s' % \
+        #                                     (filename, frame))))
 
         if self.telHasBeenMoved:
             self.cmd.warn('txt=%s' % \
@@ -636,10 +645,10 @@ class GuideLoop(object):
             self._guideLoopTop()
             return
         
-        if self.tweaks.has_key('forceFile'):
-            filename = self.getNextTrackedFilename(self.tweaks['forceFile'])
-        elif self.cmd.argDict.has_key('file'):
+        if self.cmd.argDict.has_key('file'):
             filename = self.getNextTrackedFilename(self.cmd.argDict['file'])
+        elif self.tweaks.has_key('forceFile'):
+            filename = self.getNextTrackedFilename(self.tweaks['forceFile'])
         frame = GuideFrame.ImageFrame(self.controller.size)
         frame.setImageFromFITSFile(filename)
 
@@ -652,6 +661,7 @@ class GuideLoop(object):
         # Still need to interpolate to the middle of the exposure.
         now = time.time()
         refPos = self._getExpectedPos(t=now)
+        refPos = frame.ccdXY2imgXY(refPos)
         self.cmd.respond("guiderPredPos=%0.2f,%0.2f" % (refPos[0], refPos[1]))
         try:
             star = MyPyGuide.centroid(self.cmd, filename, self.controller.mask,
@@ -675,7 +685,12 @@ class GuideLoop(object):
             
         self.cmd.warn('debug=%s' % (CPL.qstr('center=%0.2f, %0.2f' % (star.ctr[0],
                                                                       star.ctr[1]))))
-        self._centerUp(self.cmd, star, frame, refPos, fname=filename)
+
+        if self.tweaks.has_key('noGuide'):
+            self.state = 'off'
+            self.stopGuiding()
+        else:
+            self._centerUp(self.cmd, star, frame, refPos, fname=filename)
         
     def _extractCnvPos(self, res):
         """ Extract and convert the converted position from a tcc convert.

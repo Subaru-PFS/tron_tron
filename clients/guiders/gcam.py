@@ -4,6 +4,7 @@
 
 """
 
+import os
 import sys
 
 import client
@@ -18,8 +19,9 @@ class gcam(Guider.Guider, TCCGcam.TCCGcam):
     def __init__(self, **argv):
         sys.stderr.write("in gcam.__init__\n")
         ccdSize = CPL.cfg.get('gcam', 'ccdSize')
-        camera = AltaGCamera.AltaGCamera('gcam',
-                                         CPL.cfg.get('gcam', 'imagePath'),
+
+        path = os.path.join(CPL.cfg.get('gcam', 'imageRoot'), CPL.cfg.get('gcam', 'imageDir'))
+        camera = AltaGCamera.AltaGCamera('gcam', path,
                                          CPL.cfg.get('gcam', 'cameraHostname'),
                                          ccdSize,
                                          **argv)

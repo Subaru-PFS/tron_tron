@@ -47,7 +47,7 @@ def findstars(cmd, filename, mask, frame, tweaks, cnt=10):
         frame = GuideFrame.ImageFrame(img.shape)
     frame.setImageFromFITSHeader(header)
 
-    cmd.warn('debug=%s' % (CPL.qstr(frame)))
+    # cmd.warn('debug=%s' % (CPL.qstr(frame)))
     
     if mask:
         maskfile, maskbits = mask.getMaskForFrame(cmd, filename, frame)
@@ -74,7 +74,7 @@ def findstars(cmd, filename, mask, frame, tweaks, cnt=10):
         raise
 
     if cmd and isSat:
-        cmd.warn('findstarsSaturated')
+        cmd.warn('txt="saturated stars have been ignored."')
 
     starList = []
     i=1
@@ -180,6 +180,7 @@ def starshape(cmd, frame, img, maskbits, star):
     s = StarInfo()
     s.ctr = star.xyCtr
     s.err = star.xyErr
+    s.radius = star.rad
     s.fwhm = (fwhm, fwhm)
     s.angle = 0.0
     s.counts = star.counts
@@ -205,9 +206,9 @@ def star2CCDXY(star, frame):
 
     binning = frame.frameBinning
 
-    ctr = frame.imgXY2ccdXY(star.xyCtr)
-    err = star.xyErr[0] * binning[0], \
-          star.xyErr[1] * binning[1]           
+    ctr = frame.imgXY2ccdXY(star.ctr)
+    err = star.err[0] * binning[0], \
+          star.err[1] * binning[1]           
     fwhm = star.fwhm[0] * binning[0], \
            star.fwhm[1] * binning[1]
 
@@ -247,12 +248,13 @@ def genStarKey(cmd, s, idx=1, keyName='star', caller='x'):
         caller  ? the 'reason' field.
     """
 
-    cmd.respond('%s=%s,%d,%0.2f,%0.2f, %0.2f,%0.2f,%0.2f, %0.2f,%0.2f,%0.2f,%0.2f, %0.1f,%0.1f,%0.1f' % \
+    cmd.respond('%s=%s,%d,%0.2f,%0.2f, %0.2f,%0.2f,%0.2f,%0.2f, %0.2f,%0.2f,%0.2f,%0.2f, %d,%0.1f,%0.1f' % \
                 (keyName,
                  CPL.qstr(caller),
                  idx,
                  s.ctr[0], s.ctr[1],
                  s.err[0], s.err[1],
+                 s.radius,
                  s.asymm,
                  s.fwhm[0], s.fwhm[1], s.angle,
                  s.chiSq,

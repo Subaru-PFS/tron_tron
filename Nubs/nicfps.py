@@ -9,10 +9,7 @@ name = 'nicfps'
 def start(poller):
     stop()
 
-    initCmds = ('filters status',
-                'fp status',
-                'temp status',
-                'pressure status')
+    initCmds = ('status',)
 
     safeCmds = r'status\s*$'
 
