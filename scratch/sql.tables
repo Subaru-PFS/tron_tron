@@ -1,0 +1,29 @@
+create table command (
+        xid     integer,
+
+        cmdr       varchar(255),
+        cmdrCid    varchar(255),
+        cmdrMid    integer,
+
+        actor      varchar(255),
+        actorCid   varchar(255),
+        actorMid   integer,
+
+        cmd        varchar(255)
+);
+
+create table reply (
+        xid     integer,
+
+        command integer,
+        
+        flag    char(1)
+);
+
+create table KV (
+        key     varchar(255),
+        reply   integer,
+
+        value   varchar(255)
+);
+        

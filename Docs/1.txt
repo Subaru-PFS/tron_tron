@@ -1,0 +1,33 @@
+
+What was the original design:
+
+  The original software architecture for 3.5m operations was designed
+around the necessity of incorporating heterogeneous, distributed
+systems. A simple
+
+What are the problems:
+
+  Remark has served APO very well, and does still work. But it has
+  some flaws which are starting to hamper operations:
+
+   - APO does not have the source code. Even if we did, it would be in
+   Yerk. So Remark is basically frozen.
+   
+   - Yerk runs only on Macs.
+
+   - The connection protocol was designed before firewalls, and looks
+   for all the world like an enemy attack to the remote institutions.
+
+What are we doing:
+
+  Russell Owen was contracted to write a new GUI interface for the
+3.5m operations. The only constraints were that the result be
+reasonably platform independant and that the programming language and
+style facilitate and even encourage others to modify or extend the
+program.
+
+What are we not doing:
+
+  This is a shoestring operation, and we are explicitly not
+  redesigning the s/w architecture. We are keeping the simple
+  single layer command-response protocol

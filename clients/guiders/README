@@ -1,0 +1,61 @@
+The 3.5m currently has three "guiders":
+
+ - the echelle slitviewer ("ecam")
+ - the NA2 offset guider ("gcam")
+ - the DIS slitviewer ("dcam")
+
+ The file and name spaces for all are simple:
+  - Each has a more or less fixed directory.
+  - Each has a filename pattern which includes a sequence number.
+  - Each has a sequence number limit.
+  - Exposures always take the next sequence number, or wrap at the limit. Exposures _overwrite_ existing files.
+
+All, at the least, need to:
+
+ - expose a window:
+        expose itime=N [window=X0,Y0,X1,Y1]
+
+        Returns:
+           gcamImage=filename
+
+ - take a dark frame:
+        dark itime=N
+
+        Returns:
+           gcamDark=filename
+
+ - set up:
+        init
+        
+        Returns:
+           gcamPath=host,path
+
+           where the images will be available in ftp://host/path/
+
+Some, or all, need to:
+
+ - find objects that can be centroided on:
+        findstars itime=N [window=X0,Y0,X1,Y1] [limit=N]
+
+        Returns a list of centroids.
+
+        i gcamImage=filename
+        : gcamStars=N,s1,s2,...sN where sN=x,y,?,?
+           or
+        f gcamTxt="No stars found"
+
+ - centroid on a [given] star:
+        centroid itime=N [on=x,y] [window=X0,Y0,X1,Y1]
+
+        If no center is given, findstars is called, and the first (best) object is used.
+
+        Return details about the centroiding
+
+        i gcamImage=filename
+        : gcamCentroid=x,y,?,?,?
+           or
+        f gcamTxt="No star found"
+
+Some need to set masks:
+ - setCurrentMask (itime=N or filename=F)
+

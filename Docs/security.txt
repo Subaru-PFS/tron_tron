@@ -1,0 +1,17 @@
+
+  The current hub uses the connecting machine's IP address for
+authorizing connections, and does not encrypt the traffic between
+clients and the hub. It is worth considering options for the new hub
+and TUI. 
+  Some issues go away, and so are not worth discussing. The existing
+callback mechanism that upsets so mant firewalls goes, as does the
+system of ftping back to a sender machine, with all negotiations
+transferred in plain text. 
+
+Authorization:
+
+  - Leave the current scheme. I object, only because we can no longer
+  count on the client being a dumb single-user Mac.
+
+  - Require passwords.
+ 

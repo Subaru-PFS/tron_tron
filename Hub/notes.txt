@@ -1,0 +1,5 @@
+
+  Major design problems:
+
+ - scripting -- allow server-side scripts?
+ - scripting -- language bindings? 

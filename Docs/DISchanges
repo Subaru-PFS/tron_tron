@@ -1,0 +1,5 @@
+- change dis reconfig to:
+
+   config masknames
+   config r1zero=303
+   config set1=low

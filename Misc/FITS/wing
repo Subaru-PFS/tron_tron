@@ -1,0 +1,21 @@
+#!wing
+#!version=1.0
+##################################################################
+# Wing IDE project file                                          #
+# Shared project data: May be checked into source code control   #
+##################################################################
+file_list = ['Cards/Card.py',
+             'Cards/CommentCard.py',
+             'Cards/IntCard.py',
+             'Cards/LogicalCard.py',
+             'Cards/PreformattedCard.py',
+             'Cards/RealCard.py',
+             'Cards/StringCard.py',
+             'Cards/ValuelessCard.py',
+             'Cards/__init__.py',
+             'FITS.py',
+             'Makefile',
+             '__init__.py']
+file_type = 'shared'
+main_debug_file = None
+version = '1.0'

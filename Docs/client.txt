@@ -1,0 +1,43 @@
+
+
+   Synchronous calls (the big change from the existing mcnode):
+
+       - res = call(tgt, command)
+
+         Example - a Grim dithering script:
+
+             ditherPath = ((40, 0), (40, 40), (0, 40), (0, 0))
+             for x, y in ditherPath:
+                  call('tcc', 'offset %g,%g' % (x / 3600.0, y / 3600.0)) 
+                  call('nexpose', 'expose inst=grim itime=%d n=%d' % (itime, n))
+
+       - res = waitFor(src, keys=None)
+
+         Example - the 1m alert system:
+
+             while 1:
+                 shutter = waitFor('tcc', 'EncShutters')
+
+                 if shutter == '0x00000040':
+                     state = 'open'
+                 elif shutter == '0x00000000':
+                     state = 'closed'
+                 else:
+                     state = 'all messed up'
+                 
+                 sendTo1m("3.5m shutter is %s" % (state))
+
+             
+   Asynchronous callbacks:
+       -       callback(tgt, command, callback=None, dribble=False)
+               
+       -       listenFor(src, callback, keys=None)
+
+
+   Register vocabulary:
+       - res = registerWord(word, function, help)
+
+         Example - 
+             registerWord('gfocus', gfocus, gfocusHelp)
+
+       - res = registerWords(list of above triples)

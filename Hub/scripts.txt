@@ -1,0 +1,10 @@
+
+Engineering/observing support scripts:
+
+  - nreport family
+  - discal
+  - echtilt
+  - covers/eyelids
+  - lamps
+  - gfocus
+

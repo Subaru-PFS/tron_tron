@@ -1,0 +1,41 @@
+<html>
+<head>
+<title>Hub Protocol</title>
+</head>
+
+<body>
+<h1>Hub Protocol</h1>
+
+  <p>The hub negotiates between <b>Commanders</b> and <b>Actors</b>
+via a textual, line-based, command-and-response protocol. This
+protocol is intended to be simple to implement and conform to: we want
+to encourage development.
+
+<h2>Command Requests</h2>
+
+<b>MID CID Actor Command</b>
+
+  <p>Request that the command string <b>Command</b> be sent,
+  un-molested, to the target <b>Actor</b>. Responses to the command
+  will be returned to the caller labelled with <b>MID</b>, as defined
+  by the <a href="#Command_Responses">Command Response protocol</a>. 
+
+  The <b>CID</b> argument can be used to specify the source of the
+  command. <p>For simple callers, it can be left as <b>0</b>. Whatever
+  is passed to the hub will be returned to the caller.
+
+  <p><b>MID</b>s must be positive, incrementing integers.
+  <p><b>CID</b>s must be one or more non-negative integers, separated
+  by single periods. <i>e.g. 0, 0.1, 1.99</i>
+
+<h2><a name="Command_Responses"></a>Command Responses</h2>
+
+<b>MID CID Flag KVList</b>
+
+  <p>
+
+<h2>Definitions</h2>
+
+
+</body>
+</html>
