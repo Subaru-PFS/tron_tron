@@ -13,6 +13,8 @@ import os.path
 import sys
 sys.path.insert(0, "..")
 
+import time
+
 import CPL
 
 class ExpPath(object):
@@ -288,12 +290,12 @@ class ExpPath(object):
         localNowPlus12H = localNow + (12 * 3600)
 
         dateString = time.strftime("UT%y%m%d", time.gmtime(localNowPlus12H))
-        quarterString = self.month2quarters(dateString[4:5])
+        quarterString = self.month2quarters[dateString[4:6]]
         
         dirName = os.path.join(self.rootDir, quarterString + self.program,
                                dateString)
         if not os.path.isdir(dirName):
-            os.mkdir(dirName)
+            os.makedirs(dirName)
             os.chmod(dirName, 0777)
 
         self.programDir = dirName
