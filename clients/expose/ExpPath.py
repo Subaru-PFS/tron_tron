@@ -368,10 +368,15 @@ class ExpPath(object):
 
         now = time.time()
         localNow = now - time.timezone
-        localNowPlus12H = localNow + (12 * 3600)
 
+        # Uck. We do _not_ want the last night in the quarter to be assigned to the next quarter.
+        # So use _today_'s date to determine the quarter.
+        localNowMinus12H = localNow - (12 * 3600)
+        monthForQuarter = time.strftime("%m", time.gmtime(localNowMinus12H))
+        quarterString = self.month2quarters[monthForQuarter]
+
+        localNowPlus12H = localNow + (12 * 3600)
         dateString = time.strftime("UT%y%m%d", time.gmtime(localNowPlus12H))
-        quarterString = self.month2quarters[dateString[4:6]]
         programDir = os.path.join(quarterString + self.program, dateString)
         dirName = os.path.join(self.rootDir, programDir, self.userDir)
         if not os.path.isdir(dirName):
