@@ -291,14 +291,14 @@ class ExpPath(object):
 
         dateString = time.strftime("UT%y%m%d", time.gmtime(localNowPlus12H))
         quarterString = self.month2quarters[dateString[4:6]]
-        
-        dirName = os.path.join(self.rootDir, quarterString + self.program,
-                               dateString)
+
+        programDir = os.path.join(quarterString + self.program, dateString)
+        dirName = os.path.join(self.rootDir, programDir)
         if not os.path.isdir(dirName):
             os.makedirs(dirName)
             os.chmod(dirName, 0777)
 
-        self.programDir = dirName
+        self.programDir = programDir
         
     def _fullName(self):
         return "%s%s%s" % (self.name, self._getNumber(), self.suffix)
