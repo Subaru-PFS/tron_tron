@@ -5,33 +5,39 @@ import os.path
 import client
 import CPL
 import GCamera
+import GimCtrlConnection
 
 class GimGCamera(GCamera.GCamera):
-    """ Use a GImCtrl-controlled camera.
+    """ Use a GImCtrl-controlled camera. """
+    
+    def __init__(self, name, inPath, outPath, **argv):
+        """ Use a GImCtrl-controlled camera.
 
-    Takes GIm images, either directly from the controller or via the TCC, and puts fleshed
-    out versions into the given public directory.
-    
-    """
-    
-    def __init__(self, name, camName, inPath, outPath, viaTCC, **argv):
-        """ Use a GImCtrl-controlled camera. Depending on the viaTCC, call the camera directly
-            or command it via the TCC.
-            """
+        Args:
+           name    - user-level name of the camera system. Used to choose image
+                     directory and filenames.
+           inPath  - Where the GimCtrl system saves its files.
+           outPath - Where our output files go.
+           host, port - socket to reach the camera.
+        """
         
-        GCamera.GCamera.__init__(self, name, camName, outPath, **argv)
+        GCamera.GCamera.__init__(self, name, outPath, **argv)
 
         self.inPath = inPath
-        self.viaTCC = viaTCC
 
-        # Track the name of the last file.
-        self.lastRead = "unknown"
-
+        self.conn = GimCtrlConnection.GimCtrlConnection(argv['host'],
+                                                        argv['port'])
 
     def zap(self, cmd):
         pass
-    
-    def genExposeCommand(self, cmd, expType, itime, window=None, bin=None, callback=None):
+
+
+    def rawCmd(self, cmd, timeout):
+        """ Send a command directly to the controller. """
+
+        return self.conn.sendCmd(cmd.raw_cmd, timeout)
+        
+    def genExposeCommand(self, cmd, expType, itime, window=None, bin=None):
         """ Generate the command line for a given exposure.
 
         Returns:
@@ -48,9 +54,6 @@ class GimGCamera(GCamera.GCamera):
 
         # Build arguments
         cmdParts = []
-        if self.viaTCC:
-            cmdParts.append('gcam')
-            
         if expType == 'dark':
             cmdParts.append("dodark")
         elif expType == 'expose':
@@ -69,13 +72,9 @@ class GimGCamera(GCamera.GCamera):
                              (window[2] - window[0]),
                              (window[3] - window[1])))
 
-        cid = "%s.%s" % (cmd.fullname, self.name)
-        if self.viaTCC:
-            return 'tcc', ' '.join(cmdParts)
-        else:
-            return self.name, ' '.join(cmdParts)
+        return None, ' '.join(cmdParts)
 
-    def expose(self, cmd, expType, itime, window=None, bin=None, callback=None):
+    def expose(self, cmd, expType, itime, window=None, bin=None):
         """ Take an exposure of the given length, optionally binned/windowed.
 
         Args:
@@ -88,14 +87,11 @@ class GimGCamera(GCamera.GCamera):
 
         # Build arguments
         actor, cmdLine = self.genExposeCommand(cmd, expType, itime, window=window, bin=bin)
-        
-        cid = self.cidForCmd(cmd)
-        if callback:
-            ret = client.callback(actor, cmdLine,
-                                  callback=callback, cid=cid)
-        else:
-            ret = client.call(actor, cmdLine, cid=cid)
-            return self.getLastImageName(cmd)
+
+        ret = self.rawCmd(cmdLine, itime + 15)
+        self.echoToTcc(cmd, ret)
+
+        return self.getLastImageName(cmd)
         
     def getLastImageName(self, cmd):
         filename = self._getLastImageName()
