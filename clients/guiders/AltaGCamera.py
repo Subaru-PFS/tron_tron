@@ -6,6 +6,7 @@ import client
 import CPL
 import GCamera
 import AltaNet
+import GuideFrame
 
 class AltaGCamera(GCamera.GCamera):
     """ Use an Alta camera.
@@ -14,14 +15,15 @@ class AltaGCamera(GCamera.GCamera):
     
     """
     
-    def __init__(self, name, path, hostname, **argv):
+    def __init__(self, name, path, hostname, ccdSize, **argv):
         """ Use an Alta camera. """
         
-        GCamera.GCamera.__init__(self, name, path, **argv)
+        GCamera.GCamera.__init__(self, name, path, ccdSize, **argv)
 
         self.cam = AltaNet.AltaNet(hostName=hostname)
 
         # Track binning and window, since we don't want to have to set them for each exposure.
+        self.frame = None
         self.binning = [None, None]
         self.window = [None, None, None, None]
     
@@ -76,6 +78,25 @@ class AltaGCamera(GCamera.GCamera):
 
         return self.cam.read_TempCCD()
     
+    def cbExpose(self, cmd, cb, expType, itime, frame, cbArgs={}):
+        """ Take an exposure of the given length, optionally binned/windowed.
+
+        Args:
+            expType  - 'dark' or 'expose'
+            itime    - seconds to integrate for
+            frame    - ImageFrame
+
+        """
+
+        filename = self.expose(cmd, expType, itime, frame)
+        frame = GuideFrame.ImageFrame(self.ccdSize)
+        frame.setImageFromFITSFile(filename)
+        cmd.warn('debug=%s' % (CPL.qstr("alta cbExpose %s %s secs, frame=%s, ccdSize=%s" \
+                                        % (expType, itime, frame, self.ccdSize))))
+        
+        
+        cb(cmd, filename, frame, **cbArgs)
+        
     def expose(self, cmd, expType, itime, frame):
         """ Take an exposure of the given length, optionally binned/windowed.
 
@@ -88,22 +109,24 @@ class AltaGCamera(GCamera.GCamera):
             The full FITS path.
         """
 
-        cmd.warn('debug=%s' % (CPL.qstr("alta expose %s %s secs, window=%s, bin=%s" \
-                                        % (expType, itime, window, bin))))
+        cmd.warn('debug=%s' % (CPL.qstr("alta expose %s %s secs, frame=%s" \
+                                        % (expType, itime, frame))))
         
         # Check format:
-        if frame:
-            bin = self.frameBinning
-            if bin != self.binning:
-                self.cam.setBinning(*bin)
-                self.binning = bin
-            window = self.imgFrameAsWindow()
-            window[2] -= 1
-            window[3] -= 1
-            if window != self.window:
-                self.cam.setWindow(*window)
-                self.window = window
+        bin = frame.frameBinning
+        window = list(frame.imgFrameAsWindow())
+        #window[2] -= 1
+        #window[3] -= 1
 
+        if bin != self.binning:
+            self.cam.setBinning(*bin)
+            self.binning = bin
+        if window != self.window:
+            self.cam.setWindow(*window)
+            self.window = window
+
+        self.frame = frame
+            
         doShutter = expType == 'expose'
 
         if doShutter:
@@ -111,8 +134,8 @@ class AltaGCamera(GCamera.GCamera):
         else:
             d = self.cam.dark(itime)
 
-        filename = self.writeFITS(cmd, d)
-
+        filename = self.writeFITS(cmd, frame, d)
+        
         # Try hard to recover image memory. 
         del d
         

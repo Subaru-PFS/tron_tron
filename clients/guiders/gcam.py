@@ -12,11 +12,16 @@ import Guider
 import AltaGCamera
 import TCCGcam
 
+sys.stderr.write("done imports\n")
+
 class gcam(Guider.Guider, TCCGcam.TCCGcam):
     def __init__(self, **argv):
+        sys.stderr.write("in gcam.__init__\n")
+        ccdSize = CPL.cfg.get('gcam', 'ccdSize')
         camera = AltaGCamera.AltaGCamera('gcam',
                                          CPL.cfg.get('gcam', 'imagePath'),
                                          CPL.cfg.get('gcam', 'cameraHostname'),
+                                         ccdSize,
                                          **argv)
         Guider.Guider.__init__(self, camera, 'gcam', **argv)
         TCCGcam.TCCGcam.__init__(self, **argv)
@@ -93,5 +98,5 @@ def main(name, eHandler=None, debug=0, test=False):
     client.run(name=name, cmdQueue=camActor.queue, background=False, debug=debug, cmdTesting=test)
     CPL.log('gcam.main', 'DONE')
 
-if __name__ == "__main__XX":
+if __name__ == "__main__":
     main('gcam', debug=6)

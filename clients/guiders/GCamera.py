@@ -42,6 +42,11 @@ class GCamera(object):
         self.lastDir = None
         self.lastID = None
 
+        CPL.log("GCamera", "after init: %s" % (self))
+        
+    def __str__(self):
+        return "GCamera(name=%s, ccdSize=%s, path=%s)" % (self.name, self.ccdSize, self.path)
+    
     def _getFilename(self):
         """ Return the next available filename.
 
@@ -103,14 +108,13 @@ class GCamera(object):
     def cidForCmd(self, cmd):
         return "%s.%s" % (cmd.fullname, self.name)
 
-    def writeFITS(self, cmd, d):
+    def writeFITS(self, cmd, frame, d):
         """ Write an image to a new FITS file.
 
         Args:
+            cmd    - the controlling Command
+            frame  - the ImageFrame
             d   - dictionary including:
-                     offset:   (x0, y0), in binned pixels.
-                     size:     (width, height) in binned pixels
-                     binning:  (x, y)
                      type:     FITS IMAGETYP
                      iTime:    integration time
                      filename: the given filename, or None
@@ -123,14 +127,17 @@ class GCamera(object):
         os.chmod(filename, 0644)
         
         basename = os.path.basename(filename)
+
+        binning = frame.frameBinning
+        corner, size = frame.imgFrameAsCornerAndSize()
         
-        w, h = d['size']
-        
+        cmd.warn('debug=%s' % (CPL.qstr("writeFITS frame=%s" % (frame))))
+
         cards = ["%-80s" % ('SIMPLE  = T'),
                  "%-80s" % ('BITPIX  = 16'),
                  "%-80s" % ('NAXIS   = 2'),
-                 "%-80s" % ('NAXIS1  = %d' % (w)),
-                 "%-80s" % ('NAXIS2  = %d' % (h)),
+                 "%-80s" % ('NAXIS1  = %d' % (size[0])),
+                 "%-80s" % ('NAXIS2  = %d' % (size[1])),
                  "%-80s" % ("INSTRUME= '%s'" % self.name),
                  "%-80s" % ('BSCALE  = 1.0'),
                  "%-80s" % ('BZERO   = 32768.0'),
@@ -140,10 +147,10 @@ class GCamera(object):
                  "%-80s" % ("FILENAME= '%s'" % (basename)),
                  "%-80s" % ("FULLX   = %d" % (self.ccdSize[0])),
                  "%-80s" % ("FULLY   = %d" % (self.ccdSize[1])),
-                 "%-80s" % ("BEGX    = %d" % (d['offset'][0])),
-                 "%-80s" % ("BEGY    = %d" % (d['offset'][1])),
-                 "%-80s" % ("BINX    = %d" % (d['binning'][0])),
-                 "%-80s" % ("BINY    = %d" % (d['binning'][1])),
+                 "%-80s" % ("BEGX    = %d" % (corner[0])),
+                 "%-80s" % ("BEGY    = %d" % (corner[1])),
+                 "%-80s" % ("BINX    = %d" % (binning[0])),
+                 "%-80s" % ("BINY    = %d" % (binning[1])),
                  "%-80s" % ('END')]
 
         # Write out all our header cards

@@ -59,7 +59,7 @@ class Guider(Actor.Actor):
         for name in ('bias',
                      'readNoise', 'ccdGain',
                      'ccdSize', 'binning',
-                     'starThresh', 'radius',
+                     'thresh', 'radius',
                      'maskFile', 'imagePath',
                      'fitErrorScale'):
             self.defaults[name] = CPL.cfg.get(self.name, name)
@@ -145,7 +145,7 @@ class Guider(Actor.Actor):
         """
         
         cmd.respond('%sDebug=%s' % \
-                    (self.name, CPL.qstr('checking filename=%s' % (filename))))
+                    (self.name, CPL.qstr('checking filename=%s with frame=%s' % (filename, frame))))
 
         self.genFilesKey(cmd, 'findstarsFiles', True, filename, None, None, None, filename)
         
@@ -365,7 +365,6 @@ class Guider(Actor.Actor):
 
             frame = GuideFrame.ImageFrame(self.size)
             frame.setImageFromWindow(bin, window)
-
             self.doCBExpose(cmd, cb, type, time, frame, cbArgs={'tweaks':tweaks}) 
 
     def doCBExpose(self, cmd, cb, type, itime, frame, cbArgs={}):
@@ -415,7 +414,7 @@ class Guider(Actor.Actor):
 	""" Set our mask to the contents of the given filename. """
 
         try:
-            self.mask = GuiderMask.GuiderMask(cmd, filename)
+            self.mask = GuiderMask.GuiderMask(cmd, filename, self.name)
         except Exception, e:
             if cmd:
                 cmd.fail('could not set the mask file: %s')
@@ -570,6 +569,9 @@ class Guider(Actor.Actor):
         matched, unmatched, leftovers = cmd.match([('time', float),
                                                    ('bin', self.parseBin),
                                                    ('window', self.parseWindow),
+                                                   ('bias', float),
+                                                   ('readNoise', float),
+                                                   ('ccdGain', float),
                                                    ('radius', float),
                                                    ('thresh', float),
                                                    ('retry', int),
@@ -606,12 +608,12 @@ class Guider(Actor.Actor):
         for f in finalname, maskname, camname, darkname, flatname:
             if f == None:
                 files.append('')
-            elif os.path.commonprefix(cd, f) == cd:
+            elif os.path.commonprefix([cd, f]) == cd:
                 files.append(f[len(cd)+1:])
             else:
                 files.append(f)
 
         qfiles = map(CPL.qstr, files)
         cmd.respond("%s=%d,%s" % (keyName, int(isNewFile),
-                                  qfiles.join(',')))
+                                  ','.join(qfiles)))
                              

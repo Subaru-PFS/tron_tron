@@ -7,16 +7,17 @@ import CPL
 import pyfits
 
 class GuiderMask(object):
-    def __init__(self, cmd, baseFile):
+    def __init__(self, cmd, baseFile, name):
         """ Load ourselves from baseFile, which must be a full-frame, unbinned
         image.
 
         Args:
            cmd        - the current command
            baseFile   - absolute path of full-frame, unbinned image
-           maskDir    - where to put the temporary mask files.
+           name       - our name, used to query the configuration.
         """
 
+        self.name = name
         self.baseFile = baseFile
         self.binning = [0,0]
         self.offset = [-1,-1]
@@ -53,35 +54,22 @@ class GuiderMask(object):
 
         return list(size)
 
-    def getMaskForGFrame(self, cmd, basename, gframe):
-        """ Return the mask adjusted for a given GuiderFrame. """
-
-        return self.getMaskForFrame(cmd, basename, *gframe.imgFrame())
-    
-    def getMaskForFrame(self, cmd, basename, binning, offset=[0,0], size=None):
+    def getMaskForFrame(self, cmd, basename, frame):
         """ Return the mask adjusted for a given subframe and binning.
         Caches the current mask.
 
         Args:
            cmd        - the controlling Command. We alert if the mask has been changed
            basename   - a filename which we use as a template for our output file.
-           binning    - [x,y] (x should be == y).
-           offset     - desired subframe corner [x0, y0], in binned pixels
-           size       - desired subframe size [w, h], in binned pixels
+           frame      - an ImageFrame
            
         Returns:
            - a filename
            - a Numeric mask.
         """
 
-        if size == None:
-            size = [self.fullSize[0] / binning[0] - offset[0],
-                    self.fullSize[1] / binning[1] - offset[1]]
-
         # Make sure that our args will a) compare nicely and format nicely for IDL.
-        size = list(size)
-        offset = list(offset)
-        binning = list(binning)
+        binning, offset, size = frame.imgFrame()
         
         if self.cachedMask != None and \
                binning == self.binning and \
@@ -105,8 +93,9 @@ class GuiderMask(object):
         # which this papers over is that Numeric stinks.
         #
         IDLcmd = "echo \"fsubframe, '%s', '%s', %s, %s, %s\" | idl" % (self.baseFile, newFile,
-                                                                       offset, size,
-                                                                       binning)
+                                                                       list(offset),
+                                                                       list(size),
+                                                                       list(binning))
         CPL.log('IDLcmd', IDLcmd)
         
         # MUST run this so that errors get to us! FIXME!
@@ -119,7 +108,8 @@ class GuiderMask(object):
         f.close()
         
         self.cachedFile = newFile
-        self.cachedMask = im <= 0
+        self.cachedMask = im >= CPL.cfg.get(self.name, 'maskThresh')
+        #self.cachedMask = im * 0
         self.binning = binning
         self.size = size
         self.offset = offset
