@@ -360,7 +360,7 @@ class PollHandler(CPL.Object):
                 nextTick, nextCB = timedCallbacks[0]
                 
                 now = time.time()
-                if nextTick - now < self.timeout
+                if nextTick - now < self.timeout:
                     timeout = nextTick - now
                     if timeout < 0.0:
                         timeout =
