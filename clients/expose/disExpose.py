@@ -50,7 +50,7 @@ import CPL
 
 class DisExposureActor(Actor.Actor):
     def __init__(self, **argv):
-        Actor.Actor.__init__(self, 'disExpose', debug=3)
+        Actor.Actor.__init__(self, 'disExpose', debug=1)
         
         # The single active sequence.
         self.sequence = None
@@ -184,7 +184,7 @@ class DisExposureActor(Actor.Actor):
                 return
             
             path = self.setPath(cmd)
-            exp = ExpSequence(self, cmd, self.instName, command, path, cnt, debug=9)
+            exp = ExpSequence(self, cmd, self.instName, command, path, cnt, debug=1)
             self.sequence = exp
             exp.run()
         else:

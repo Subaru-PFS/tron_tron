@@ -49,7 +49,7 @@ import CPL
 
 class EchelleExposureActor(Actor.Actor):
     def __init__(self, **argv):
-        Actor.Actor.__init__(self, 'echelleExpose', debug=3)
+        Actor.Actor.__init__(self, 'echelleExpose', debug=1)
         
         # The single active sequence.
         self.sequence = None
@@ -183,7 +183,7 @@ class EchelleExposureActor(Actor.Actor):
                 return
             
             path = self.setPath(cmd)
-            exp = ExpSequence(self, cmd, self.instName, command, path, cnt, debug=9)
+            exp = ExpSequence(self, cmd, self.instName, command, path, cnt, debug=1)
             self.sequence = exp
             exp.run()
         else:
@@ -284,7 +284,7 @@ def main(name, eHandler=None, debug=0, test=False):
     if eHandler == None:
         eHandler = EchelleExposureActor(debug=1)
     eHandler.start()
-    client.run(name=name, cmdQueue=eHandler.queue, background=test, debug=5, cmdTesting=test)
+    client.run(name=name, cmdQueue=eHandler.queue, background=test, debug=1, cmdTesting=test)
 
 if __name__ == "__main__":
     main('echelleExpose', debug=0)

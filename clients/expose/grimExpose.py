@@ -48,7 +48,7 @@ import CPL
 
 class GrimExposureActor(Actor.Actor):
     def __init__(self, **argv):
-        Actor.Actor.__init__(self, 'grimExpose', debug=3)
+        Actor.Actor.__init__(self, 'grimExpose', debug=1)
         
         # The single active sequence.
         self.sequence = None
@@ -181,7 +181,7 @@ class GrimExposureActor(Actor.Actor):
                 return
             
             path = self.setPath(cmd)
-            exp = ExpSequence(self, cmd, self.instName, command, path, cnt, debug=9)
+            exp = ExpSequence(self, cmd, self.instName, command, path, cnt, debug=1)
             self.sequence = exp
             exp.run()
         else:
@@ -283,7 +283,7 @@ def main(name, eHandler=None, debug=0, test=False):
     if eHandler == None:
         eHandler = GrimExposureActor(debug=1)
     eHandler.start()
-    client.run(name=name, cmdQueue=eHandler.queue, background=test, debug=5, cmdTesting=test)
+    client.run(name=name, cmdQueue=eHandler.queue, background=test, debug=1, cmdTesting=test)
 
 def test():
     global mid

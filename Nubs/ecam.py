@@ -1,3 +1,5 @@
+import os.path
+
 import g
 import Hub
 import hub
@@ -15,6 +17,7 @@ def start(poller):
                                 'PYTHONPATH=%s/Client:%s' % (g.home, g.home),
                                 'clients/guiders/%s.py' % (name)],
                        name=name, encoder=e, decoder=d,
+                       logDir=os.path.join(g.logDir, name),
                        debug=9)
     hub.addActor(nub)
     

@@ -60,7 +60,6 @@ class Guider(Actor.Actor, GuideLoop.GuideLoop):
                               'setcam':     self.doTccSetcam,
                               'test':       self.doTest,
                               'showstatus': self.doTccShowstatus,
-                              'setTemp':    self.doSetTemp,
                               'zap':        self.doZap
                               })
 
@@ -83,9 +82,8 @@ class Guider(Actor.Actor, GuideLoop.GuideLoop):
     def doInit(self, cmd):
         """ Clean up/stop/initialize ourselves. """
 
-        cmd.respond('cmdr=%s' % (CPL.qstr(cmd.cmdrName)))
-        
         # Optionally handle the command as a GImCtrl
+        #
         if cmd.cmdrName == 'TC01.TC01':
             cmd.respond('txtForTcc="init"')
             cmd.finish('txtForTcc="OK"')
@@ -133,8 +131,10 @@ showstatus
         id = int(cmd.argv[-1])
         self.GImCamID = id
         
+        lastImageNum = self.cam.lastImageNum()
+        
         cmd.respond('txtForTcc=%s' % (CPL.qstr(cmd.raw_cmd)))
-        cmd.respond('txtForTcc=%s' % (CPL.qstr('%d "%s" %d %d %d nan nan "%s"' % \
+        cmd.respond('txtForTcc=%s' % (CPL.qstr('%d "%s" %d %d %d nan %s "%s"' % \
                                             (id, self.GImName,
                                              self.size[0], self.size[1], 16,
                                              "camera: ID# name sizeXY bits/pixel temp lastFileNum"))))
@@ -193,7 +193,7 @@ showstatus
             cmd.fail('txtForTcc=%s' % (CPL.qstr('Could not make an exposure: %s' % (e))))
             return
 
-        cmd.respond('imgFile=%s' % (CPL.qstr(exp)))
+        # cmd.respond('imgFile=%s' % (CPL.qstr(exp)))
 
         # Keep some info around for findstars
         #
@@ -227,8 +227,11 @@ showstatus
         
         # Parse out what (little) we need: the number of stars and the predicted size.
         #
-        cmdParts = cmd.raw_cmd.split()
-        cnt, x0, y0, x1, y1, xPredFWHM, yPredFWHM = cmdParts = cmdParts
+        try:
+            name, cnt, x0, y0, x1, y1, xPredFWHM, yPredFWHM = cmd.raw_cmd.split()
+        except ValueError, e:
+            cmd.fail('gcamTxt="findstars must take all tcc arguments"')
+            return
 
 	isSat, stars = PyGuide.findStars(
 		data = img,
@@ -262,27 +265,6 @@ showstatus
         self.camera.status(cmd)
         cmd.finish()
     
-    def doSetTemp(self, cmd):
-        """ """
-
-        parts = cmd.raw_cmd.split()
-        if len(parts) != 2:
-            cmd.fail('%sTxt="usage: setTemp value."')
-            return
-
-        if parts[1] == 'off':
-            self.camera.setTemp(cmd, None)
-        else:
-            try:
-                t = float(parts[1])
-            except:
-                cmd.fail('%sTxt="setTemp value must be \'off\' or a number"')
-                return
-
-            self.camera.setTemp(cmd, t)
-
-        cmd.finish()
-            
     
     def doTest(self, cmd):
         import RO.DS9
