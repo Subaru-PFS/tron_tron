@@ -160,7 +160,7 @@ class PollHandler(CPL.Object):
         """
         fd = obj.getOutputFd()
         if fd == None or fd == -1:
-            CPL.log('Poll.registry', 'Cannot remove input for fd=%r' % (fd,))
+            CPL.log('Poll.registry', 'Cannot add output for fd=%r' % (fd,))
             return 
 
         self.lock.acquire()
@@ -173,11 +173,15 @@ class PollHandler(CPL.Object):
             lastHandler = pollInfo.get('outputHandler', None)
             eventMask = pollInfo.get('eventMask', 0)
             eventMask |= select.POLLOUT
+
+            changed = not eventMask & select.POLLOUT:
         else:
             pollInfo = {}
             lastHandler = None
             eventMask = select.POLLOUT | select.POLLPRI
             self.files[fd] = pollInfo
+
+            changed = True
             
         pollInfo['eventMask'] = eventMask
         pollInfo['outputHandler'] = obj
@@ -186,7 +190,7 @@ class PollHandler(CPL.Object):
         self.lock.release()
 
         # Wake the poller up.
-        if self.loopback:
+        if self.loopback and self.changed:
             os.write(self.loopback, 'O')
         
         if self.debug > 2:
