@@ -10,18 +10,16 @@ Coordinate notes:
     whenever we go betweem the cameras and the TCC.
 """
 
-import inspect
-import pprint
 import sys
-import traceback
 
-import PyGuide
 import pyfits
 import Command
 import Actor
 import CPL
 import GuideLoop
 import GuiderMask
+import GuideFrame
+import MyPyGuide
 
 class Guider(Actor.Actor):
     """ The Guider class is expected to be subclassed for the specific guiders.
@@ -33,41 +31,452 @@ class Guider(Actor.Actor):
         
         Actor.Actor.__init__(self, guiderName, **argv)
 
-        self.commands.update({'status':     self.doStatus,
-                              'expose':     self.doExpose,
-                              'dark':       self.doDark,
-                              'centroid':   self.doCentroid,
-                              'findstars':  self.doFindstars,
-                              'init':       self.doInit,
-			      'set':        self.doSet,
-                              'setMask':    self.doSetMask,
-                              'setScale':   self.doSetScale,
-                              'setThresh':  self.doSetThresh,			      
-                              'setBoresight': self.doSetBoresight,
-                              'guide':      self.doGuide,
-                              'zap':        self.doZap
+        self.commands.update({'status':     self.statusCmd,
+                              'expose':     self.exposeCmd,
+                              'dark':       self.darkCmd,
+                              'centroid':   self.centroidCmd,
+                              'findstars':  self.findstarsCmd,
+                              'init':       self.initCmd,
+                              'set':        self.setCmd,
+                              'setMask':    self.setMaskCmd,
+                              'guide':      self.guideCmd,
+                              'zap':        self.zapCmd
                               })
 
         self.camera = camera
-        self.activeExposure = None
         self.guideLoop = None
         self.mask = None
-
-        self.defaults = {}
-        self.defaults['starThresh'] = CPL.cfg.get(self.name, 'starThresh')
-        self.defaults['guideScale'] = CPL.cfg.get(self.name, 'guideScale')
-        self.defaults['scanRadius'] = CPL.cfg.get(self.name, 'scanRadius')
-        self.defaults['maskFile'] = CPL.cfg.get(self.name, 'maskFile')
+        self.exposureInfo = None
         
-    def xy2ij(self, pos):
-	""" Swap between (x,y) and image(i,j). """
-        return pos[1], pos[0]
+        self._setDefaults()
+        self.config = self.defaults.copy()
 
-    def ij2xy(self, pos):
-	""" Swap between image(i,j) and (x,y). """
-        return pos[1], pos[0]
+        self._setMask(None, self.config['maskFile'])
+    
+    def _setDefaults(self):
+        self.defaults = {}
+        self.defaults['bias'] = CPL.cfg.get(self.name, 'bias')
+        self.defaults['readNoise'] = CPL.cfg.get(self.name, 'readNoise')
+        self.defaults['ccdGain'] = CPL.cfg.get(self.name, 'ccdGain')
+        self.defaults['ccdSize'] = CPL.cfg.get(self.name, 'ccdSize')
+        self.defaults['binning'] = CPL.cfg.get(self.name, 'binning')
+        self.size = self.defaults['ccdSize']
 
+        self.defaults['starThresh'] = CPL.cfg.get(self.name, 'starThresh')
+        self.defaults['radius'] = CPL.cfg.get(self.name, 'radius')
+        self.defaults['maskDir'] = CPL.cfg.get(self.name, 'maskDir')
+        self.defaults['maskFile'] = CPL.cfg.get(self.name, 'maskFile')
 
+    def statusCmd(self, cmd):
+        """ Returns camera and guide loop status keywords. """
+
+        self.camera.status(cmd, doFinish=False)
+        self.mask.status(cmd, doFinish=False)
+	
+        if self.guideLoop:
+            self.guideLoop.doStatus(cmd, doFinish=False)
+
+        cmd.finish("guiding=%s" % (CPL.qstr(self.guideLoop != None)))
+    statusCmd.helpText = ('status', 'returns many status keywords.')
+    
+    def exposeCmd(self, cmd):
+        """ Take a single guider exposure and return it. This overrides but
+        does not stop the guiding loop.
+        """
+        
+        tweaks = self.parseCmdTweaks(cmd, self.config)
+
+        def cb(cmd, fname, frame, tweaks=None):
+            cmd.respond('imgFile=%s' % (CPL.qstr(fname)))
+            cmd.finish()
+            
+        self.doCmdExpose(cmd, cb, 'expose', tweaks)
+
+    exposeCmd.helpText = ('expose itime=S [window=X0,Y0,X1,Y1] [bin=N] [bin=X,Y]', 
+                          'take an open-shutter exposure')
+
+    def darkCmd(self, cmd):
+        """ Take a single guider dark and return it. This overrides but
+        does not stop the guiding loop.
+        """
+
+        tweaks = self.parseCmdTweaks(cmd, self.config)
+
+        def cb(cmd, fname, frame):
+            cmd.respond('imgFile=%s' % (CPL.qstr(fname)))
+            cmd.finish()
+            
+        self.doCmdExpose(cmd, cb, 'dark', tweaks)
+        
+    darkCmd.helpText = ('dark itime=S [window=X0,Y0,X1,Y1] [bin=N] [bin=X,Y]',
+                        'take a closed-shutter exposure')
+
+    def initCmd(self, cmd):
+        """ Clean up/stop/initialize ourselves. """
+
+        if self.guideLoop:
+            self.guideLoop.stop()
+            
+        self.config = self.defaults.copy()
+        
+        # Optionally handle the command as a GImCtrl
+        if cmd.program() == 'TC01':
+            self.doTccInit(cmd)
+            return
+            
+	cmd.finish('')
+    initCmd.helpText = ('init', 're-initialize camera')
+        
+    def findstarsCmd(self, cmd):
+        """ Takes a single guider exposure and runs findstars on it. This overrides but
+        does not stop the guiding loop.
+        """
+
+        # Optionally handle the command as a GImCtrl
+        if cmd.program() == 'TC01':
+            return self.doTccFindstars(cmd)
+
+        tweaks = self.parseCmdTweaks(cmd, self.config)
+        
+        # Get the image
+        self.doCmdExpose(cmd, self._findstarsCB, 'expose', tweaks=tweaks)
+
+    def _findstarsCB(self, cmd, filename, frame, tweaks=None):
+        """ Callback called when an exposure is done.
+        """
+        
+        cmd.respond('%sDebug=%s' % \
+                    (self.name, CPL.qstr('checking filename=%s' % (filename))))
+
+        isSat, stars = MyPyGuide.findstars(cmd, filename, self.mask, frame, tweaks)
+        if not stars:
+            cmd.fail('centroidTxt="no stars found"')
+            return
+
+        MyPyGuide.genStarKeys(cmd, stars)
+        cmd.finish()
+        
+    findstarsCmd.helpText = ('findstars itime=S [window=X0,Y0,X1,Y1] [bin=N] [bin=X,Y]')
+
+    def centroidCmd(self, cmd):
+        """ Takes a single guider exposure and runs findstars on it. This overrides but
+        does not stop the guiding loop.
+        """
+
+        # Optionally handle the command as a GImCtrl
+        if cmd.program() == 'TC01':
+            return self.doTccCentroid(cmd)
+
+        tweaks = self.parseCmdTweaks(cmd, self.config)
+        
+        # Get the image
+        self.doCmdExpose(cmd, self._centroidCB, 'expose', tweaks=tweaks)
+
+    def _centroidCB(self, cmd, filename, frame, tweaks=None):
+        """ Callback called when an exposure is done.
+        """
+        
+        cmd.respond('%sDebug=%s' % \
+                    (self.name, CPL.qstr('checking filename=%s' % (filename))))
+
+        if cmd.argDict.has_key('on'):
+            seed = self.parseCoord(cmd.argDict['on'])
+        else:
+            isSat, stars = MyPyGuide.findstars(cmd, filename, self.mask,
+                                               frame, tweaks,
+                                               cnt=1)
+            if not stars:
+                cmd.fail('centroidTxt="no stars found"' % (self.name))
+                return
+
+            seed = stars[0].ctr
+            
+        # Currently unnecessary if we have run findstars, but that might change, so
+        # always call the centroid routine.
+        #
+        star = MyPyGuide.centroid(cmd, filename, self.mask, frame, seed, tweaks)
+        if not star:
+            cmd.fail('centroidTxt="no star found"')
+            return
+
+        MyPyGuide.genStarKey(cmd, star)
+        cmd.finish()
+        
+    centroidCmd.helpText = ('centroid itime=S [window=X0,Y0,X1,Y1] [bin=N] [bin=X,Y] [on=X,Y]',
+                                'centroid file=NAME [on=X,Y]')
+    
+    def guideLoopIsStopped(self):
+        """ The guide loop is telling us that it can and should be reaped.
+
+        When we are done, the guide loop cmd will have been finished and the
+        guide loop destroyed.
+
+        """
+
+        self.guideLoop = None
+        
+    def guideCmd(self, cmd):
+        """ Start or stop guiding.
+
+          - 
+        """
+
+        if cmd.argDict.has_key('off'):
+            if self.guideLoop:
+                self.guideLoop.stop()
+                cmd.finish('%sTxt="Turning guiding off."' % (self.name))
+            else:
+                cmd.fail('%sTxt="Guiding is already off."' % (self.name))
+            return
+
+        elif cmd.argDict.has_key('tweak'):
+            if not self.guideLoop:
+                cmd.fail('%sTxt="No guide loop to tweak."' % (self.name))
+                return
+            self.guideLoop.tweak(cmd)
+
+        else:
+            if self.guideLoop:
+                cmd.fail('%sTxt="cannot start guiding while guiding"' % (self.name))
+                return
+
+            tweaks = self.parseCmdTweaks(cmd, self.config)
+            
+            self.guideLoop = GuideLoop.GuideLoop(self, cmd, tweaks)
+            self.guideLoop.run()
+
+    def zapCmd(self, cmd):
+        """ Try hard to cancel any existing exposure and remove any internal exposure state.
+
+        Only the exposure owner or an APO user can zap an exposure.
+        """
+
+        if not self.guideLoop:
+            cmd.warn('%sTxt="no guiding loop to zap"' % (self.name))
+        else:
+            # Only let the exposure owner or any APO user control a guide loop.
+            #
+            gCmd = self.guideLoop.cmd
+            
+            if gCmd.program() != cmd.program() and cmd.program() != 'APO':
+                cmd.fail('%sTxt="guiding loop belongs to %s.%s"' % (self.name,
+                                                                    gCmd.program(),
+                                                                    gCmd.username()))
+                return
+
+	    self.guideLoop.stop(cmd, doFinish=False)
+	    self.guideLoop = None
+
+        self.camera.zap(cmd)
+        cmd.finish('')
+    zapCmd.helpText = ('zap', 'stop and active exposure and/or cleanup.')
+
+    def setMaskCmd(self, cmd):
+        """ Load a mask to apply.
+
+        CmdArgs:
+            a FITS filename, based from self.imBaseDir
+        """
+
+        if len(cmd.argv) == 1:
+            fname = self.defaults['maskFile']
+        if len(cmd.argv) == 2:
+            fname = cmd.argv[1]
+        else:
+            cmd.fail('%sTxt="usage: setMask [filename]"' % (self.name))
+            return
+
+        self._setMask(cmd, fname)
+        
+        cmd.finish('maskFile=%s' % (CPL.qstr(fname)))
+    setMaskCmd.helpText = ('setMask [filename]',
+                           'load a mask file. Reload existing mask if no file is specified')
+        
+    def setCmd(self, cmd):
+        """ Handle set command, which lets us override a certain amount of guiding state.
+
+        CmdArgs:
+           stateName=value
+        """
+
+        self.config = self.parseCmdTweaks(cmd, self.config)
+	cmd.finish('')
+                   
+    def doCmdExpose(self, cmd, cb, type, tweaks):
+        """ Parse the exposure arguments and act on them.
+
+        Args:
+            cmd    - the controlling Command
+            cb     - a function which will be called as cb(cmd, filename, frame, tweaks)
+            type   - 'object' or 'dark'
+            tweaks - dictionary of configuration values.
+            
+        CmdArgs:
+            time   - exposure time, in seconds
+            window - subframe, (X0,Y0,X1,Y1)
+            bin    - binning, (N) or (X,Y)
+            file   - a file name. If specified, the time,window,and bin arguments are ignored.
+            
+        Returns:
+            - a 
+        """
+
+        matched, notMatched, leftovers = cmd.match([('time', float),
+                                                    ('window', str),
+                                                    ('bin', str),
+                                                    ('file', str)])
+
+        if matched.has_key('file'):
+            filename = self.findFile(cmd, matched['file'])
+            if not filename:
+                cmd.fail('%sTxt=%s' % (self.name,
+                                       CPL.qstr("No such file: %s" % (matched['file']))))
+                return
+
+            frame = GuideFrame.ImageFrame(self.size)
+            frame.setImageFromFITSFile(filename)
+            
+            cb(cmd, filename, frame, tweaks=tweaks)
+
+        else:
+            if not matched.has_key('time') :
+                cmd.fail('%sTxt="Exposure commands must specify exposure times"' % (self.name))
+                return
+            time = matched['time']
+
+            window = None
+            bin = None
+            if matched.has_key('bin'):
+                bin = self.parseBin(matched['bin'])
+            if matched.has_key('window'):
+                window = self.parseWindow(matched['window'])
+
+            frame = GuideFrame.ImageFrame(self.size)
+            frame.setImageFromWindow(bin, window)
+
+            self.doCBExpose(cmd, cb, type, time, frame, cbArgs={'tweaks':tweaks}) 
+
+    def doCBExpose(self, cmd, cb, type, itime, frame, cbArgs={}):
+        """ Actually request an exposure from a camera.
+
+        When the exposure is actually finished, the callback function
+        will be invoked as:
+           cb(cmd, filename, frame, **cbArgs)
+
+        Args:
+            cmd         - the controlling command
+            cb          - the callback function
+            type        - 'object' or 'dark'
+            time        - integration time in seconds.
+            frame       - requested ImageFrame
+            cbArgs      - a dictionary of args to pass to the callback.
+
+        Returns:
+             - a callback object
+
+        """
+
+        def _cb(cmd, filename, frame):
+            cb(cmd, filename, frame, **cbArgs)
+            
+        cmd.warn('debug=%s' % (CPL.qstr("exposing %s(%s) frame=%s" % (type, itime, frame))))
+        mycb = self.camera.cbExpose(cmd, _cb, type, itime, frame)
+        return mycb
+
+    def findFile(self, cmd, fname):
+        """ Get the absolute path for a given filename.
+
+        Args:
+            cmd    - the controlling Command
+            fname  - a relative or absolute filename. If relative, use the
+                     'current' directory.
+
+        Returns:
+            - an absolute filename.
+        """
+        
+        return fname
+    
+    def _setMask(self, cmd, filename):
+	""" Set our mask to the contents of the given filename. """
+
+	self.mask = GuiderMask.GuiderMask(cmd, filename,
+                                          self.config['maskDir'])
+        
+    def parseWindow(self, w):
+        """ Parse a window specification of the form X0,Y0,X1,Y1.
+
+        Args:
+           s    - a string of the form "X0,Y0,X1,Y1"
+
+        Returns:
+           - the window coordinates, as a 4-tuple of integers.
+
+        Raises:
+           Exception on parsing errors.
+           
+        """
+
+        try:
+            parts = w.split(',')
+            coords = map(int, parts)
+            if len(coords) != 4:
+                raise Exception
+        except:
+            raise Exception("window format must be X0,Y0,X1,Y1 with all coordinates being integers.")
+
+        return coords
+
+    def parseCoord(self, c):
+        """ Parse a coordinate pair of the form X,Y.
+
+        Args:
+           s    - a string of the form "X,Y"
+
+        Returns:
+           - the window coordinates, as a pair of integers.
+
+        Raises:
+           Exception on parsing errors.
+           
+        """
+
+        try:
+            parts = c.split(',')
+            coords = map(float, parts)
+            if len(coords) != 2:
+                raise Exception
+        except:
+            raise Exception("cooordinate format must be X,Y with all coordinates being floats (not %s)." % (parts))
+
+        return coords
+
+    def parseBin(self, parts):
+        """ Parse a binning specification of the form X,Y or N
+
+        Args:
+           s    - a string of the form "X,Y" or "N"
+
+        Returns:
+           - the binning factors coordinates, as a duple of integers.
+
+        Raises:
+           Exception on parsing errors.
+           
+        """
+
+        try:
+            if len(parts) == 1:
+                parts = parts * 2
+            if len(parts) != 2:
+                raise Exception
+            coords = map(int, parts)
+        except:
+            raise Exception("binning must be specified as X,Y or N with all coordinates being integers.")
+
+        return coords
+        
+        
     def trimUnit(self, x, size):
 	""" Trim a coordinate to [0..size], but do not change it's type. """
 	
@@ -130,611 +539,19 @@ class Guider(Actor.Actor):
 
         return (tX1 + tX0) / 2, (tY1 + tY0) / 2, tX1-tX0, tY1-tY0
     
+    def parseCmdTweaks(self, cmd, baseConfig):
+        """ Parse all configuration tweaks in a command, and modify a copy of baseConfig.
+        """
+
+        tweaks = baseConfig.copy()
+        matched, unmatched, leftovers = cmd.match([('time', float),
+                                                   ('bin', self.parseBin),
+                                                   ('window', self.parseWindow),
+                                                   ('radius', float),
+                                                   ('thresh', float),
+                                                   ('cnt', int)])
+
+        tweaks.update(matched)
+
+        return tweaks
     
-    def maskOutFromPosAndSize(self, mask, x0, y0, xSize, ySize, excludeRect=False):
-        """ Given a mask, a position, and a size, return a mask with the given rectangle masked.
-
-        Args:
-            mask   - a mask numarray (1 == "masked", 0 == "unmasked")
-            x0,y0  - a position
-            xSize,ySize - a size
-            excludeRect - if True, add the inverse of the rectange to the mask
-
-        x0,y0 and xSize,ySize are forced onto the array.
-        """
-
-        if mask == None:
-            return mask
-        
-        mYSize, mXSize = mask.getshape()
-
-        tX0, tY0, tXSize, tYSize = self.trimPosAndSizeToFrame(x0, y0,
-                                                              xSize, ySize,
-                                                              mXSize, mYSize)
-        CPL.log("maskTrim", "frame=%d,%d from=%s,%s,%s,%s to %s,%s,%s,%s" % \
-                (mXSize, mYSize,
-                 x0, y0, xSize, ySize,
-                 tX0, tY0, tXSize, tYSize))
-        
-        mX0 = int(tX0 - tXSize/2.0)
-        mX1 = int(tX0 + tXSize/2.0)
-        mY0 = int(tY0 - tYSize/2.0)
-        mY1 = int(tY0 + tYSize/2.0)
-        if excludeRect:
-            mask2 = mask.copy()
-            mask2[0:mYSize,0:mXSize] = 1
-            mask2[mY0:mY1+1,mX0:mX1+1] = 0
-            mask |= mask2
-        else:
-            mask[mY0:mY1+1,mX0:mX1+1] = 1
-
-        return mask
-    
-    def doStatus(self, cmd):
-        """ Returns camera and guide loop status keywords. """
-
-        self.camera.status(cmd)
-
-        cmd.respond('maskFile=%s' % (CPL.qstr(self.maskFile)))
-	
-        if self.guideLoop:
-            self.guideLoop.doStatus(cmd)
-
-        cmd.finish("guiding=%s" % (CPL.qstr(self.guideLoop != None)))
-    
-    def doExpose(self, cmd):
-        """ Take a single guider exposure and return it. This overrides but
-        does not stop the guiding loop.
-        """
-        
-        # Parse the arguments for the camera controller.
-        #
-        fname, bin, offset, size = self._doCmdExpose(cmd, 'expose', 'expose')
-        cmd.respond('imgFile=%s' % (CPL.qstr(fname)))
-        cmd.finish()
-        
-    doExpose.helpText = ('expose itime=S [window=X0,Y0,X1,Y1] [bin=N] [bin=X,Y]')
-
-    def doDark(self, cmd):
-        """ Take a single guider dark and return it. This overrides but
-        does not stop the guiding loop.
-        """
-
-        fname, bin, offset, size = self._doCmdExpose(cmd, 'dark', 'dark')
-        cmd.respond('imgFile=%s' % (CPL.qstr(fname)))
-        cmd.finish()
-        
-    doDark.helpText = ('dark itime=S [window=X0,Y0,X1,Y1] [bin=N] [bin=X,Y]')
-
-    def doFindstars(self, cmd):
-        """ Takes a single guider exposure and runs findstars on it. This overrides but
-        does not stop the guiding loop.
-        """
-
-        # Optionally handle the command as a GImCtrl
-        if cmd.program() == 'TC01':
-            return self.doTccFindstars(cmd)
-            
-        fname, bin, offset, size = self._doCmdExpose(cmd, 'expose', 'findstars')
-        cmd.respond('%sDebug=%s' % (self.name, CPL.qstr('checking filename=%s' % (fname))))
-        fits = pyfits.open(fname)
-        img = fits[0].data
-        fits.close()
-        
-        ds9 = cmd.argDict.get('ds9', False)
-        # assert 1==0, "ds9 arg == %s" % (ds9)
-	isSat, stars = PyGuide.findStars(
-            data = img,
-            mask=self.mask,
-            ds9=ds9
-	)
-
-        if isSat:
-            cmd.warn('findstarsSaturated=%s' % (self.name, CPL.qstr(fname)))
-
-        cmd.respond('starCnt=%d' % (self.name, len(stars)))
-        i=1
-        for counts, ctr, rad, totPts in stars:
-            ctr = self.ij2xy(ctr)
-            cmd.respond('%sFindstar=%d,%.1f,%.1f,%10.0f,%5.1f,%6d' % \
-                        (self.name,
-                         i,
-                         ctr[0], ctr[1], counts, rad, totPts))
-            i += 1
-        cmd.finish()
-        
-    doFindstars.helpText = ('findstars itime=S [window=X0,Y0,X1,Y1] [bin=N] [bin=X,Y]')
-
-    def doCentroid(self, cmd):
-        """ Takes a single guider exposure and runs findstars on it. This overrides but
-        does not stop the guiding loop.
-        """
-
-        # Optionally handle the command as a GImCtrl
-        if cmd.program() == 'TC01':
-            return self.doTccCentroid(cmd)
-            
-        fname, bin, offset, size = self._doCmdExpose(cmd, 'expose', 'centroid')
-
-        if not cmd.argDict.has_key('on'):
-            seed = self._getBestCenter(cmd, fname)
-            if seed == None:
-                cmd.fail('%sTxt="no stars found"' % (self.name))
-                return
-        else:
-            seed = self.parseCoord(cmd.argDict['on'])
-            
-
-        centroid = self._doCentroid(cmd, seed, fname)
-        shape = self._doStarShape(cmd, centroid.center,fname)
-        measCtr = ij2xy(centroid.center)
-        cmd.respond('centroid=%0.2f,%0.2f,%0.2f,%0.2f,%d,%d' % \
-                    (measCtr[0], measCtr[1],
-                     centroid.error[1], centroid.error[0], 
-                     centroid.counts, centroid.pix))
-
-        cmd.finish()
-        return
-    
-        scanRad = float(cmd.argDict.get('rad', self.scanRad))
-        cmd.respond('%sDebug=%s' % (self.name, CPL.qstr('centroid seed=%0.2f,%0.2f rad=%0.1f' % \
-                                                        (seed[0], seed[1], scanRad))))
-        fits = pyfits.open(fname)
-        img = fits[0].data
-        fits.close()
-
-        ds9 = cmd.argDict.get('ds9', False)
-	measCtr, nCounts, nPts = PyGuide.centroid(img,
-                                                  self.mask,
-                                                  self.xy2ij(seed),
-                                                  scanRad,
-                                                  ds9=ds9)
-        measCtr = self.ij2xy(measCtr)
-        cmd.respond('%sCentroid=%0.2f,%0.2f,%d,%d' % \
-                    (self.name,
-                     measCtr[0], measCtr[1],
-                     nCounts, nPts))
-
-        cmd.finish()
-
-    doCentroid.helpText = ('centroid itime=S [window=X0,Y0,X1,Y1] [bin=N] [bin=X,Y] [on=X,Y]',
-                                'centroid file=NAME [on=X,Y]')
-    
-    def guideLoopIsStopped(self):
-        """ The guide loop is telling us that it can and should be reaped.
-
-        When we are done, the guide loop cmd will has been finished and the
-        guide loop destroyed.
-
-        """
-
-        self.guideLoop = None
-        
-    def doGuide(self, cmd):
-        """ Start or stop guiding.
-
-          - 
-        """
-
-        if cmd.argDict.has_key('off'):
-            if self.guideLoop:
-		self.guideLoop.stop()
-                cmd.finish('%sTxt="Turning guiding off."' % (self.name))
-            else:
-                cmd.fail('%sTxt="Guiding is already off."' % (self.name))
-            return
-
-        elif cmd.argDict.has_key('tweak'):
-            d = self.parseTweaks(cmd)
-            if not self.guideLoop:
-                cmd.fail('%sTxt="No guide loop to tweak."' % (self.name))
-                return
-            self.guideLoop.tweak(cmd, d)
-
-        else:
-            if self.guideLoop:
-                cmd.fail('%sTxt="cannot start guiding while guiding"' % (self.name))
-                return
-
-            # Make a copy of our configuration for the loop to modify
-            config = self.getActiveConfig()
-        
-            self.guideLoop = GuideLoop.GuideLoop(self, cmd, config.copy())
-            self.guideLoop.run()
-
-    def getActiveConfig(self):
-        """ Return the current configuration dictionary. If none has been created, copy the defaults. """
-
-        if self.config == None:
-            self.config = self.defaults.copy()
-
-        return self.config
-    
-    def doZap(self, cmd):
-        """ Try hard to cancel any existing exposure and remove any internal exposure state.
-
-        Only the exposure owner or an APO user can zap an exposure.
-        """
-
-        if not self.guideLoop:
-            cmd.warn('%sTxt="no guiding loop to zap"' % (self.name))
-        else:
-            # Only let the exposure owner or any APO user control an active exposure.
-            #
-            gCmd = self.guideLoop.cmd
-
-            if gCmd.program() != cmd.program() and cmd.program() != 'APO':
-                cmd.fail('%sTxt="guiding loop belongs to %s.%s"' % (self.name,
-                                                                    gCmd.program(),
-                                                                    gCmd.username()))
-                return
-
-	    self.guideLoop.stop(cmd, doFinish=False)
-	    self.guideLoop = None
-
-        self.camera.zap(cmd)
-        cmd.finish('')
-    doZap.helpText = ('zap', 'stop and active exposure and/or cleanup.')
-
-    def doSetMask(self, cmd):
-        """ Load a mask to apply.
-
-        CmdArgs:
-            a FITS filename, based from self.imBaseDir
-        """
-
-        if len(cmd.argv) == 1:
-            fname = self.maskFile
-        if len(cmd.argv) == 2:
-            fname = cmd.argv[1]
-        else:
-            cmd.fail('%sTxt="usage: setMask [filename]"' % (self.name))
-            return
-
-        self._setMask(fname)
-        
-        cmd.finish('maskFile=%s' % (self.name, CPL.qstr(fname)))
-    doSetMask.helpText = ('setMask [filename]', 'load a mask file. Reload existing mask if no file is specified')
-        
-    def doSetScale(self, cmd):
-        """ Define the global guiding gain
-
-        CmdArgs:
-            N  - guider gain
-        """
-
-        if len(cmd.argv) != 2:
-            cmd.fail('%sTxt="usage: setScale N"' % (self.name))
-            return
-        x = float(cmd.argv[1])
-        self.guideScale = x
-
-        cmd.finish('%sScale=%0.2f' % (self.name, x))
-
-    def doSetThresh(self, cmd):
-        """ Handle setThresh command, which sets the stddev factor to consider a blob a star.
-
-        CmdArgs:
-           int    - the new 
-        """
-
-        parts = cmd.raw_cmd.split()
-        if len(parts) != 2:
-            cmd.fail('%sTxt="usage: setThresh value."')
-            return
-
-        try:
-            t = float(parts[1])
-        except:
-            cmd.fail('%sTxt="setThresh value must be a number"')
-            return
-
-        self.starThresh = t
-        cmd.finish('starThreshold=%0.2f' % (self.starThresh))
-                   
-    def doSet(self, cmd):
-        """ Handle set command, which lets us override a certain amount of guiding state.
-
-        CmdArgs:
-           stateName=value
-        """
-
-	cmd.fail('txt="set command not yet implemented."')
-                   
-    def _doCmdExpose(self, cmd, type, ignoreArgs):
-        """ Parse the exposure arguments and act on them.
-
-        Args:
-            cmd    - the controlling Command
-            type   - 'object' or 'dark'
-            ignoreArgs - a list of command arguments to ignore (UNUSED)
-            
-        CmdArgs:
-            time   - exposure time, in seconds
-            window - subframe, (X0,Y0,X1,Y1)
-            bin    - binning, (N) or (X,Y)
-            file   - a file name. If specified, the time,window,and bin arguments are ignored.
-            
-        Returns:
-            - a filename
-            - the [X,Y] binning factors,
-            - the _actual_ [X0,Y0] LL corner
-            - the _actual_ [W,H] frame size.
-        """
-
-        matched, notMatched, leftovers = cmd.match([('time', float),
-                                                    ('window', str),
-                                                    ('bin', str),
-                                                    ('file', str)])
-
-        if matched.has_key('file'):
-            fname = self.findFile(cmd, matched['file'])
-            if not fname:
-                cmd.fail('%sTxt=%s' % (self.name,
-                                       CPL.qstr("No such file: %s" % (matched['file']))))
-                return
-
-        else:
-            if not matched.has_key('time') :
-                cmd.fail('%sTxt="Exposure commands must specify exposure times"' % (self.name))
-                return
-            time = matched['time']
-
-            window = None
-            bin = None
-            if matched.has_key('bin'):
-                bin = self.parseBin(matched['bin'])
-            if matched.has_key('window'):
-                window = self.parseWindow(matched['window'])
-
-            fname = self._doExpose(cmd, type, time, bin, window) 
-
-            return (fname,) + getGeometryFromFile(cmd, fname)
-
-    def getGeometryFromFile(self, cmd, fname):
-        """ Read a FITS file and return geometry information.
-
-        Args:
-           cmd     - the controlling Command
-           fname   - the name of a FITS file.
-
-        Returns:
-            - the [X,Y] binning factors,
-            - the _actual_ [X0,Y0] LL corner
-            - the _actual_ [W,H] frame size.
-        
-        """
-    
-        fits = pyfits.open(fname)
-        hdr = fits[0].header
-        fits.close()
-
-        return getGeometryFromHeader(cmd, hdr)
-    
-    def getGeometryFromHeader(self, cmd, hdr):
-        """ Read a FITS header and return geometry information.
-
-        Args:
-           cmd     - the controlling Command
-           hdr     - a pyFITS header, with all the required cards.
-
-        Returns:
-            - the [X,Y] binning factors,
-            - the _actual_ [X0,Y0] LL corner
-            - the _actual_ [W,H] frame size.
-        
-        Requires the following FITS cards:
-           BEGX, BEGY     - binned pixels offset of LL corner on full CCD frame.
-           BINX, BINY     - binning factor of the image.
-           NAXIS1, NAXIS2 - binned pixels in image.
-
-        """
-
-        begx = hdr['BEGX']
-        begy = hdr['BEGY']
-        binx = hdr['BINX']
-        biny = hdr['BINY']
-        w = hdr['NAXIS1']
-        h = hdr['NAXIS2']
-        
-        return (binx, biny), (begx, begy), (w, h)
-    
-    def _doExpose(self, cmd, type, itime, bin, window):
-        """ Actually request an exposure from a camera.
-
-        Args:
-            cmd         - the controlling command
-            type        - 'object' or 'dark'
-            time        - integration time in seconds.
-            bin         - X,Y pair of integers
-            window      - X0,Y0,X1,Y1
-
-        Returns:
-             - filename of the resulting processed frame.
-
-        """
-        
-        rawFrame = self.camera.expose(cmd, type, itime, window=window, bin=bin)
-        finalFrame = self._consumeRawFrame(cmd, rawFrame)
-        return finalFrame
-    
-    def findFile(self, cmd, fname):
-        """ Get the absolute path for a given filename. Looks in the 'current directory' """
-        
-        return fname
-    
-    def _getBestCenter(self, cmd, fname):
-        """ Return the best center for a given file, as defined by findstars()
-
-        I __really__ want to filter the output of findstars, possibly re-ordering
-        based on some desirability map and functions. Some of the guider fields have
-        horrible aberrations...
-        """
-
-        if fname == None:
-            fname, bin, offset, size = self._doCmdExpose(cmd, 'expose', 'centroid')
-        fits = pyfits.open(fname)
-        img = fits[0].data
-        fits.close()
-	isSat, stars = PyGuide.findStars(
-            data = img
-	)
-
-        if isSat:
-            cmd.warn('%sFindstarsSaturated=%s' % (self.name, CPL.qstr(fname)))
-        if len(stars) == 0:
-            return None
-        else:
-            return self.ij2xy(stars[0].center)
-        
-    def _doCentroid(self, cmd, seedPos, fname=None, scanRad=None):
-        """ Takes a single guider exposure and centroids on the given position. This overrides but
-        does not stop the guiding loop.
-
-        Args:
-            cmd     - the controlling command
-            seedPos - the 
-        """
-
-        if fname == None:
-            fname, bin, offset, size = self._doCmdExpose(cmd, 'expose', 'centroid')
-        fits = pyfits.open(fname)
-        img = fits[0].data
-        fits.close()
-
-        if scanRad == None:
-            scanRad = self.scanRad
-
-        cmd.warn('%sDebug=%s' % (self.name,
-                                 CPL.qstr('centroid seed=%0.2f,%0.2f rad=%0.1f fsize=%d fname=%s' % \
-                                          (seedPos[0], seedPos[1], scanRad,
-                                           len(img), fname))))
-        ds9 = cmd.argDict.get('ds9', False)
-        centroid = PyGuide.centroid(img,
-                                    self.mask,
-                                    self.xy2ij(seedPos),
-                                    scanRad,
-                                    ds9=ds9)
-        
-        return centroid
-
-    def _doStarShape(self, cmd, center, fname=None, predFWHM=2.0):
-        """ Gets star shape information on a given object.
-        """
-
-        fits = pyfits.open(fname)
-        img = fits[0].data
-
-        try:
-            shape = PyGuide.starShape(img,
-                                      self.getMaskForFits(fits),
-                                      center,
-                                      predFWHM=predFWHM)
-        finally:
-            fits.close()
-        
-        return shape
-
-    def getMaskForFits(self, fits):
-        """ Generate a mask file matchng the given FITS file.
-        """
-
-        pass
-        
-    def getMask(self, bin):
-        """ Return a numarray mask appropriate to the given binning.
-
-        Args:
-             bin      - the desired binning factor.
-
-        Note that we use the opposite sign convention for mask files than numarray does.
-        """
-
-        return self.mask.getMaskForBinning(bin)
-    
-    def _setMask(self, fname):
-	""" Set our mask to the contents of the given filename. """
-
-	self.mask = GuiderMask.GuiderMask(fname)
-        self.maskFile = fname
-        
-    def _consumeRawFrame(self, cmd, rawFrame):
-        """ Turn a raw frame into a proper file for the rest of the guider code.
-
-        This will likely need to be subclassed. By default, we do nothing.
-        """
-
-        return rawFrame
-    
-    def parseWindow(self, parts):
-        """ Parse a window specification of the form X0,Y0,X1,Y1.
-
-        Args:
-           s    - a string of the form "X0,Y0,X1,Y1"
-
-        Returns:
-           - the window coordinates, as a 4-tuple of integers.
-
-        Raises:
-           Exception on parsing errors.
-           
-        """
-
-        try:
-            coords = map(int, parts)
-            if len(coords) != 4:
-                raise Exception
-        except:
-            raise Exception("window format must be X0,Y0,X1,Y1 with all coordinates being integers.")
-
-        return coords
-
-    def parseCoord(self, parts):
-        """ Parse a coordinate pair of the form X,Y.
-
-        Args:
-           s    - a string of the form "X,Y"
-
-        Returns:
-           - the window coordinates, as a pair of integers.
-
-        Raises:
-           Exception on parsing errors.
-           
-        """
-
-        try:
-            coords = map(float, parts)
-            if len(coords) != 2:
-                raise Exception
-        except:
-            raise Exception("cooordinate format must be X,Y with all coordinates being floats (not %s)." % (s))
-
-        return coords
-
-    def parseBin(self, parts):
-        """ Parse a binning specification of the form X,Y or N
-
-        Args:
-           s    - a string of the form "X,Y" or "N"
-
-        Returns:
-           - the binning factors coordinates, as a duple of integers.
-
-        Raises:
-           Exception on parsing errors.
-           
-        """
-
-        try:
-            if len(parts) == 1:
-                parts = parts * 2
-            if len(parts) != 2:
-                raise Exception
-            coords = map(int, parts)
-        except:
-            raise Exception("binning must be specified as X,Y or N with all coordinates being integers.")
-
-        return coords
-        
-        

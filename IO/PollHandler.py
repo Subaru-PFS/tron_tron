@@ -82,6 +82,32 @@ class PollHandler(CPL.Object):
         self.poller = None
         CPL.Object.__del__(self)
 
+    def addTimer(self, timer):
+        """ Add a timer.
+
+        Args:
+            timer   - a dictionary containing:
+                         'callback'    - the function to call as callback(timer)
+                         'time'        - a time.time() value to try to call by.
+        Returns:
+           - whether we have arranged for the loop to be restarted.
+        """
+
+        self.timedCallbacks.append((timer['time'], timer))
+        self.timedCallbacks.sort()
+
+        # Kick the loop if necessary
+        #
+        if self.loopback and self.timedCallbacks[0][1] == timer:
+            os.write(self.loopback, 'I')
+        
+    def removeTimer(self, timer):
+        """ Remove an existing timer.
+
+        """
+
+        self.timedCallbacks.remove((timer['time'], timer))
+        
     def callMeIn(self, callback, delay):
         """ Arrange to call callback after delay seconds. """
 
@@ -357,13 +383,13 @@ class PollHandler(CPL.Object):
             # or the next item in .timedCallbacks
             timeout = self.timeout
             if self.timedCallbacks != []:
-                nextTick, nextCB = timedCallbacks[0]
+                nextTick, nextTimer = self.timedCallbacks[0]
                 
                 now = time.time()
                 if nextTick - now < self.timeout:
                     timeout = nextTick - now
                     if timeout < 0.0:
-                        timeout =
+                        timeout = 0.001
 
             try:
                 events = self.poller.poll(timeout * 1000.0)
@@ -403,11 +429,11 @@ class PollHandler(CPL.Object):
             if self.timedCallbacks != []:
                 now = time.time()
                 for i in range(len(self.timedCallbacks)):
-                    tick, event = self.timedCallbacks[i]
+                    tick, timer = self.timedCallbacks[i]
                     if tick > now:
                         break
                     del self.timedCallbacks[i]
-                    event()
+                    timer['callback'](timer)
                     
             # Walk through all new events, and fire on all of them. Round-robinning provides
             # some simple protection against the worst starvation.

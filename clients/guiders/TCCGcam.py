@@ -2,6 +2,12 @@
 
 __all__ = ['TCCGcam']
 
+import pyfits
+
+import CPL
+import GuideFrame
+import MyPyGuide
+
 class TCCGcam(object):
     """
  For commands from the tcc, we need to support:
@@ -136,6 +142,9 @@ showstatus
             xCtr = float(xCtr); yCtr = float(yCtr)
             xSize = float(xSize); ySize = float(ySize)
 
+            # Squirrel our coordinate frame 
+            self.frameForTcc = (xBin, yBin, xCtr, yCtr, xSize, ySize)
+
             # Some realignments, since the TCC can request funny things.
  	    xMax = self.size[0] / xBin
 	    yMax = self.size[1] / yBin
@@ -154,8 +163,8 @@ showstatus
 	    if window[1] < 0: window[1] = 0
 	    if window[2] > xMax: window[2] = xMax
 	    if window[3] > yMax: window[3] = yMax
-   
-     except:
+
+        except:
             cmd.fail('txtForTcc=%s' % (CPL.qstr("Could not interpret command %s" % (cmd.raw_cmd))))
             return
 
@@ -166,12 +175,13 @@ showstatus
             cmd.fail('txtForTcc=%s' % (CPL.qstr('Could not take an exposure: %s' % (e))))
             return
 
-        # cmd.respond('imgFile=%s' % (CPL.qstr(exp)))
-
         # Keep some info around for findstars
         #
         self.imgForTcc = exp
-        self.binForTcc = xBin, yBin
+        self.binForTcc = [xBin, yBin]
+        self.sizeForTcc = [window[2] - window[0],
+                           window[3] - window[1]]
+        self.offsetForTcc = [window[0], window[1]]
         
         ccdTemp = self.camera.cam.read_TempCCD()
         cmd.respond('txtForTcc=%s' % (CPL.qstr(cmd.raw_cmd)))
@@ -192,12 +202,9 @@ showstatus
         OK
         """
 
-        fname = self.imgForTcc
-        cmd.respond('%sDebug=%s' % (self.name, CPL.qstr('checking filename=%s' % (fname))))
-        fits = pyfits.open(fname)
-        img = fits[0].data
-        fits.close()
-        
+        cmd.respond('txtForTcc=%s' % (CPL.qstr(cmd.raw_cmd)))
+        cmd.respond('%sDebug=%s' % (self.name, CPL.qstr('checking filename=%s' % (self.imgForTcc))))
+
         # Parse out what (little) we need: the number of stars and the predicted size.
         #
         try:
@@ -207,78 +214,30 @@ showstatus
             cmd.fail('gcamTxt="findstars must take all tcc arguments"')
             return
 
+        # Make sure our args match the doread args
+        findstarsFrame = (self.binForTcc[0], self.binForTcc[1], x0, y0, xSize, ySize)
+        if self.frameForTcc != findstarsFrame:
+            cmd.warn('debugTxt=%s' % \
+                     (CPL.qstr("doread (%s) != findstars (%s)" % (self.frameForTcc, findstarsFrame))))
+        
         cnt = int(cnt)
         x0, y0, xSize, ySize, xPredFWHM, yPredFWHM = \
             map(float, (x0, y0, xSize, ySize, xPredFWHM, yPredFWHM))
         if xSize == 0.0: xSize = self.size[0]
         if ySize == 0.0: ySize = self.size[1]
-        
-        # Build a mask from:
-        #   self.mask
-        #   the given window
-        mask = self.getMask(bin=self.binForTcc, optImg=img)
-        if mask != None:
-            mask = self.maskOutFromPosAndSize(mask.copy(), x0, y0, xSize, ySize, excludeRect=True)
-        else:
-            cmd.warn('%sTxt="no mask available"')
-        
-        try:
-            isSat, stars = PyGuide.findStars(
-		img, mask,
-                self.tweaks['bias'],
-                self.tweaks['readNoise'],
-                self.tweaks['ccdGain'],
-                dataCut = self.tweaks['starThresh'],
-                verbosity=0
-                )
-        except Exception, e:
-            cmd.warn('debug=%s' % (CPL.qstr(e)))
-            raise
-            isSat = False
-            stars = []
 
-        if isSat:
-            cmd.warn('findstarsSaturated=%s' % (self.name, CPL.qstr(fname)))
-        cmd.respond('findstarsCnt=%d' % (len(stars)))
+        frame = GuideFrame.ImageFrame(self.size)
+        tweaks = self.config()
+        isSat, stars = MyPyGuide.findstars(cmd, self.imgForTcc, self.mask,
+                                           frame, tweaks)
 
-        cmd.respond('txtForTcc=%s' % (CPL.qstr(cmd.raw_cmd)))
-
-        if len(stars) == 0:
-            cmd.respond('txtForTcc="no stars found"')
-        else:
-            i=1
-            for star in stars:
-                ctr = self.ij2xy(star.ctr)
-
-                try:
-                    shape = PyGuide.starShape(img,
-                                              mask,
-                                              star.ctr)
-                    fwhm = shape.fwhm
-                    chiSq = shape.chiSq
-                    bkgnd = shape.bkgnd
-                    ampl = shape.ampl
-                except:
-                    fwhm = 0.0        # nan does not work.
-                    chiSq = 0.0
-                    bkgnd = 0.0
-                    ampl = 0.0
-                    
-                cmd.respond('star=%d,%0.3f,%0.3f, %0.3f,%0.3f,%0.3f, %0.3f,%0.3f,%0.3f, %0.1f,%0.1f,%0.1f' % \
-                            (i, ctr[0], ctr[1],
-                             star.err[1], star.err[1], star.asymm,
-                             fwhm, fwhm, chiSq,
-                             star.counts, bkgnd, ampl))
-                             
-                cmd.respond('txtForTcc=%s' % \
-                            (CPL.qstr("%d %d %0.3f %0.3f %0.3f %0.3f 0.0 0.0 %10.1f 0.0 %0.2f %0.2f 0" % \
-                                      (self.binForTcc[0], self.binForTcc[1],
-                                       ctr[0], ctr[1],
-                                       fwhm, fwhm,
-                                       star.counts,
-                                       star.err[1], star.err[0]))))
-                i += 1
-                if i >= cnt:
-                    break
+        for s in stars:
+            cmd.respond('txtForTcc=%s' % \
+                        (CPL.qstr("%d %d %0.3f %0.3f %0.3f %0.3f 0.0 0.0 %10.1f 0.0 %0.2f %0.2f 0" % \
+                                  (self.binForTcc[0], self.binForTcc[1],
+                                   s.ctr[0], s.ctr[1],
+                                   s.fwhm, s.fwhm,
+                                   s.counts,
+                                   s.err[0], s.err[1]))))
             
         cmd.finish('txtForTcc=" OK"')

@@ -1,4 +1,3 @@
-#import pychecker
 import hub
 
 def startAllConnections(names=[]):
@@ -8,13 +7,5 @@ def startAllConnections(names=[]):
         hub.startNub(n)
     
 hub.init()
-startAllConnections(['client',
-                     'tcc',
-                     'dis', 'disExpose',
-                     'grim', 'grimExpose',
-                     'echelle', 'echelleExpose',
-                     'nicfps', 'nicfpsExpose',
-                     'gcam', 'tcc2gcam',
-                     'ecam', 'tcc2ecam',
-                     'cmdin', 'TUI'])
+startAllConnections(['client', 'ping', 'tcc', 'TUI'])
 hub.run()

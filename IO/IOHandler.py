@@ -4,6 +4,7 @@ __all__ = ['IOHandler']
 
 import os
 import socket
+import time
 
 import CPL
 
@@ -139,8 +140,35 @@ class IOHandler(CPL.Object):
         """ Return the file descriptor for our output file. Called by the poller. """
 
         return self.out_fd
+
+    def makeTimer(self, interval, callback, token):
+        """ Create a timer to fire in interval seconds. """
+
+        return self.makeTimerForTime(time.time() + interval, callback, token)
         
-    def queueForOutput(self, s):
+    def makeTimerForTime(self, when, callback, token):
+        """ Create a timer.
+
+        Args:
+            when       - the absolute time (in ticks) to trigger.
+            callback   - what function to call when triggered. called as callback(token)
+            token      - an additional argument for the callback.
+
+        Returns:
+           currently a dictionary.
+        """
+
+        timer = {}
+        timer['time'] = when
+        timer['callback'] = callback
+        timer['token'] = token
+
+        return timer
+    
+    def addTimer(self, timer):
+        self.poller.addTimer(timer)
+        
+    def queueForOutput(self, s, timer=None):
         """ Append s to the output queue. """
 
         assert s != None, "queueing nothing!"
@@ -153,6 +181,10 @@ class IOHandler(CPL.Object):
             #
             self.outQueue.append(s)
 
+            # Add any timer.
+            if timer != None:
+                self.addTimer(timer)
+                    
             # Bump the stats.
             self.totalQueued += 1
             if len(self.outQueue) > self.maxQueue:

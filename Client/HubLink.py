@@ -27,7 +27,7 @@ import socket
 import sys
 import time
 import traceback
-
+import Queue
 import CPL
 
 import IO.PollHandler
@@ -65,6 +65,9 @@ class ASCIICmdEncoder(object):
 class ClientNub(IO.IOHandler):
 
     def __init__(self, poller, brains, host, port, **argv):
+        """ The IOHandler part of a connection which sends commands.
+        """
+        
         IO.IOHandler.__init__(self, poller, **argv)
 
         self.brains = brains
@@ -114,8 +117,46 @@ class ClientNub(IO.IOHandler):
             CPL.log("ClientHub.sendCommand", "sending command %s" % (c))
         ec = self.encoder.encode(c)
         self.__registerCmd(c)
-        self.queueForOutput(ec, timeout=timeout)
 
+        timer = None
+        if timeout != None:
+            timer = self.makeTimer(timeout, self.copeWithTimeout, c)
+        self.queueForOutput(ec, timer=timer)
+
+    def copeWithTimer(self, timer):
+        """ Accept a timer event.
+
+        Args:
+            timer     - a Timer
+
+        We get called whenever an PollHandler goes off on a regular callback timer.
+        """
+
+        q = timer['token']
+        q.put(timer['time'])
+        
+    def copeWithTimeout(self, timer):
+        """ Accept a timout event.
+
+        Args:
+            timer     - a Timer
+
+        We get called whenever an PollHandler goes off due to a command timeout.
+        We close out the command and synthesize a failing Reply.
+        """
+
+        key = timer['token']
+        cmd = self.liveCommands.get(key, None)
+        
+        if cmd:
+            del self.liveCommands[key]
+            self.brains.copeWithTimeout(cmd)
+        else:
+            CPL.log("hubLink", "timeout w/o cmd: %s" % (timer))
+            
+        return cmd
+
+    
     def copeWithInput(self, s):
         """ Incorporate new input: buffer it, then extract and operate on each complete reply.
 
@@ -199,7 +240,7 @@ class ClientNub(IO.IOHandler):
             del self.liveCommands[key]
             
         return cmd
-    
+
 class HubLink(object):
     
     def __init__(self, **argv):
@@ -212,8 +253,7 @@ class HubLink(object):
 
         self.debug = argv.get('debug', 0)
         host = argv.get('host', 'localhost')
-        port = argv.get('port', 6094)
-        port = int(port)
+        port = int(argv.get('port', 6094))
         
         # Create a PollHandler
         #
@@ -293,6 +333,31 @@ class HubLink(object):
                 q = FilterQueue.ClientCmdFilter(command, debug=debug)
                 self.filters.append(q)
             self.toHub.sendCommand(command, debug=debug)
+        finally:
+            self.lock.release()
+        
+        return q
+
+    def timer(self, howLong, **argv):
+        """ Arrange for a timed callback.
+
+        Args:
+            howLong - number of seconds to wait before triggering
+            
+        Return:
+            the queue upon which the trigger will be sent.
+            
+        """
+
+        debug = argv.get('debug', self.debug)
+        if debug > 0:
+            CPL.log("hubLink.timer", "howLong=%s" % (howLong))
+                
+        self.lock.acquire(src="timer")
+        try:
+            q = Queue.Queue()
+            timer = self.toHub.makeTimer(howLong, self.toHub.copeWithTimer, q)
+            self.toHub.addTimer(timer)
         finally:
             self.lock.release()
         

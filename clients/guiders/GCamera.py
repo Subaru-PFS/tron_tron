@@ -16,7 +16,7 @@ import os.path
 import time
 
 class GCamera(object):
-    def __init__(self, name, path, **argv):
+    def __init__(self, name, path, ccdSize, **argv):
 
         self.name = name
         self.nameChar = name[0]
@@ -26,13 +26,13 @@ class GCamera(object):
         if not os.path.isdir(path):
             raise RuntimeError("path given to %s is not a directory: %s" % (name, path))
 
+        self.ccdSize = ccdSize
         self.path = path
-        self.exposeCmd = None
 
         self.lastImage = None
         self.lastDir = None
         self.lastID = None
-        
+
     def _getFilename(self):
         """ Return the next available filename.
 
@@ -105,7 +105,9 @@ class GCamera(object):
 
         Args:
             d   - dictionary including:
-                     size:     (width, height)
+                     offset:   (x0, y0), in binned pixels.
+                     size:     (width, height) in binned pixels
+                     binning:  (x, y)
                      type:     FITS IMAGETYP
                      iTime:    integration time
                      filename: the given filename, or None

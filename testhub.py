@@ -7,5 +7,5 @@ def startAllConnections(names=[]):
         hub.startNub(n)
     
 hub.init()
-startAllConnections(['client', 'ping', 'TUI'])
+startAllConnections(['client', 'ping', 'tcc', 'TUI'])
 hub.run()

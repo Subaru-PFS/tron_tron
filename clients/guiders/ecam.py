@@ -5,12 +5,11 @@
 """
 
 import sys
-import time
 
 import client
 import CPL
 import Guider
-import GimGCamera
+import GimCtrlGCamera
 import TCCGcam
 
 class ecam(Guider.Guider, TCCGcam.TCCGcam):
@@ -18,17 +17,23 @@ class ecam(Guider.Guider, TCCGcam.TCCGcam):
     """
     
     def __init__(self, **argv):
-        camera = GimGCamera.GimGCamera('ecam',
-                                       '/export/images/guider',
-                                       '/export/images/ecam',
-                                       **argv)
+        ccdSize = CPL.cfg.get('ecam', 'ccdSize')
+        camera = GimCtrlGCamera.GimCtrlGCamera('ecam',
+                                               '/export/images/guider',
+                                               '/export/images/ecam',
+                                               ccdSize,
+                                               **argv)
         Guider.Guider.__init__(self, camera, 'ecam', **argv)
 
-        self._setDefaults()
+    def _setDefaults(self):
+        Guider.Guider._setDefaults(self)
+        
+        self.GImName = "S300"
+        self.GImCamID = 1
 
-    def doInit(self, cmd):
+    def initCmd(self, cmd):
         """ Pass on an 'init' command from a TCC to our camera. """
-
+        
         ret = self.camera.rawCmd(cmd, 10)
         self.echoToTcc(cmd, ret)
     
@@ -53,7 +58,7 @@ class ecam(Guider.Guider, TCCGcam.TCCGcam):
         # Parse the tcc command. It will _always_ have all fields
         #
         try:
-            type, iTime, xBin, yBin, xCtr, yCtr, xSize, ySize = cmd.raw_cmd.split()
+            exptype, iTime, xBin, yBin, xCtr, yCtr, xSize, ySize = cmd.raw_cmd.split()
         except:
             cmd.fail('txtForTcc=%s' % (CPL.qstr("Could not parse command %s" % (cmd.raw_cmd))))
             return
@@ -68,24 +73,6 @@ class ecam(Guider.Guider, TCCGcam.TCCGcam):
         
         self.echoToTcc(cmd, ret)
     
-    def XXXdoTccFindstars(self, cmd):
-        """ Pass on a 'findstars' command from a TCC to our camera. """
-
-        ret = self.camera.rawCmd(cmd, 15)
-        self.echoToTcc(cmd, ret)
-    
-    def _setDefaults(self):
-        self.defaults['bias'] = CPL.cfg.get('ecam', 'bias')
-        self.defaults['readNoise'] = CPL.cfg.get('ecam', 'readNoise')
-        self.defaults['ccdGain'] = CPL.cfg.get('ecam', 'ccdGain')
-        self.defaults['ccdFrame'] = CPL.cfg.get('ecam', 'ccdFrame')
-        self.defaults['binning'] = CPL.cfg.get('ecam', 'binning')
-        self.defaults['boresight'] = CPL.cfg.get('ecam', 'boresight')
-        self.size = self.defaults['ccdFrame'][2:3]
-        self.window = [0,0,511,511]
-
-        self.GImName = "S300"
-        self.GImCamID = 1
 
 # Start it all up.
 #

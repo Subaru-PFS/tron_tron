@@ -24,28 +24,17 @@ class gcam(Guider.Guider, TCCGcam.TCCGcam):
         
         # Additional commands for the Alta.
         #
-        self.commands.update({'setTemp':    self.doSetTemp,
-                              'setFan':     self.doSetFan})
+        self.commands.update({'setTemp':    self.setTempCmd,
+                              'setFan':     self.setFanCmd})
 
-        self._setDefaults()
-        
     def _setDefaults(self):
-        self.defaults['bias'] = CPL.cfg.get('gcam', 'bias')
-        self.defaults['readNoise'] = CPL.cfg.get('gcam', 'readNoise')
-        self.defaults['ccdGain'] = CPL.cfg.get('gcam', 'ccdGain')
-        self.defaults['ccdFrame'] = CPL.cfg.get('gcam', 'ccdFrame')
-        self.defaults['binning'] = CPL.cfg.get('gcam', 'binning')
-        self.defaults['boresight'] = CPL.cfg.get('gcam', 'boresight')
-        self.defaults['maskFile'] = CPL.cfg.get('gcam', 'maskFile')
 
-        self.size = self.defaults['ccdFrame'][2:3]
+        Guider.Guider._setDefaults(self)
         
         self.GImName = "Alta-E6"
         self.GImCamID = 1
 
-        self._setMask(self.defaults['maskFile'])
-        
-    def doSetTemp(self, cmd):
+    def setTempCmd(self, cmd):
         """ Handle setTemp command.
 
         CmdArgs:
@@ -71,7 +60,7 @@ class gcam(Guider.Guider, TCCGcam.TCCGcam):
         self.camera.coolerStatus(cmd)
         cmd.finish()
             
-    def doSetFan(self, cmd):
+    def setFanCmd(self, cmd):
         """ Handle setFan command.
 
         CmdArgs:
@@ -105,5 +94,5 @@ def main(name, eHandler=None, debug=0, test=False):
     client.run(name=name, cmdQueue=camActor.queue, background=False, debug=debug, cmdTesting=test)
     CPL.log('gcam.main', 'DONE')
 
-if __name__ == "__main__":
+if __name__ == "__main__XX":
     main('gcam', debug=6)
