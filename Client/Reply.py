@@ -6,7 +6,6 @@ class Reply(object):
     """
 
     def __init__(self, cid, mid):
-        self.lines = []
         self.cid = cid
         self.mid = mid
         self.lines = []

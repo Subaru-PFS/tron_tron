@@ -46,8 +46,21 @@ def init():
         g.home = os.getcwd()
 
     g.rootDir = os.getcwd()
-    g.logDir = os.environ['LOG_DIR']
+
+    # Bootstrap the whole configuration system
+    CPL.cfg.init(os.environ.get('CONFIG_DIR',
+                                os.path.join(os.environ['HOME'], 'config')))
+
+    # We have a couple of IDL pro files. Let idl see them.
+    idlPath = os.environ.get('IDL_PATH', None)
+    if idlPath:
+        idlPath = [idlPath, os.path.join(g.home, 'pro')]
+    else:
+        idlPath = [os.path.join(g.home, 'pro')]
+    os.environ['IDL_PATH'] = ':'.join(idlPath)
     
+    g.logDir = CPL.cfg.get('hub', 'logDir')
+
     CPL.setLogfile('logs/hub.log', truncate=True)
     CPL.setID('hub')
     
@@ -106,8 +119,8 @@ def handleSIGTERM(signal, frame):
     
 def loadWords(words=None):
     if words == None:
-        words = ('perms', 'hub', 'keys',
-                 'msg', 'tlamps', 'fits')
+        words = CPL.cfg.get('hub', 'vocabulary')
+
     for w in words:
         _loadWords([w])
 
