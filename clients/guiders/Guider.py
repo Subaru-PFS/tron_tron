@@ -63,14 +63,13 @@ class Guider(Actor.Actor, GuideLoop.GuideLoop):
                               'zap':        self.doZap
                               })
 
-        # Optionally pretend to be an old-fashioned TCC guider (GImCtrl)
-        self.amTccGuider = argv.get('tccGuider', False)
-
         self.camera = camera
         self.activeExposure = None
         self.guiding = False
         self.guidingCmd = None
         self.mask = None
+
+        # the tcc sends 'findstars' after requesting an image. Keep the image name around.
         self.imgForTcc = None
         
     def xy2ij(self, pos):
@@ -78,6 +77,14 @@ class Guider(Actor.Actor, GuideLoop.GuideLoop):
 
     def ij2xy(self, pos):
         return pos[1], pos[0]
+
+    def echoToTcc(self, cmd, ret):
+        """ If cmd comes from the TCC, pass the ret lines back to it. """
+
+        if cmd.cmdrName == 'TC01.TC01':
+            for i in range(len(ret)-1):
+                cmd.respond('txtForTcc=%s' % (CPL.qstr(ret[i])))
+            cmd.finish('txtForTcc=%s' % (CPL.qstr(ret[-1])))
 
     def doInit(self, cmd):
         """ Clean up/stop/initialize ourselves. """
@@ -88,8 +95,8 @@ class Guider(Actor.Actor, GuideLoop.GuideLoop):
             cmd.respond('txtForTcc="init"')
             cmd.finish('txtForTcc="OK"')
             return
-        
-        cmd.finish()
+        else:
+            cmd.finish()
         
     def doTccShowstatus(self, cmd):
         """ Respond to a tcc 'showstatus' command.
@@ -190,7 +197,7 @@ showstatus
             exp = self._doExpose(cmd, type, iTime, bin, window)
         except Exception, e:
             raise
-            cmd.fail('txtForTcc=%s' % (CPL.qstr('Could not make an exposure: %s' % (e))))
+            cmd.fail('txtForTcc=%s' % (CPL.qstr('Could not take an exposure: %s' % (e))))
             return
 
         # cmd.respond('imgFile=%s' % (CPL.qstr(exp)))
@@ -306,7 +313,6 @@ showstatus
         # Optionally handle the command as a GImCtrl
         if cmd.cmdrName == 'TC01.TC01':
             return self.doTccFindstars(cmd)
-        
             
         fname = self._doCmdExpose(cmd, 'expose', 'findstars')
         cmd.respond('%sDebug=%s' % (self.name, CPL.qstr('checking filename=%s' % (fname))))
@@ -455,7 +461,7 @@ showstatus
 
     doZap.helpText = ('zap            - stop and active exposure and/or cleanup.')
 
-    def _doCmdExpose(self, cmd, type, ignoreArgs, callback=None):
+    def _doCmdExpose(self, cmd, type, ignoreArgs):
         """ Parse the exposure arguments and act on them.
 
         Args:
@@ -483,10 +489,7 @@ showstatus
                                        CPL.qstr("No such file: %s" % (matched['file']))))
                 return
 
-            if callback:
-                callback(None)
-            else:
-                return fname
+            return fname
         else:
             if not matched.has_key('time') :
                 cmd.fail('%sTxt="Exposure commands must specify exposure times"' % (self.name))
@@ -500,19 +503,15 @@ showstatus
             if matched.has_key('window'):
                 window = self.parseWindow(matched['window'])
 
-            return self._doExpose(cmd, type, time, bin, window, callback)
+            return self._doExpose(cmd, type, time, bin, window)
 
-    def _doExpose(self, cmd, type, itime, bin, window, callback=None):
-        if callback:
-            return self.camera.expose(cmd, type, itime, window=window, bin=bin, callback=callback)
-        else:
-            rawFrame = self.camera.expose(cmd, type, itime, window=window, bin=bin)
-            finalFrame = self._consumeRawFrame(cmd, rawFrame)
-            return finalFrame
+    def _doExpose(self, cmd, type, itime, bin, window):
+        rawFrame = self.camera.expose(cmd, type, itime, window=window, bin=bin)
+        finalFrame = self._consumeRawFrame(cmd, rawFrame)
+        return finalFrame
 
     
     def findFile(self, cmd, fname):
-        # cmd.respond('%sDebug=%s' % (self.name, CPL.qstr('checking filename=%s' % (fname))))
         return fname
     
     def _getBestCenter(self, cmd, fname):

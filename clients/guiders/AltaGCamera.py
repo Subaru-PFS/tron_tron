@@ -79,7 +79,7 @@ class AltaGCamera(GCamera.GCamera):
 
         return self.cam.read_TempCCD()
     
-    def expose(self, cmd, expType, itime, window=None, bin=None, callback=None):
+    def expose(self, cmd, expType, itime, window=None, bin=None):
         """ Take an exposure of the given length, optionally binned/windowed.
 
         Args:
