@@ -30,9 +30,7 @@
    filter what is sent to our layer with passed chunks.
 """
 
-__all__ = ['run', 'call', 'callback', 'listenFor', 'waitFor',
-           'hub', 'dis', 'tcc', 'echelle', 'grim',
-           'expose', 'cmd', 'msg']
+__all__ = ['run', 'call', 'callback', 'listenFor', 'waitFor']
 
 import signal
 import threading
@@ -123,7 +121,7 @@ def keyboard(*argl):
     
     raise KeyboardInterrupt
 
-def call(tgt, cmd, debug=0, cid=0):
+def call(tgt, cmd, debug=0, cid=0, timeout=None):
     """ Send cmd to tgt. Wait for cmd to complete.
 
     Args:
@@ -144,7 +142,7 @@ def call(tgt, cmd, debug=0, cid=0):
 
     # We do want to block, so just call, gather all the responses, then return.
     #
-    q = hubLink.call(tgt, cmd, debug=debug, cid=cid)
+    q = hubLink.call(tgt, cmd, debug=debug, cid=cid, timeout=timeout)
 
     if debug > 3:
         CPL.log("call", "back from hubLink.call")
@@ -183,41 +181,6 @@ def call(tgt, cmd, debug=0, cid=0):
     else:
         return res
 
-def dis(cmd):
-    """ Shorthand for call('dis', cmd) """
-    
-    return call('dis', cmd)
-    
-def grim(cmd):
-    """ Shorthand for call('grim', cmd) """
-    
-    return call('grim', cmd)
-    
-def echelle(cmd):
-    """ Shorthand for call('echelle', cmd) """
-    
-    return call('echelle', cmd)
-    
-def msg(cmd):
-    """ Shorthand for call('msg', cmd) """
-    
-    return call('msg', cmd)
-    
-def hub(cmd):
-    """ Shorthand for call('hub', cmd) """
-
-    return call('hub', cmd)
-    
-def expose(cmd):
-    """ Shorthand for call('expose', cmd) """
-
-    return call('expose', cmd)
-    
-def tcc(cmd):
-    """ Shorthand for call('tcc', cmd) """
-    
-    return call('tcc', cmd)
-    
 def getKeys(actor, keyList):
     """ Request keys for a given actor, and optionally convert them.
 

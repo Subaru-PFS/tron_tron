@@ -62,12 +62,16 @@ class GuideLoop(object):
         self.guiding = True
         self._doGuide()
         
-    def stop(self):
+    def stop(self, cmd, doFinish=True):
         """ A way for the outside world to stop the loop.
 
         This merely sets a flag that other parts of the loop examine at appropriate times.
         """
-        
+
+        if doFinish:
+            cmd.finish('%sTxt="stopping guide loop...."' % (self.controller.name))
+        else:
+            cmd.respond('%sTxt="stopping guide loop...."' % (self.controller.name))
         self.guiding = False
         
     def listenToMoveItems(self, reply):
@@ -136,7 +140,7 @@ class GuideLoop(object):
         #      if specified, use specified position to seed centroid()
         #      then move the result to the boresight.
         #
-        fname = self.controller._doCmdExpose(self.cmd, 'expose', 'guide')
+        fname, bin, offset, size = self.controller._doCmdExpose(self.cmd, 'expose', 'guide')
 
         centerOn = self.cmd.argDict.get('centerOn')
         gstar = self.cmd.argDict.get('gstar')

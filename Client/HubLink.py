@@ -99,8 +99,13 @@ class ClientNub(IO.IOHandler):
         self.setInputFile(f)
         self.setOutputFile(f)
 
-    def sendCommand(self, c, debug=0):
+    def sendCommand(self, c, debug=0, timeout=None):
         """ Main entry point for sending a command.
+
+        Args:
+           c        - a Command to send
+           debug    -
+           timeout  - number of seconds to wait before failing the command.
         """
         
         # Check whether we can encode the command first:
@@ -109,7 +114,7 @@ class ClientNub(IO.IOHandler):
             CPL.log("ClientHub.sendCommand", "sending command %s" % (c))
         ec = self.encoder.encode(c)
         self.__registerCmd(c)
-        self.queueForOutput(ec)
+        self.queueForOutput(ec, timeout=timeout)
 
     def copeWithInput(self, s):
         """ Incorporate new input: buffer it, then extract and operate on each complete reply.
@@ -158,6 +163,19 @@ class ClientNub(IO.IOHandler):
         
         return f in ':fF'
 
+    def timeoutCallback(self, cid):
+        """ Called by the IOHandler if the callback timer fires.
+
+        Args:
+            cid      - the cid of the command which timed out.
+        """
+
+        cmd = self.liveCommands[key]
+        del self.liveCommands[key]
+        
+        self.brains.cmdTimeout(cmd)
+        
+        
     def __registerCmd(self, cmd):
         """ """
         
@@ -245,13 +263,14 @@ class HubLink(object):
             # I haven't evaluated what all gets raised. So go public.
             raise
         
-    def call(self, tgt, cmd, cid=0, q=None, **argv):
+    def call(self, tgt, cmd, cid=0, q=None, timeout=None,  **argv):
         """ Send a command and create a Queue for the replies.
 
         Args:
             tgt     - where to send the command
             cmd     - the command to send.
             q       - An optional Queue to put replies on.
+            timeout - number of seconds to wait before failing the cmd.
             
         Return:
             the queue upon which replies will be sent.

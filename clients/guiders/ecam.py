@@ -50,14 +50,25 @@ class ecam(Guider.Guider, TCCGcam.TCCGcam):
     def doTccDoread(self, cmd):
         """ Pass on a 'doread' command from a TCC to our camera. """
 
+        # Parse the tcc command. It will _always_ have all fields
+        #
+        try:
+            type, iTime, xBin, yBin, xCtr, yCtr, xSize, ySize = cmd.raw_cmd.split()
+        except:
+            cmd.fail('txtForTcc=%s' % (CPL.qstr("Could not parse command %s" % (cmd.raw_cmd))))
+            return
+
         ret = self.camera.rawCmd(cmd, 120)
         fname = self.camera.copyinNewRawImage()
 
+        self.imgForTcc = fname
+        self.binForTcc = int(xBin), int(yBin)
+        
         cmd.respond('imgFile="%s"' % (fname))
         
         self.echoToTcc(cmd, ret)
     
-    def doTccFindstars(self, cmd):
+    def XXXdoTccFindstars(self, cmd):
         """ Pass on a 'findstars' command from a TCC to our camera. """
 
         ret = self.camera.rawCmd(cmd, 15)

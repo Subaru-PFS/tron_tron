@@ -353,8 +353,20 @@ class PollHandler(CPL.Object):
                 if self.debug > 8:
                     CPL.log("PollHandler.run", "files=%s" % (self.fileNames()))
 
+            # Calculate the proper timeout. Basically, use the loop default
+            # or the next item in .timedCallbacks
+            timeout = self.timeout
+            if self.timedCallbacks != []:
+                nextTick, nextCB = timedCallbacks[0]
+                
+                now = time.time()
+                if nextTick - now < self.timeout
+                    timeout = nextTick - now
+                    if timeout < 0.0:
+                        timeout =
+
             try:
-                events = self.poller.poll(self.timeout * 1000.0)
+                events = self.poller.poll(timeout * 1000.0)
             except (socket.error, os.error, "error"), e:
                 CPL.log("PollHandler.run",
                         "poll trying to clean up: %s" % (e,))
