@@ -103,9 +103,12 @@ class fits(InternalCmd.InternalCmd):
            inst       - name f the instrument.
 
         OptCmdArgs:
-           filename=  - filename to create. This might have been specified by the start command.
+           infile=    - filename to read from.
+           inkey=     - inst keyword to use to get infile from.
            
-        Note:
+        Notes:
+           If both inkey and infile are specified, infile wins.
+
            This must be called after the instrument has fully read out and generated
            any header keys, but before any additional commands might have gone to the
            instrument. That could be tricky.
