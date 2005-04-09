@@ -29,7 +29,9 @@ class Auth(CPL.Object):
         self.hackOn = False
         self.gods = ("APO", "TU02")
 
-        for a in ('grim', 'dis', 'tcc', 'tlamps', 'echelle', 'perms'):
+        #for a in ('grim', 'dis', 'tcc', 'tlamps', 'echelle', 'perms'):
+        #    self.actors[a] = True
+        for a in ['perms']:
             self.actors[a] = True
             
         # Gods are special: They:

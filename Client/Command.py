@@ -8,7 +8,7 @@
 """
 __all__ = ['Command']
 
-from RO.Alg.OrderedDict import OrderedDict
+from RO.Alg import OrderedDict
 import CPL.log as log
 import Parsing
 

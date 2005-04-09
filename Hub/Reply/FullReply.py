@@ -1,6 +1,6 @@
 __all__ = ['FullReply']
 
-from RO.Alg.OrderedDict import OrderedDict
+from RO.Alg import OrderedDict
 
 class FullReply(object):
     """ A single object containing all known information about a single reply. Basically flattens

@@ -3,7 +3,7 @@ __all__ = ['Command']
 import re 
 import time
 
-from RO.Alg.OrderedDict import OrderedDict
+from RO.Alg import OrderedDict
 import CPL
 import Hub
 import Parsing

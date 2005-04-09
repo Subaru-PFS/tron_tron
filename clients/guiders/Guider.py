@@ -160,8 +160,8 @@ class Guider(Actor.Actor):
         """ Callback called when an exposure is done.
         """
         
-        cmd.warn('%sDebug=%s' % \
-                    (self.name, CPL.qstr('findstars checking filename=%s with frame=%s' % (filename, frame))))
+        cmd.warn('debug=%s' % \
+                 (CPL.qstr('findstars checking filename=%s with frame=%s' % (filename, frame))))
 
         # We need the maskfile name for the guiderFiles keyword.
         maskName, maskbits = self.mask.getMaskForFrame(cmd, filename, frame)
@@ -202,8 +202,8 @@ class Guider(Actor.Actor):
         """ Callback called when an exposure is done.
         """
         
-        cmd.respond('%sDebug=%s' % \
-                    (self.name, CPL.qstr('checking filename=%s' % (filename))))
+        cmd.respond('debug=%s' % \
+                    (CPL.qstr('checking filename=%s' % (filename))))
 
         # We need the maskfile name for the guiderFiles keyword.
         maskName, maskbits = self.mask.getMaskForFrame(cmd, filename, frame)
@@ -276,7 +276,8 @@ class Guider(Actor.Actor):
             if not self.guideLoop:
                 cmd.fail('%sTxt="No guide loop to tweak."' % (self.name))
                 return
-            self.guideLoop.tweak(cmd)
+            newTweaks = self.parseCmdTweaks(cmd, None)
+            self.guideLoop.tweakCmd(cmd, newTweaks)
             cmd.finish('')
         else:
             if self.guideLoop:
@@ -460,7 +461,7 @@ class Guider(Actor.Actor):
             - an absolute filename, or None if no readable file found.
         """
 
-        cmd.warn('debug=%s' % (CPL.qstr("looking for file %s" % (fname))))
+        #cmd.warn('debug=%s' % (CPL.qstr("looking for file %s" % (fname))))
         # Take an absolute path straight.
         if os.path.isabs(fname):
             if os.access(fname, os.R_OK):
@@ -470,7 +471,7 @@ class Guider(Actor.Actor):
         # Otherwise try to find the file in our "current" directory.
         root, dir = self.getCurrentDirParts()
         path = os.path.join(root, fname)
-        cmd.warn('debug=%s' % (CPL.qstr("looking for file %s" % (path))))
+        #cmd.warn('debug=%s' % (CPL.qstr("looking for file %s" % (path))))
         if os.access(path, os.R_OK):
             return path
 
@@ -570,7 +571,11 @@ class Guider(Actor.Actor):
         """ Parse all configuration tweaks in a command, and modify a copy of baseConfig.
         """
 
-        tweaks = baseConfig.copy()
+        if baseConfig:
+            tweaks = baseConfig.copy()
+        else:
+            tweaks = {}
+            
         matched, unmatched, leftovers = cmd.match([('time', float),
                                                    ('bin', self.parseBin),
                                                    ('window', self.parseWindow),
@@ -583,10 +588,19 @@ class Guider(Actor.Actor):
                                                    ('retry', int),
                                                    ('restart', str),
                                                    ('forceFile', cmd.qstr),
-                                                   ('cnt', int)])
+                                                   ('cnt', int),
+                                                   ('ds9', cmd.qstr)])
 
         tweaks.update(matched)
 
+        # Punch a hole through to the given X display.
+        ds9 = tweaks.get('ds9', False)
+        if ds9:
+            os.environ['DISPLAY'] = ds9
+        else:
+            if os.environ.get('DISPLAY'):
+                del os.environ['DISPLAY']
+                
         return tweaks
 
     def getCurrentDirParts(self):

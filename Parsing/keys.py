@@ -18,7 +18,7 @@ import exceptions
 import re
 
 import CPL
-from RO.Alg.OrderedDict import OrderedDict
+from RO.Alg import OrderedDict
 from Exceptions import ParseException
 
 def eatAVee(s):

@@ -48,7 +48,10 @@ def findstars(cmd, filename, mask, frame, tweaks, cnt=10):
     frame.setImageFromFITSHeader(header)
 
     # cmd.warn('debug=%s' % (CPL.qstr(frame)))
-    
+
+    # Prep for optional ds9 output
+    ds9 = tweaks.get('ds9', False)
+
     if mask:
         maskfile, maskbits = mask.getMaskForFrame(cmd, filename, frame)
     else:
@@ -58,15 +61,17 @@ def findstars(cmd, filename, mask, frame, tweaks, cnt=10):
     CPL.log('findstars', 'tweaks=%s' % (tweaks))
     
     try:
-        isSat, stars = PyGuide.findStars(
+        res = PyGuide.findStars(
             img, maskbits,
             tweaks['bias'],
             tweaks['readNoise'],
             tweaks['ccdGain'],
             dataCut = tweaks['thresh'],
             radMult = tweaks['radMult'],
-            verbosity=0
+            verbosity=0,
+            ds9=ds9
             )
+        isSat, stars = res[:2]
     except Exception, e:
         cmd.warn('debug=%s' % (CPL.qstr(e)))
         isSat = False
@@ -74,14 +79,14 @@ def findstars(cmd, filename, mask, frame, tweaks, cnt=10):
         raise
 
     if cmd and isSat:
-        cmd.warn('txt="saturated stars have been ignored."')
+        cmd.warn('text="saturated stars have been ignored."')
 
     starList = []
     i=1
     for star in stars:
         CPL.log('star', 'star=%s' % (star))
 
-        s = starshape(cmd, frame, img, maskbits, star)
+        s = starshape(cmd, frame, img, maskbits, star, tweaks)
         if not s:
             continue
         starList.append(s)
@@ -116,6 +121,9 @@ def centroid(cmd, filename, mask, frame, seed, tweaks):
     header = fits[0].header
     fits.close()
 
+    # Prep for optional ds9 output
+    ds9 = tweaks.get('ds9', False)
+
     if not frame:
         frame = GuideFrame.ImageFrame(img.shape)
     frame.setImageFromFITSHeader(header)
@@ -135,7 +143,8 @@ def centroid(cmd, filename, mask, frame, seed, tweaks):
             tweaks['radius'],
             tweaks['bias'],
             tweaks['readNoise'],
-            tweaks['ccdGain']
+            tweaks['ccdGain'],
+            ds9=ds9
             )
     except RuntimeError, e:
         cmd.warn('text=%s' % (CPL.qstr(e.args[0])))
@@ -144,14 +153,14 @@ def centroid(cmd, filename, mask, frame, seed, tweaks):
         cmd.warn('text=%s' % (CPL.qstr(e)))
         raise
 
-    s = starshape(cmd, frame, img, maskbits, star)
+    s = starshape(cmd, frame, img, maskbits, star, tweaks)
     
     del img
     del maskbits
     
     return s
 
-def starshape(cmd, frame, img, maskbits, star):
+def starshape(cmd, frame, img, maskbits, star, tweaks):
     """ Generate a StarInfo structure which contains everything about a star.
 
     Args:
@@ -161,11 +170,16 @@ def starshape(cmd, frame, img, maskbits, star):
         maskbits  - ditto
         star      - PyGuide centroid info.
     """
-    
+
+    rad = star.rad
+    if rad > 10.0:
+        rad = 10.0
+    cmd.warn('debug="calling starshape with predFWHM=%0.2f, using %0.2f"' % (star.rad, rad))
     try:
         shape = PyGuide.starShape(img,
                                   maskbits,
-                                  star.xyCtr)
+                                  star.xyCtr,
+                                  rad)
         fwhm = shape.fwhm
         chiSq = shape.chiSq
         bkgnd = shape.bkgnd
@@ -174,7 +188,7 @@ def starshape(cmd, frame, img, maskbits, star):
         cmd.warn("debug=%s" % \
                  (CPL.qstr("starShape failed, vetoing star at %0.2f,%0.2f: %s" % \
                            (star.xyCtr[0], star.xyCtr[1], e))))
-        return None
+        return
     
     # Put _eveything into a single structure
     s = StarInfo()

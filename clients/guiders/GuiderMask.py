@@ -18,9 +18,6 @@ class GuiderMask(object):
 
         self.name = name
         self.baseFile = baseFile
-        self.binning = [0,0]
-        self.offset = [-1,-1]
-        self.size = [0,0]
 
         self.fullSize = self.getImgSize(self.baseFile)
 
@@ -28,6 +25,8 @@ class GuiderMask(object):
         # I'll wager that the last one is good enough,
         #
         self.cachedMask = None
+        self.cachedFile = ''
+        self.frame = None
 
         if cmd:
             self.statusCmd(cmd, doFinish=False)
@@ -70,12 +69,16 @@ class GuiderMask(object):
         # Make sure that our args will a) compare nicely and format nicely for IDL.
         binning, offset, size = frame.imgFrame()
         
-        if self.cachedMask != None and \
-               binning == self.binning and \
-               offset == self.offset and \
-               size == self.size:
+        if self.cachedMask != None \
+               and frame == self.frame \
+               and os.path.dirname(self.cachedFile) == os.path.dirname(basename):
             return self.cachedFile, self.cachedMask
-
+        else:
+            cmd.warn('debug=%s' % \
+                     (CPL.qstr("new mask: frame=%s self.frame=%s, cache=%s" % \
+                               (frame, self.frame,
+                                self.cachedMask))))
+            
         # Replace the "name" part of the filename with "mask". e.g.
         #   "g0123.fits" -> "mask0123.fits"
         #
@@ -91,10 +94,12 @@ class GuiderMask(object):
         # Call an external IDL routine which rebins for us. The ugly secret
         # which this papers over is that Numeric stinks.
         #
-        IDLcmd = "echo \"fsubframe, '%s', '%s', %s, %s, %s\" | idl" % (self.baseFile, newFile,
-                                                                       list(offset),
-                                                                       list(size),
-                                                                       list(binning))
+        thresh = CPL.cfg.get(self.name, 'maskThresh')
+        IDLcmd = "echo \"fsubmask, '%s', '%s', %s, %s, %s, %0.2f\" | idl" % (self.baseFile, newFile,
+                                                                              list(offset),
+                                                                              list(size),
+                                                                              list(binning),
+                                                                              thresh)
         CPL.log('IDLcmd', IDLcmd)
         
         # MUST run this so that errors get to us! FIXME!
@@ -107,30 +112,8 @@ class GuiderMask(object):
         f.close()
 
         self.cachedFile = newFile
-        cm = 1 * (im >= CPL.cfg.get(self.name, 'maskThresh'))
-        self.cachedMask = cm 
-        #self.cachedMask = im * 0
-        self.binning = binning
-        self.size = size
-        self.offset = offset
-
-        try:
-            cmFile = '/tmp/cachedMask.fits'
-
-            try:
-                os.remove(cmFile)
-            except:
-                pass
-            tf = pyfits.HDUList()
-            hdu = pyfits.PrimaryHDU()
-            hdu.data = cm
-            tf.append(hdu)
-            tf.writeto(cmFile)
-            del tf
-        except Exception, e:
-            cmd.warn('text="Could not save cachedMask.fits: %s"' % (e))
-
-        del im
+        self.cachedMask = (im == 0)
+        self.frame = frame
         
         return self.cachedFile, self.cachedMask
 

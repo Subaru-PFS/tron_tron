@@ -1,6 +1,8 @@
 import Hub
 import g
 import hub
+
+import os
 import time
 
 """ The echelle ICC connects itself to the hub. It uses two sockets, one for receiving commands, the
@@ -54,6 +56,7 @@ def acceptEchelle(in_f, out_f, addr=None):
                      name=name,
                      encoder=e, decoder=d,
                      needsAuth=True,
+                     logDir=os.path.join(g.logDir, name),
                      initCmds=initCmds, safeCmds=safeCmds,
                      readSize=262144, debug=1)
     hub.addActor(c)
