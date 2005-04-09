@@ -4,7 +4,7 @@ __all__ = ['KV', 'KVDict',
 import time
 
 import CPL
-from RO.Alg.OrderedDict import OrderedDict
+from RO.Alg import OrderedDict
 from Misc.cdict import cdict
 
 """ Rethought a bit.

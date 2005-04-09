@@ -272,7 +272,7 @@ class GuideLoop(object):
                 star = MyPyGuide.centroid(self.cmd, filename, self.controller.mask,
                                           frame, seedPos, self.tweaks)
                 if not star:
-                    raise RuntimeError('no star found near (%d, %d)' % seedPos)
+                    raise RuntimeError('no star found near (%0.1f, %0.1f)' % (seedPos[0], seedPos[1]))
             except RuntimeError, e:
                 self.failGuiding(e)
                 return
@@ -493,7 +493,7 @@ class GuideLoop(object):
         xPos = self.boresight[0] + self.imScale[0] * bsPos[0]
         yPos = self.boresight[1] + self.imScale[1] * bsPos[1]
 
-        # self.cmd.warn('debug="boresight is at (%0.2f, %0.2f)"' % (xPos, yPos))
+        self.cmd.warn('debug="boresight is at (%0.2f, %0.2f)"' % (xPos, yPos))
         return xPos, yPos
 
     def _getExpectedPos(self, t=None):
@@ -548,6 +548,12 @@ class GuideLoop(object):
             diffPos = self.scaleOffset(star, baseDiffPos)
         else:
             diffPos = baseDiffPos
+
+        if diffPos == (None, None):
+            self.cmd.warn('txt=%s' % \
+                          (CPL.qstr('SKIPPING large offset (%0.6f,%0.6f)' % (baseDiffPos[0],
+                                                                             baseDiffPos[1]))))
+            return ''
             
         #  - Generate the offset. Threshold computed & uncomputed
         #
@@ -557,10 +563,9 @@ class GuideLoop(object):
             flag += "/computed"
 
         if diffSize <= (self.tweaks.get('minOffset', 0.1) / (60*60)):
-            self.cmd.warn('%sDebug=%s' % \
-                                 (self.controller.name,
-                                  CPL.qstr('SKIPPING small offset (%0.6f,%0.6f)' % (diffPos[0],
-                                                                                    diffPos[1]))))
+            self.cmd.warn('txt=%s' % \
+                          (CPL.qstr('SKIPPING small offset (%0.6f,%0.6f)' % (diffPos[0],
+                                                                             diffPos[1]))))
             return ''
 
 
@@ -585,6 +590,10 @@ class GuideLoop(object):
             offsetType - 'guide' or 'calibration'
             doScale    - if True, filter the offset according to self.tweaks
         """
+
+        if self.state == 'stopping':
+            self.stopGuiding()
+            return
 
         cmdTxt = self._genOffsetCmd(cmd, star, frame, refGpos, offsetType, doScale, fname=fname)
         if self.cmd.argDict.has_key('noMove') or not cmdTxt:

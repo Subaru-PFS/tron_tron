@@ -9,7 +9,7 @@ import g
 import hub
 import CPL
 import Parsing
-from RO.Alg.OrderedDict import OrderedDict
+from RO.Alg import OrderedDict
 from Hub.KV.KVDict import *
 import Misc.FITS
 from Misc.FITS.Cards import *

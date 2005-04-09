@@ -48,8 +48,8 @@ class Actor(Thread):
         self.queue = FilterQueue.ActorFilter(name=self.name, debug=self.debug)
 
         self.mid = 1
-        self.commands = RO.Alg.OrderedDict.OrderedDict({'help':self.helpCmd,
-                                                        'dbg' : self.debugCmd})
+        self.commands = RO.Alg.OrderedDict({'help':self.helpCmd,
+                                            'dbg' : self.debugCmd})
 
         # Generic help template.
         #

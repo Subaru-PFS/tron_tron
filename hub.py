@@ -32,7 +32,7 @@ import time
 import traceback
 
 import CPL
-from RO.Alg.OrderedDict import OrderedDict
+from RO.Alg import OrderedDict
 from Misc.cdict import cdict
 
 import IO
