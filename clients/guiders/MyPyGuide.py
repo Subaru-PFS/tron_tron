@@ -22,13 +22,13 @@ class StarInfo(object):
 
         return ns
     
-def findstars(cmd, filename, mask, frame, tweaks, cnt=10):
+def findstars(cmd, imgFile, maskFile, frame, tweaks, cnt=10):
     """ Run PyGuide.findstars on the given file
 
     Args:
         cmd       - a controlling Command, or None
-        filename  - an absolute pathname of a FITS file.
-        mask      - a GuiderMask
+        imgFile   - an absolute pathname of a FITS file.
+        maskFile  - an absolute pathname of a mask file.
         frame     - a GuiderFrame for us to molest.
         tweaks    - a dictionary of tweaks.
         cnt       ? the number of stars to return. 
@@ -38,7 +38,7 @@ def findstars(cmd, filename, mask, frame, tweaks, cnt=10):
         - a list of StarInfos, in full CCD coordinates
     """
     
-    fits = pyfits.open(filename)
+    fits = pyfits.open(imgFile)
     img = fits[0].data
     header = fits[0].header
     fits.close()
@@ -52,8 +52,11 @@ def findstars(cmd, filename, mask, frame, tweaks, cnt=10):
     # Prep for optional ds9 output
     ds9 = tweaks.get('ds9', False)
 
-    if mask:
-        maskfile, maskbits = mask.getMaskForFrame(cmd, filename, frame)
+
+    if maskFile:
+        fits = pyfits.open(maskFile)
+        maskbits = fits[0].data
+        fits.close()
     else:
         maskbits = img * 0 + 1
         cmd.warn('text="no mask file available to findstars"')
@@ -100,13 +103,13 @@ def findstars(cmd, filename, mask, frame, tweaks, cnt=10):
     
     return isSat, starList
 
-def centroid(cmd, filename, mask, frame, seed, tweaks):
+def centroid(cmd, imgFile, maskFile, frame, seed, tweaks):
     """ Run PyGuide.findstars on the given file
 
     Args:
         cmd       - a controlling Command, or None
-        filename  - an absolute pathname of a FITS file.
-        mask      - a GuiderMask
+        imgFile   - an absolute pathname of a FITS file.
+        maskFile  - an absolute pathname of a mask file.
         frame     - a GuiderFrame for us to molest.
         seed      - the initial [X,Y] position, in full CCD coordinates
         tweak     - a dictionary of tweaks. We use ()
@@ -116,7 +119,7 @@ def centroid(cmd, filename, mask, frame, seed, tweaks):
 
     """
     
-    fits = pyfits.open(filename)
+    fits = pyfits.open(imgFile)
     img = fits[0].data
     header = fits[0].header
     fits.close()
@@ -128,14 +131,16 @@ def centroid(cmd, filename, mask, frame, seed, tweaks):
         frame = GuideFrame.ImageFrame(img.shape)
     frame.setImageFromFITSHeader(header)
 
-    if mask:
-        maskfile, maskbits = mask.getMaskForFrame(cmd, filename, frame)
+    if maskFile:
+        fits = pyfits.open(maskFile)
+        maskbits = fits[0].data
+        fits.close()
     else:
         maskbits = img * 0 + 1
         cmd.warn('text="no mask file available to centroid"')
 
     cmd.warn('debug=%s' % (CPL.qstr("calling centroid file=%s, frame=%s, seed=%s" % \
-                                    (filename, frame, seed))))
+                                    (imgFile, frame, seed))))
     try:
         star = PyGuide.centroid(
             img, maskbits,
@@ -172,9 +177,10 @@ def starshape(cmd, frame, img, maskbits, star, tweaks):
     """
 
     rad = star.rad
-    if rad > 10.0:
-        rad = 10.0
-    cmd.warn('debug="calling starshape with predFWHM=%0.2f, using %0.2f"' % (star.rad, rad))
+    if rad > 20.0:
+        rad = 20.0
+        cmd.warn('debug="trimming predFWHM for starShape from %0.2f to %0.2f"' % (star.rad, rad))
+        
     try:
         shape = PyGuide.starShape(img,
                                   maskbits,

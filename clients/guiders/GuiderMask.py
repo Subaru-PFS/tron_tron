@@ -75,9 +75,8 @@ class GuiderMask(object):
             return self.cachedFile, self.cachedMask
         else:
             cmd.warn('debug=%s' % \
-                     (CPL.qstr("new mask: frame=%s self.frame=%s, cache=%s" % \
-                               (frame, self.frame,
-                                self.cachedMask))))
+                     (CPL.qstr("creating new mask: basename=%s frame=%s self.frame=%s" % \
+                               (basename, frame, self.frame))))
             
         # Replace the "name" part of the filename with "mask". e.g.
         #   "g0123.fits" -> "mask0123.fits"
@@ -107,12 +106,16 @@ class GuiderMask(object):
         if ret != 0:
             raise RuntimeError("could not reshape the mask file by running '%s'" % (IDLcmd))
         
-        f = pyfits.open(newFile)
+        try:
+            f = pyfits.open(newFile)
+        except Exception, e:
+            raise RuntimeError("mask reshaping failed. IDL command: '%s', error: %s" % (IDLcmd, e))
+            
         im = f[0].data
         f.close()
 
         self.cachedFile = newFile
-        self.cachedMask = (im == 0)
+        self.cachedMask = im
         self.frame = frame
         
         return self.cachedFile, self.cachedMask
