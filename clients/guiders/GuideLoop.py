@@ -26,6 +26,9 @@ class GuideLoop(object):
         # This controls whether the loop continues or stops, and gives the
         # guider keyword value.
         self.state = 'starting'
+        self.retries = 0
+        
+        # The 'reference' PVT that we guiding on or to.
         self.refPVT = None
         
         # If we are "guiding" on a file sequence, track the sequence here.
@@ -43,14 +46,16 @@ class GuideLoop(object):
         self._startingUTCoffset = -32.0
         self.tccDtime = -3506716800.0 + self._startingUTCoffset
 
+        # We pay attention to a bunch of keywords.
         self.listeners = []
-        self.listeners.append(client.listenFor('tcc', ['MoveItems', 'Moved'], self.listenToMoveItems))
+        self.listeners.append(client.listenFor('tcc', ['MoveItems', 'Moved', 'SlewBeg', 'SlewSuperceded'],
+                                               self.listenToMoveItems))
         self.listeners.append(client.listenFor('tcc', ['TCCStatus'], self.listenToTCCStatus))
         self.listeners.append(client.listenFor('tcc', ['Boresight'], self.listenToTCCBoresight))
         self.listeners.append(client.listenFor('tcc', ['GImCtr'], self.listenToTCCImCtr))
         self.listeners.append(client.listenFor('tcc', ['GImScale'], self.listenToTCCImScale))
 
-        # Force a couple of updates:
+        # Force updates of the above keywords:
         client.call("tcc", "show inst/full") # ImCtr, ImScale
         client.call("tcc", "show object") # Boresight
         
@@ -89,8 +94,7 @@ class GuideLoop(object):
         """
 
         self.cleanup()
-
-        self.cmd.fail('%sTxt=%s' % (self.controller.name, CPL.qstr(why)))
+        self.cmd.fail('text=%s' % (CPL.qstr(why)))
         self.controller.guideLoopIsStopped()
 
     def stopGuiding(self):
@@ -99,8 +103,26 @@ class GuideLoop(object):
         """
 
         self.cleanup()
- 
+        self.cmd.finish()
         self.controller.guideLoopIsStopped()
+        
+    def retryGuiding(self):
+        """ Called when the guide loop centroiding fails.
+        """
+
+        if self.retries < self.tweaks['retry']:
+            self.retries += 1
+            self.cmd.warn('text="no star found; retrying (%d of %d tries)"' % \
+                          (self.retries, self.tweaks['retry']))
+            self._guideLoopTop()
+        else:
+            self.failGuiding('no star found (after %d retries)' % (self.retries))
+        
+    def restartGuiding(self):
+        """ Called when we have moved to a new field.
+        """
+
+        self.stopGuiding()
         
     def run(self):
         """ Actually start the guide loop. """
@@ -115,25 +137,43 @@ class GuideLoop(object):
         """
 
         if doFinish:
-            cmd.finish('%sTxt="stopping guide loop...."' % (self.controller.name))
+            cmd.finish('text="stopping guide loop...."')
         else:
-            cmd.respond('%sTxt="stopping guide loop...."' % (self.controller.name))
+            cmd.respond('text="stopping guide loop...."')
         self.state = 'stopping'
         self.genStateKey()
         
     def listenToMoveItems(self, reply):
         """ Figure out if the telescope has been moved by examining the TCC's MoveItems key.
+
+        The MoveItems keys always comes with one of:
+          - Moved, indicating an immediate offset
+              We guestimate the end time, and let the main loop wait on it.
+          - SlewBeg, indicating the start of a real slew or a computed offset.
+              We
+          - SlewSuperceded, dunno exactly how to use that.
+          - SlewEnd, indicating the end of a real slew or a computed offset
+
+          
         """
 
+        mi = reply.KVs.get('MoveItems', 'XXXXXXXX')
+        
         # Has an uncomputed offset just been issued?
         if reply.KVs.has_key('Moved'):
             self.telHasBeenMoved = 'Telescope has been offset'
             self.offsetWillBeDone = time.time() + CPL.cfg.get('telescope', 'offsetSettlingTime')
             return
         
-        mi = reply.KVs['MoveItems']
+        # Has a slew/computed offset just been issued? Put this after the MoveItems logic.
+        if reply.KVs.has_key('SlewBeg'):
+            if mi[1] == 'Y':
+            self.telHasBeenMoved = 'Telescope has been slewed'
+            self.restartGuiding()
+        
         if mi[1] == 'Y':
-            self.telHasBeenMoved = 'Object was changed'
+            self.cmd.warn('text="Object has been changed. Stopping or restarting guide loop."')
+            self.restartGuiding()
             return
         if mi[3] == 'Y':
             self.telHasBeenMoved = 'Object offset was changed'
@@ -211,7 +251,7 @@ class GuideLoop(object):
         self.genStateKey()
         self.controller.doCmdExpose(self.cmd, self._firstExposure, 'expose', self.tweaks)
 
-    def _firstExposure(self, cmd, filename, frame, tweaks=None):
+    def _firstExposure(self, cmd, camFile, frame, tweaks=None):
         """ Callback called when the first guide loop exposure is available.
 
         Handles the following issues:
@@ -221,7 +261,7 @@ class GuideLoop(object):
           
         Args:
              cmd        - same as self.cmd, and ignored.
-             filename   - an absolute pathname for the guider image.
+             camFile   - an absolute pathname for the guider image.
              frame      - a GuideFrame describing the image.
              tweaks     - same as self.tweaks, and ignored.
         """
@@ -245,15 +285,14 @@ class GuideLoop(object):
             self.failGuiding('cannot specify both field and boresight guiding.')
             return
 
+        # Optionally dark-subtract and/or flat-field
+        procFile, maskFile, darkFile, flatFile = self.controller.processCamFile(camFile)
+
         if boresight:
             # Simply start nudging the object nearest the boresight to the boresight
             #
             self.guidingType = 'boresight'
-            try:
-                self.refPVT = self._GPos2ICRS(self.getBoresight())
-            except Exception, e:
-                self.failGuiding('could not establish the boresight: %s.' % (e))
-                return
+            self.refPVT = None
                 
         elif centerOn:
             # if "centerOn" is specified, offset the given position to the boresight,
@@ -266,30 +305,32 @@ class GuideLoop(object):
                 self.failGuiding('could not parse the centerOn position: %s.' % (e))
                 return
 
-            self.cmd.respond('txt="offsetting object at (%d, %d) to the boresight...."' % \
+            self.cmd.respond('text="offsetting object at (%d, %d) to the boresight...."' % \
                              (seedPos[0], seedPos[1]))
             try:
-                star = MyPyGuide.centroid(self.cmd, filename, self.controller.mask,
+                star = MyPyGuide.centroid(self.cmd, camFile, maskFile,
                                           frame, seedPos, self.tweaks)
                 if not star:
-                    raise RuntimeError('no star found near (%0.1f, %0.1f)' % (seedPos[0], seedPos[1]))
-            except RuntimeError, e:
+                    self.failGuiding('no star found near (%0.1f, %0.1f)' % (seedPos[0], seedPos[1]))
+            except Exception, e:
                 self.failGuiding(e)
                 return
 
             try:
                 refpos = self.getBoresight()
-                self.refPVT = self._GPos2ICRS(refpos)
                 CCDstar = MyPyGuide.star2CCDXY(star, frame)
                 cmdTxt = self._genOffsetCmd(cmd, CCDstar, frame, refpos, offsetType='guide', doScale=False)
                 if self.cmd.argDict.has_key('noMove'):
-                    self.cmd.warn('%sTxt="NOT sending tcc %s"' % (self.controller.name, cmdTxt))
+                    self.cmd.warn('text="NOT sending tcc %s"' % (cmdTxt))
                 else:
-                    client.call('tcc', cmdTxt, cid=self.controller.cidForCmd(self.cmd))
+                    ret = client.call('tcc', cmdTxt, cid=self.controller.cidForCmd(self.cmd))
             except Exception, e:
                 self.failGuiding(e)
                 return
 
+            if not ret.ok:
+                self.failGuiding('centering offset failed')
+                
             # If we just want to center up and confirm the star, shortcut here
             if noGuide:
                 self.tweaks['noGuide'] = True
@@ -305,43 +346,43 @@ class GuideLoop(object):
                 self.failGuiding(e)
                 return
                 
+            self.guidingType = 'field'
+
             try:
-                star = MyPyGuide.centroid(self.cmd, filename, self.controller.mask,
+                star = MyPyGuide.centroid(self.cmd, camFile, maskFile,
                                           frame, seedPos, self.tweaks)
                 if not star:
-                    raise RuntimeError('no star found near (%d, %d)' % seedPos)
-            except RuntimeError, e:
+                    self.failGuiding('no star found near (%d, %d)' % seedPos)
+            except Exception, e:
                 self.failGuiding(e)
                 return
-
-            self.guidingType = 'field'
 
             try:
                 CCDstar = MyPyGuide.star2CCDXY(star, frame)
                 self.refPVT = self._GPos2ICRS(CCDstar.ctr)
             except Exception, e:
-                self.failGuiding('could not establish the star coordinates: %s' % (e))
+                self.failGuiding('could not establish the guidestar coordinates: %s' % (e))
 
         else:
             # otherwise use the "best" object as the guide star.
             #
+            self.guidingType = 'field'
             try:
-                isSat, stars = MyPyGuide.findstars(self.cmd, filename, self.controller.mask,
+                isSat, stars = MyPyGuide.findstars(self.cmd, camFile, maskFile,
                                                    frame, self.tweaks)
                 if not stars:
                     self.failGuiding("no stars found")
                     return
 
                 CCDstar = MyPyGuide.star2CCDXY(stars[0], frame)
-                startPos = CCDstar.ctr
-                self.guidingType = 'field'
-                self.refPVT = self._GPos2ICRS(startPos)
+                self.refPVT = self._GPos2ICRS(CCDstar.ctr)
             except Exception, e:
                 self.failGuiding('could not establish guide star coordinates: %s' % (e))
                 return
 
         #  4) start the guiding loop:
         #
+        self.state = 'on'
         self.genStateKey()
         self._guideLoopTop()
         
@@ -362,7 +403,7 @@ class GuideLoop(object):
         if self.offsetWillBeDone > 0.0:
             diff = self.offsetWillBeDone - time.time()
             if diff > 0.0:
-                self.cmd.warn('%sTxt="deferring guider frame for %0.2f seconds to allow immediate offset to finish"' % (self.controller.name, diff))
+                self.cmd.warn('text="deferring guider frame for %0.2f seconds to allow immediate offset to finish"' % (diff))
                 time.sleep(diff)        # Yup. Better be short, hunh?
             self.offsetWillBeDone = 0.0
                 
@@ -493,7 +534,7 @@ class GuideLoop(object):
         xPos = self.boresight[0] + self.imScale[0] * bsPos[0]
         yPos = self.boresight[1] + self.imScale[1] * bsPos[1]
 
-        self.cmd.warn('debug="boresight is at (%0.2f, %0.2f)"' % (xPos, yPos))
+        # self.cmd.warn('debug="boresight is at (%0.2f, %0.2f)"' % (xPos, yPos))
         return xPos, yPos
 
     def _getExpectedPos(self, t=None):
@@ -510,9 +551,9 @@ class GuideLoop(object):
         
         Args:
             cmd        - the command that controls us.
-            star       - the star that we wwant to move.
+            star       - the star that we want to move.
             frame      - the ImageFrame that star the embedded in.
-            refGpos    - the position to move to/towards
+            refGpos    - the GImage position to move to/towards
             offsetType - 'guide' or 'calibration'
             doScale    - if True, filter the offset according to self.tweaks
         """
@@ -549,8 +590,9 @@ class GuideLoop(object):
         else:
             diffPos = baseDiffPos
 
+        # Check whether we have been scaled out of existence.
         if diffPos == (None, None):
-            self.cmd.warn('txt=%s' % \
+            self.cmd.warn('text=%s' % \
                           (CPL.qstr('SKIPPING large offset (%0.6f,%0.6f)' % (baseDiffPos[0],
                                                                              baseDiffPos[1]))))
             return ''
@@ -563,7 +605,7 @@ class GuideLoop(object):
             flag += "/computed"
 
         if diffSize <= (self.tweaks.get('minOffset', 0.1) / (60*60)):
-            self.cmd.warn('txt=%s' % \
+            self.cmd.warn('text=%s' % \
                           (CPL.qstr('SKIPPING small offset (%0.6f,%0.6f)' % (diffPos[0],
                                                                              diffPos[1]))))
             return ''
@@ -597,7 +639,7 @@ class GuideLoop(object):
 
         cmdTxt = self._genOffsetCmd(cmd, star, frame, refGpos, offsetType, doScale, fname=fname)
         if self.cmd.argDict.has_key('noMove') or not cmdTxt:
-            self.cmd.warn('%sTxt="NOT sending tcc %s"' % (self.controller.name, cmdTxt))
+            self.cmd.warn('text="NOT sending tcc %s"' % (cmdTxt))
             self._guideLoopTop()
         else:
             self.cmd.warn('debug=%s' % (CPL.qstr('starting offset: %s' % (cmdTxt))))
@@ -648,24 +690,25 @@ class GuideLoop(object):
         #                                     (filename, frame))))
 
         if self.telHasBeenMoved:
-            self.cmd.warn('txt=%s' % \
+            self.cmd.warn('text=%s' % \
                           (CPL.qstr("guiding deferred: %s" % (self.telHasBeenMoved))))
             self.telHasBeenMoved = False
             self._guideLoopTop()
             return
         
         if self.cmd.argDict.has_key('file'):
-            filename = self.getNextTrackedFilename(self.cmd.argDict['file'])
+            camFile = self.getNextTrackedFilename(self.cmd.argDict['file'])
         elif self.tweaks.has_key('forceFile'):
-            filename = self.getNextTrackedFilename(self.tweaks['forceFile'])
-        frame = GuideFrame.ImageFrame(self.controller.size)
-        frame.setImageFromFITSFile(filename)
+            camFile = self.getNextTrackedFilename(self.tweaks['forceFile'])
 
-        # We need the maskfile name for the guiderFiles keyword.
-        maskName, maskbits = self.controller.mask.getMaskForFrame(cmd, filename, frame)
+        # Optionally dark-subtract and/or flat-field
+        procFile, maskFile, darkFile, flatFile = self.controller.processCamFile(camFile)
 
         self.controller.genFilesKey(self.cmd, 'g', True,
-                                    filename, maskName, None, None, filename)
+                                    procFile, maskFile, camFile, darkFile, flatFile)
+        
+        frame = GuideFrame.ImageFrame(self.controller.size)
+        frame.setImageFromFITSFile(procFile)
         
         # Still need to interpolate to the middle of the exposure.
         now = time.time()
@@ -673,22 +716,28 @@ class GuideLoop(object):
         refPos = frame.ccdXY2imgXY(refPos)
         self.cmd.respond("guiderPredPos=%0.2f,%0.2f" % (refPos[0], refPos[1]))
         try:
-            star = MyPyGuide.centroid(self.cmd, filename, self.controller.mask,
+            star = MyPyGuide.centroid(self.cmd, procFile, maskFile,
                                       frame, refPos, tweaks=self.tweaks)
             if not star:
                 raise RuntimeError('no star found')
         except RuntimeError, e:
+            self.retryGuiding()
+            return
+        except Exception, e:
             self.failGuiding(e)
             return
+        MyPyGuide.genStarKey(cmd, star, caller='c')
 
+        # We successfully centroided, so reset the number of retries we have made.
+        self.retries = 0
+        
         # Get the other stars in the field
         try:
-            isSat, stars = MyPyGuide.findstars(self.cmd, filename, self.controller.mask,
+            isSat, stars = MyPyGuide.findstars(self.cmd, procFile, maskFile,
                                                frame, tweaks=self.tweaks)
         except RuntimeError, e:
             stars = []
             
-        MyPyGuide.genStarKey(cmd, star, caller='c')
         if stars:
             MyPyGuide.genStarKeys(cmd, stars, caller='f')
             
@@ -696,10 +745,10 @@ class GuideLoop(object):
                                                                       star.ctr[1]))))
 
         if self.tweaks.has_key('noGuide'):
-            self.state = 'off'
+
             self.stopGuiding()
         else:
-            self._centerUp(self.cmd, star, frame, refPos, fname=filename)
+            self._centerUp(self.cmd, star, frame, refPos, fname=procFile)
         
     def _extractCnvPos(self, res):
         """ Extract and convert the converted position from a tcc convert.
@@ -708,26 +757,32 @@ class GuideLoop(object):
            P,V,T, P2,V2,T2
         """
 
-        cvtPos = res.KVs.get('ConvPos', None)
-        # self.cmd.respond('debugTxt=%s' % (CPL.qstr('cnvPos=%s' % (cvtPos))))
+        def floatOrRaise(s):
+            """ Convert a floating point number, but raise an exception if the number is 'nan' """
 
-        if cvtPos == None:
-            return None * 6
+            s = s.lower()
+            if s == 'nan':
+                raise ValueError('NaN is not acceptable here.')
+
+            return float(s)
+        
+        cvtPos = res.KVs.get('ConvPos', None)
+
+        if not res.ok or cvtPos == None:
+            self.failGuiding('coordinate conversion failed')
         else:
             try:
-                cvtPos = map(float, cvtPos)
+                cvtPos = map(floatOrRaise, cvtPos)
             except Exception, e:
-                self.cmd.warn("txt=%s" % \
-                              (CPL.qstr("Failed to parse CONVERT output: %r" % (cvtPos))))
-                return None * 6
-                
-            return cvtPos
+                self.failGuiding('coordinate conversion failed')
+
+        return cvtPos
 
     def _checkCoordinates(self, pos):
         """ Check whether pos is a valid pair of valid coordinates. """
 
         if "%s" % pos[0] == 'nan' or "%s" % pos[1] == 'nan':
-            raise RuntimeError('undefined coordinates')
+            self.failGuiding('cannot convert undefined coordinates')
         
     def _GPos2ICRS(self, pos):
         """ Convert a Guide frame coordinate to an ICRS coordinate. """        

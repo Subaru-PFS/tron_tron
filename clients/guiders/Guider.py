@@ -156,21 +156,20 @@ class Guider(Actor.Actor):
         # Get the image and call the real findstars routine.
         self.doCmdExpose(cmd, self._findstarsCB, 'expose', tweaks=tweaks)
 
-    def _findstarsCB(self, cmd, filename, frame, tweaks=None):
+    def _findstarsCB(self, cmd, camFile, frame, tweaks=None):
         """ Callback called when an exposure is done.
         """
         
         cmd.warn('debug=%s' % \
-                 (CPL.qstr('findstars checking filename=%s with frame=%s' % (filename, frame))))
+                 (CPL.qstr('findstars checking filename=%s with frame=%s' % (camFile, frame))))
 
-        # We need the maskfile name for the guiderFiles keyword.
-        maskName, maskbits = self.mask.getMaskForFrame(cmd, filename, frame)
-        self.genFilesKey(cmd, 'f', tweaks['newFile'], filename, maskName,
-                         None, None, filename)
+        procFile, maskFile, darkFile, flatFile = self.controller.processCamFile(camFile)
+        self.genFilesKey(cmd, 'f', tweaks['newFile'],
+                         procFile, maskFile, camFile, darkFile, flatFile)
         
-        isSat, stars = MyPyGuide.findstars(cmd, filename, self.mask, frame, tweaks)
+        isSat, stars = MyPyGuide.findstars(cmd, procFile, maskFile, frame, tweaks)
         if not stars:
-            cmd.fail('txt="no stars found"')
+            cmd.fail('text="no stars found"')
             return
 
         try:
@@ -198,26 +197,24 @@ class Guider(Actor.Actor):
         # Get the image
         self.doCmdExpose(cmd, self._centroidCB, 'expose', tweaks=tweaks)
 
-    def _centroidCB(self, cmd, filename, frame, tweaks=None):
+    def _centroidCB(self, cmd, camFile, frame, tweaks=None):
         """ Callback called when an exposure is done.
         """
         
-        cmd.respond('debug=%s' % \
-                    (CPL.qstr('checking filename=%s' % (filename))))
+        cmd.respond('debug=%s' % (CPL.qstr('checking filename=%s' % (camFile))))
 
-        # We need the maskfile name for the guiderFiles keyword.
-        maskName, maskbits = self.mask.getMaskForFrame(cmd, filename, frame)
-        self.genFilesKey(cmd, 'c', tweaks['newFile'], filename, maskName,
-                         None, None, filename)
-
+        procFile, maskFile, darkFile, flatFile = self.controller.processCamFile(camFile)
+        self.genFilesKey(cmd, 'c', tweaks['newFile'],
+                         procFile, maskFile, camFile, darkFile, flatFile)
+        
         if cmd.argDict.has_key('on'):
             seed = self.parseCoord(cmd.argDict['on'])
         else:
-            isSat, stars = MyPyGuide.findstars(cmd, filename, self.mask,
+            isSat, stars = MyPyGuide.findstars(cmd, camFile, maskFile,
                                                frame, tweaks,
                                                cnt=1)
             if not stars:
-                cmd.fail('centroidTxt="no stars found"')
+                cmd.fail('text="no stars found"')
                 return
 
             seed = stars[0].ctr
@@ -225,9 +222,9 @@ class Guider(Actor.Actor):
         # Currently unnecessary if we have run findstars, but that might change, so
         # always call the centroid routine.
         #
-        star = MyPyGuide.centroid(cmd, filename, self.mask, frame, seed, tweaks)
+        star = MyPyGuide.centroid(cmd, camFile, maskFile, frame, seed, tweaks)
         if not star:
-            cmd.fail('centroidTxt="no star found"')
+            cmd.fail('text="no star found"')
             return
 
         MyPyGuide.genStarKey(cmd, star, caller='c')
@@ -259,29 +256,29 @@ class Guider(Actor.Actor):
         if cmd.argDict.has_key('off'):
             if self.guideLoop:
                 self.guideLoop.stop(cmd)
-                cmd.finish('%sTxt="Turning guiding off."' % (self.name))
+                cmd.finish('text="Turning guiding off."')
             else:
-                cmd.fail('%sTxt="Guiding is already off."' % (self.name))
+                cmd.fail('text="Guiding is already off."')
             return
         elif cmd.argDict.has_key('zap'):
             if self.guideLoop:
                 self.guideLoop.stop(cmd)
-                cmd.finish('%sTxt="Turning guiding off."' % (self.name))
+                cmd.finish('%text="Turning guiding off."')
                 self.guideLoop.stopGuiding()
             else:
-                cmd.fail('%sTxt="Guiding is already off."' % (self.name))
+                cmd.fail('text="Guiding is already off."')
             return
 
         elif cmd.argDict.has_key('tweak'):
             if not self.guideLoop:
-                cmd.fail('%sTxt="No guide loop to tweak."' % (self.name))
+                cmd.fail('text="No guide loop to tweak."')
                 return
             newTweaks = self.parseCmdTweaks(cmd, None)
             self.guideLoop.tweakCmd(cmd, newTweaks)
             cmd.finish('')
         else:
             if self.guideLoop:
-                cmd.fail('%sTxt="cannot start guiding while guiding"' % (self.name))
+                cmd.fail('text="cannot start guiding while guiding"')
                 return
 
             tweaks = self.parseCmdTweaks(cmd, self.config)
@@ -296,16 +293,15 @@ class Guider(Actor.Actor):
         """
 
         if not self.guideLoop:
-            cmd.warn('%sTxt="no guiding loop to zap"' % (self.name))
+            cmd.warn('text="no guiding loop to zap"')
         else:
             # Only let the exposure owner or any APO user control a guide loop.
             #
             gCmd = self.guideLoop.cmd
             
             if gCmd.program() != cmd.program() and cmd.program() != 'APO':
-                cmd.fail('%sTxt="guiding loop belongs to %s.%s"' % (self.name,
-                                                                    gCmd.program(),
-                                                                    gCmd.username()))
+                cmd.fail('text="guiding loop belongs to %s.%s"' % (gCmd.program(),
+                                                                   gCmd.username()))
                 return
 
 	    self.guideLoop.stop(cmd, doFinish=False)
@@ -327,7 +323,7 @@ class Guider(Actor.Actor):
         if len(cmd.argv) == 2:
             fname = cmd.argv[1]
         else:
-            cmd.fail('%sTxt="usage: setMask [filename]"' % (self.name))
+            cmd.fail('text="usage: setMask [filename]"')
             return
 
         self._setMask(cmd, fname)
@@ -389,8 +385,7 @@ class Guider(Actor.Actor):
         if filename:
             imgFile = self.findFile(cmd, filename)
             if not imgFile:
-                cmd.fail('%sTxt=%s' % (self.name,
-                                       CPL.qstr("No such file: %s" % (filename))))
+                cmd.fail('text=%s' % (CPL.qstr("No such file: %s" % (filename))))
                 return
 
             frame = GuideFrame.ImageFrame(self.size)
@@ -400,7 +395,7 @@ class Guider(Actor.Actor):
 
         else:
             if not matched.has_key('time') :
-                cmd.fail('%sTxt="Exposure commands must specify exposure times"' % (self.name))
+                cmd.fail('text="Exposure commands must specify exposure times"')
                 return
             time = matched['time']
 
@@ -410,8 +405,6 @@ class Guider(Actor.Actor):
                 bin = self.parseBin(matched['bin'])
             if matched.has_key('window'):
                 window = self.parseWindow(matched['window'])
-
-            tweaks['newFile'] = True
 
             frame = GuideFrame.ImageFrame(self.size)
             frame.setImageFromWindow(bin, window)
@@ -449,6 +442,43 @@ class Guider(Actor.Actor):
         mycb = self.camera.cbExpose(cmd, _cb, type, itime, frame)
         return mycb
 
+    def processCamFile(self, camFile, frame=None):
+        """ Given a raw cameraFile, optionally dark-subtract or flat-field.
+
+        Args:
+             camFile     - a raw file from a camera.
+             frame       ? an ImageFrame describing the camFile
+
+        Returns:
+             - the processed filename (possibly just camFile)
+             - the matching maskFile
+             - the dark file used (or None)
+             - the flat file used (or None)
+
+        Currently only generates the proper mask file. Flat-fielding and dark-subtracting
+        are both unimplemented.
+        """
+
+        if not frame:
+            frame = GuideFrame.ImageFrame(self.size)
+            frame.setImageFromFITSFile(camFile)
+
+        maskFile, maskbits = self.mask.getMaskForFrame(cmd, camFile, frame)
+
+        if self.tweaks.get('doAutoDark'):
+            self.cmd.warn('text="we do not dark subtract yet."')
+            darkFile = None
+        else:
+            darkFile = None
+            
+        if self.tweaks.get('doFlatfield'):
+            self.cmd.warn('text="we do not flat-field yet."')
+            flatFile = None
+        else:
+            flatFile = None
+            
+        return camFile, maskFile, darkFile, flatFile
+    
     def findFile(self, cmd, fname):
         """ Get the absolute path for a given filename.
 
@@ -461,7 +491,6 @@ class Guider(Actor.Actor):
             - an absolute filename, or None if no readable file found.
         """
 
-        #cmd.warn('debug=%s' % (CPL.qstr("looking for file %s" % (fname))))
         # Take an absolute path straight.
         if os.path.isabs(fname):
             if os.access(fname, os.R_OK):
@@ -470,15 +499,21 @@ class Guider(Actor.Actor):
 
         # Otherwise try to find the file in our "current" directory.
         root, dir = self.getCurrentDirParts()
+
+        path = os.path.join(root, dir, fname)
+        #cmd.warn('debug=%s' % (CPL.qstr("looking for file %s" % (path))))
+        if os.access(path, os.R_OK):
+            return path
+
         path = os.path.join(root, fname)
         #cmd.warn('debug=%s' % (CPL.qstr("looking for file %s" % (path))))
         if os.access(path, os.R_OK):
             return path
 
-        cmd.warn('debug=%s' % (CPL.qstr("could not find file %s" % (path))))
+        cmd.warn('text=%s' % (CPL.qstr("could not find file %s" % (path))))
         return None
         
-    
+
     def _setMask(self, cmd, filename, doFinish=True):
 	""" Set our mask to the contents of the given filename. """
 
@@ -490,8 +525,7 @@ class Guider(Actor.Actor):
             else:
                 raise
 
-        if cmd and doFinish:
-            cmd.finish('maskFile=%s' % (CPL.qstr(filename)))
+        self.mask.statusCmd(cmd, doFinish=doFinish)
         
     def parseWindow(self, w):
         """ Parse a window specification of the form X0,Y0,X1,Y1.
