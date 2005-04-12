@@ -75,8 +75,10 @@ class GuiderMask(object):
             return self.cachedFile, self.cachedMask
         else:
             cmd.warn('debug=%s' % \
-                     (CPL.qstr("creating new mask: basename=%s frame=%s self.frame=%s" % \
-                               (basename, frame, self.frame))))
+                     (CPL.qstr("creating new mask: basename=%s, cachedFile=%s, frame=%s, self.frame=%s, match=%s" % \
+                               (basename, self.cachedFile,
+                                frame, self.frame, frame == self.frame))))
+                                
             
         # Replace the "name" part of the filename with "mask". e.g.
         #   "g0123.fits" -> "mask0123.fits"

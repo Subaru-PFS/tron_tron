@@ -19,7 +19,10 @@ class ImageFrame(object):
         """
 
         self.ccdSize = tuple(ccdSize)
-
+        self.frameSize = tuple(ccdSize)
+        self.frameBinning = (1,1)
+        self.frameOffset = (0,0)
+        
     def __str__(self):
         try:
             fsize = "size=(%d,%d)" % tuple(self.frameSize)
@@ -40,6 +43,20 @@ class ImageFrame(object):
                (self.ccdSize[0], self.ccdSize[1],
                 fbinning, foffset, fsize)
     
+    
+    def __cmp__(self, other):
+        if type(self) != type(other):
+            return -1
+        if self.ccdSize != other.ccdSize:
+            return -1
+        if self.frameSize != other.frameSize:
+            return -1
+        if self.frameBinning != other.frameBinning:
+            return -1
+        if self.frameOffset != other.frameOffset:
+            return -1
+
+        return 0
     
     def setImageFromFITSFile(self, filename):
         """ Set our image subframe from the given FITS file.

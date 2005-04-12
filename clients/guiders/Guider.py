@@ -61,6 +61,7 @@ class Guider(Actor.Actor):
                      'readNoise', 'ccdGain',
                      'ccdSize', 'binning',
                      'thresh', 'radius', 'radMult',
+                     'retry', 'restart',
                      'maskFile', 'imageHost', 'imageRoot', 'imageDir',
                      'fitErrorScale'):
             self.defaults[name] = CPL.cfg.get(self.name, name)
@@ -163,7 +164,8 @@ class Guider(Actor.Actor):
         cmd.warn('debug=%s' % \
                  (CPL.qstr('findstars checking filename=%s with frame=%s' % (camFile, frame))))
 
-        procFile, maskFile, darkFile, flatFile = self.controller.processCamFile(camFile)
+        procFile, maskFile, darkFile, flatFile = self.processCamFile(cmd, camFile,
+                                                                     tweaks)
         self.genFilesKey(cmd, 'f', tweaks['newFile'],
                          procFile, maskFile, camFile, darkFile, flatFile)
         
@@ -203,7 +205,8 @@ class Guider(Actor.Actor):
         
         cmd.respond('debug=%s' % (CPL.qstr('checking filename=%s' % (camFile))))
 
-        procFile, maskFile, darkFile, flatFile = self.controller.processCamFile(camFile)
+        procFile, maskFile, darkFile, flatFile = self.processCamFile(cmd, camFile,
+                                                                     tweaks)
         self.genFilesKey(cmd, 'c', tweaks['newFile'],
                          procFile, maskFile, camFile, darkFile, flatFile)
         
@@ -263,7 +266,7 @@ class Guider(Actor.Actor):
         elif cmd.argDict.has_key('zap'):
             if self.guideLoop:
                 self.guideLoop.stop(cmd)
-                cmd.finish('%text="Turning guiding off."')
+                cmd.finish('text="Turning guiding off."')
                 self.guideLoop.stopGuiding()
             else:
                 cmd.fail('text="Guiding is already off."')
@@ -276,7 +279,7 @@ class Guider(Actor.Actor):
             newTweaks = self.parseCmdTweaks(cmd, None)
             self.guideLoop.tweakCmd(cmd, newTweaks)
             cmd.finish('')
-        else:
+        elif cmd.argDict.has_key('on'):
             if self.guideLoop:
                 cmd.fail('text="cannot start guiding while guiding"')
                 return
@@ -285,7 +288,9 @@ class Guider(Actor.Actor):
             
             self.guideLoop = GuideLoop.GuideLoop(self, cmd, tweaks)
             self.guideLoop.run()
-
+        else:
+            cmd.fail('text="unknown guide command"')
+            
     def zapCmd(self, cmd):
         """ Try hard to cancel any existing exposure and remove any internal exposure state.
 
@@ -380,6 +385,7 @@ class Guider(Actor.Actor):
             tweaks['newFile'] = False
         forcefile = self.config.get('forceFile', None)
         if not filename and forcefile:
+            cmd.warn('text=%s' % (CPL.qstr("using forceFile: %s" % (forcefile))))
             filename = forcefile
         
         if filename:
@@ -442,11 +448,13 @@ class Guider(Actor.Actor):
         mycb = self.camera.cbExpose(cmd, _cb, type, itime, frame)
         return mycb
 
-    def processCamFile(self, camFile, frame=None):
+    def processCamFile(self, cmd, camFile, tweaks, frame=None):
         """ Given a raw cameraFile, optionally dark-subtract or flat-field.
 
         Args:
+             cmd         - the controlling Command
              camFile     - a raw file from a camera.
+             tweaks      - our configuration
              frame       ? an ImageFrame describing the camFile
 
         Returns:
@@ -465,13 +473,13 @@ class Guider(Actor.Actor):
 
         maskFile, maskbits = self.mask.getMaskForFrame(cmd, camFile, frame)
 
-        if self.tweaks.get('doAutoDark'):
+        if tweaks.get('doAutoDark'):
             self.cmd.warn('text="we do not dark subtract yet."')
             darkFile = None
         else:
             darkFile = None
             
-        if self.tweaks.get('doFlatfield'):
+        if tweaks.get('doFlatfield'):
             self.cmd.warn('text="we do not flat-field yet."')
             flatFile = None
         else:
@@ -525,7 +533,8 @@ class Guider(Actor.Actor):
             else:
                 raise
 
-        self.mask.statusCmd(cmd, doFinish=doFinish)
+        if cmd:
+            self.mask.statusCmd(cmd, doFinish=doFinish)
         
     def parseWindow(self, w):
         """ Parse a window specification of the form X0,Y0,X1,Y1.

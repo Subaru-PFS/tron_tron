@@ -65,14 +65,29 @@ class GuideLoop(object):
     def statusCmd(self, cmd, doFinish=True):
         """ Generate all our status keywords. """
 
-        cmd.respond("fsActThresh=%0.1f; fsActRadMult=%0.1f" % (self.tweaks['thresh'],
-                                                               self.tweaks['radMult']))
-        cmd.respond("centActRadius=%0.1f" % (self.tweaks['radius']))
+        self.genTweaksKey(cmd)
         self.genStateKey(cmd)
 
         if doFinish:
             cmd.finish()
-                    
+
+    def genTweaksKeys(self, cmd):
+        cmd.respond("fsActThresh=%0.1f; fsActRadMult=%0.1f" % (self.tweaks['thresh'],
+                                                               self.tweaks['radMult']))
+        cmd.respond("centActRadius=%0.1f" % (self.tweaks['radius']))
+        cmd.respond("retryCnt=%d; restart=%s" % (self.tweaks['retry'],
+                                                 CPL.qstr(self.tweaks['restart'])))
+    def tweakCmd(self, cmd, newTweaks):
+        """ Adjust the running guide loop.
+
+        Args:
+            cmd       - the command that is changing the tweaks.
+            newTweaks - a dictionary containing only the changed variables.
+        """
+
+        self.tweaks.update(newTweaks)
+        self.genTweaksKeys(self.cmd)
+        
     def genStateKey(self, cmd=None):
         if cmd == None:
             cmd = self.cmd
@@ -168,9 +183,10 @@ class GuideLoop(object):
         # Has a slew/computed offset just been issued? Put this after the MoveItems logic.
         if reply.KVs.has_key('SlewBeg'):
             if mi[1] == 'Y':
-            self.telHasBeenMoved = 'Telescope has been slewed'
-            self.restartGuiding()
-        
+                self.cmd.warn('text="Object has been changed. Stopping or restarting guide loop."')
+                self.telHasBeenMoved = 'Telescope has been slewed'
+                self.restartGuiding()
+                return
         if mi[1] == 'Y':
             self.cmd.warn('text="Object has been changed. Stopping or restarting guide loop."')
             self.restartGuiding()
@@ -286,7 +302,8 @@ class GuideLoop(object):
             return
 
         # Optionally dark-subtract and/or flat-field
-        procFile, maskFile, darkFile, flatFile = self.controller.processCamFile(camFile)
+        procFile, maskFile, darkFile, flatFile = \
+                  self.controller.processCamFile(cmd, camFile, self.tweaks)
 
         if boresight:
             # Simply start nudging the object nearest the boresight to the boresight
@@ -660,9 +677,11 @@ class GuideLoop(object):
         """
 
         if self.trackFilename == None:
-            self.cmd.warn('debug=%s' % (CPL.qstr("tracking filenames from %s" % (startName))))
-            self.trackFilename = startName
-            return startName
+            self.cmd.warn('debug=%s' % (CPL.qstr("finding from %s" % (startName))))
+            name = self.controller.findFile(self.cmd, self.cmd.qstr(startName))
+            self.cmd.warn('debug=%s' % (CPL.qstr("tracking filenames from %s" % (name))))
+            self.trackFilename = name
+            return name
 
         filename, ext = os.path.splitext(self.trackFilename)
         basename = filename[:-4]
@@ -702,7 +721,8 @@ class GuideLoop(object):
             camFile = self.getNextTrackedFilename(self.tweaks['forceFile'])
 
         # Optionally dark-subtract and/or flat-field
-        procFile, maskFile, darkFile, flatFile = self.controller.processCamFile(camFile)
+        procFile, maskFile, darkFile, flatFile = \
+                  self.controller.processCamFile(cmd, camFile, self.tweaks)
 
         self.controller.genFilesKey(self.cmd, 'g', True,
                                     procFile, maskFile, camFile, darkFile, flatFile)
@@ -769,12 +789,12 @@ class GuideLoop(object):
         cvtPos = res.KVs.get('ConvPos', None)
 
         if not res.ok or cvtPos == None:
-            self.failGuiding('coordinate conversion failed')
+            self.failGuiding('no coordinate conversion (ok=%s)' % (res.ok))
         else:
             try:
                 cvtPos = map(floatOrRaise, cvtPos)
             except Exception, e:
-                self.failGuiding('coordinate conversion failed')
+                self.failGuiding('coordinate conversion failed: %s' % (e))
 
         return cvtPos
 
