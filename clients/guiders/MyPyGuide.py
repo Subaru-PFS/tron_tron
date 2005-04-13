@@ -89,6 +89,12 @@ def findstars(cmd, imgFile, maskFile, frame, tweaks, cnt=10):
     for star in stars:
         CPL.log('star', 'star=%s' % (star))
 
+        rad = star.rad
+        if rad > tweaks['cradius']:
+            rad = tweaks['cradius']
+            cmd.warn('debug="trimming predFWHM for starShape from %0.2f to %0.2f"' % (star.rad, rad))
+            star.rad = rad
+            
         s = starshape(cmd, frame, img, maskbits, star, tweaks)
         if not s:
             continue
@@ -139,13 +145,13 @@ def centroid(cmd, imgFile, maskFile, frame, seed, tweaks):
         maskbits = img * 0 + 1
         cmd.warn('text="no mask file available to centroid"')
 
-    cmd.warn('debug=%s' % (CPL.qstr("calling centroid file=%s, frame=%s, seed=%s" % \
-                                    (imgFile, frame, seed))))
+    #cmd.warn('debug=%s' % (CPL.qstr("calling centroid file=%s, frame=%s, seed=%s" % \
+    #                                (imgFile, frame, seed))))
     try:
         star = PyGuide.centroid(
             img, maskbits,
             seed,
-            tweaks['radius'],
+            tweaks['cradius'],
             tweaks['bias'],
             tweaks['readNoise'],
             tweaks['ccdGain'],
@@ -176,16 +182,12 @@ def starshape(cmd, frame, img, maskbits, star, tweaks):
         star      - PyGuide centroid info.
     """
 
-    rad = star.rad
-    if rad > 20.0:
-        rad = 20.0
-        cmd.warn('debug="trimming predFWHM for starShape from %0.2f to %0.2f"' % (star.rad, rad))
         
     try:
         shape = PyGuide.starShape(img,
                                   maskbits,
                                   star.xyCtr,
-                                  rad)
+                                  star.rad)
         fwhm = shape.fwhm
         chiSq = shape.chiSq
         bkgnd = shape.bkgnd

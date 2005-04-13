@@ -60,7 +60,7 @@ class Guider(Actor.Actor):
         for name in ('bias',
                      'readNoise', 'ccdGain',
                      'ccdSize', 'binning',
-                     'thresh', 'radius', 'radMult',
+                     'thresh', 'cradius', 'radMult',
                      'retry', 'restart',
                      'maskFile', 'imageHost', 'imageRoot', 'imageDir',
                      'fitErrorScale'):
@@ -86,7 +86,7 @@ class Guider(Actor.Actor):
         self.genPGStatusKeys(cmd)
 	
         if self.guideLoop:
-            self.guideLoop.doStatus(cmd, doFinish=False)
+            self.guideLoop.statusCmd(cmd, doFinish=False)
         else:
             cmd.respond('guiding="off"')
             
@@ -161,8 +161,8 @@ class Guider(Actor.Actor):
         """ Callback called when an exposure is done.
         """
         
-        cmd.warn('debug=%s' % \
-                 (CPL.qstr('findstars checking filename=%s with frame=%s' % (camFile, frame))))
+        #cmd.warn('debug=%s' % \
+        #         (CPL.qstr('findstars checking filename=%s with frame=%s' % (camFile, frame))))
 
         procFile, maskFile, darkFile, flatFile = self.processCamFile(cmd, camFile,
                                                                      tweaks)
@@ -194,7 +194,7 @@ class Guider(Actor.Actor):
             return self.doTccCentroid(cmd)
 
         tweaks = self.parseCmdTweaks(cmd, self.config)
-        cmd.respond("centActRadius=%0.1f" % (tweaks['radius']))
+        cmd.respond("centActRadius=%0.1f" % (tweaks['cradius']))
         
         # Get the image
         self.doCmdExpose(cmd, self._centroidCB, 'expose', tweaks=tweaks)
@@ -343,9 +343,9 @@ class Guider(Actor.Actor):
            stateName=value
         """
 
-        kwBase = (self.config['radius'], self.config['radMult'], self.config['thresh'])
+        kwBase = (self.config['cradius'], self.config['radMult'], self.config['thresh'])
         self.config = self.parseCmdTweaks(cmd, self.config)
-        kwNew = (self.config['radius'], self.config['radMult'], self.config['thresh'])
+        kwNew = (self.config['cradius'], self.config['radMult'], self.config['thresh'])
 
         if kwBase != kwNew:
             self.genPGStatusKeys(cmd)
@@ -443,7 +443,7 @@ class Guider(Actor.Actor):
                 cmd.respond('darkFile=%s'% (CPL.qstr(filename)))
             cb(cmd, filename, frame, **cbArgs)
             
-        cmd.warn('debug=%s' % (CPL.qstr("exposing %s(%s) frame=%s" % (type, itime, frame))))
+        # cmd.warn('debug=%s' % (CPL.qstr("exposing %s(%s) frame=%s" % (type, itime, frame))))
         
         mycb = self.camera.cbExpose(cmd, _cb, type, itime, frame)
         return mycb
@@ -509,12 +509,10 @@ class Guider(Actor.Actor):
         root, dir = self.getCurrentDirParts()
 
         path = os.path.join(root, dir, fname)
-        #cmd.warn('debug=%s' % (CPL.qstr("looking for file %s" % (path))))
         if os.access(path, os.R_OK):
             return path
 
         path = os.path.join(root, fname)
-        #cmd.warn('debug=%s' % (CPL.qstr("looking for file %s" % (path))))
         if os.access(path, os.R_OK):
             return path
 
@@ -625,11 +623,11 @@ class Guider(Actor.Actor):
                                                    ('bias', float),
                                                    ('readNoise', float),
                                                    ('ccdGain', float),
-                                                   ('radius', float),
+                                                   ('cradius', float),
                                                    ('thresh', float),
                                                    ('radMult', float),
                                                    ('retry', int),
-                                                   ('restart', str),
+                                                   ('restart', cmd.qstr),
                                                    ('forceFile', cmd.qstr),
                                                    ('cnt', int),
                                                    ('ds9', cmd.qstr)])
@@ -672,7 +670,6 @@ class Guider(Actor.Actor):
             caller       - a string indicating whose files these are.
             isNewFile    - whether  
             finalname, maskname, camname, darkname, flatname - the component filenames.
-
         
         If the files are in the current active directory, then output relative filenames.
         Otherwise output absolute filenames.
@@ -701,7 +698,7 @@ class Guider(Actor.Actor):
                 d0 = d
             else:
                 if d != d0:
-                    cmd.warn('txt="guider images are not all in the same directory"')
+                    cmd.warn('text="guider images are not all in the same directory"')
                     useFullPaths = True
                     break
 
