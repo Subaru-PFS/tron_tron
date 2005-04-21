@@ -314,14 +314,14 @@ class ImageFrame(object):
              - True/False
         """
 
-        if p[0] < 0:
+        if p[0] < self.frameOffset[0]:
             return False
-        if p[1] < 0:
+        if p[1] < self.frameOffset[1]:
             return False
 
-        if p[0] > self.frameSize[0]:
+        if p[0] > self.frameOffset[0] + self.frameSize[0]:
             return False
-        if p[1] > self.frameSize[1]:
+        if p[1] > self.frameOffset[1] + self.frameSize[1]:
             return False
 
         return True

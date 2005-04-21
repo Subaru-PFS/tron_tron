@@ -86,6 +86,7 @@ class ecam(Guider.Guider, TCCGcam.TCCGcam):
 
         self.imgForTcc = fname
         self.frameForTcc = frame
+        self.fileForTcc = fname
         
         cmd.respond('camFile="%s"' % (fname))
         

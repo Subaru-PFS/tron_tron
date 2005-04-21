@@ -78,7 +78,7 @@ class AltaGCamera(GCamera.GCamera):
 
         return self.cam.read_TempCCD()
     
-    def cbExpose(self, cmd, cb, expType, itime, frame, cbArgs={}):
+    def cbExpose(self, cmd, cb, expType, itime, frame, cbArgs={}, errorsTo=None):
         """ Take an exposure of the given length, optionally binned/windowed.
 
         Args:
@@ -88,14 +88,17 @@ class AltaGCamera(GCamera.GCamera):
 
         """
 
-        filename = self.expose(cmd, expType, itime, frame)
-        frame = GuideFrame.ImageFrame(self.ccdSize)
-        frame.setImageFromFITSFile(filename)
-        #cmd.warn('debug=%s' % (CPL.qstr("alta cbExpose %s %s secs, frame=%s, ccdSize=%s" \
-        #                                % (expType, itime, frame, self.ccdSize))))
+        try:
+            filename = self.expose(cmd, expType, itime, frame)
+            frame = GuideFrame.ImageFrame(self.ccdSize)
+            frame.setImageFromFITSFile(filename)
+            cb(cmd, filename, frame, **cbArgs)
+        except Exception, e:
+            if errorsTo:
+                errorsTo(cmd, e)
+            else:
+                raise
         
-        
-        cb(cmd, filename, frame, **cbArgs)
         
     def expose(self, cmd, expType, itime, frame):
         """ Take an exposure of the given length, optionally binned/windowed.
