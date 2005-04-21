@@ -120,6 +120,7 @@ class GuideLoop(object):
         This must only be called when the loop has stopped.
         """
 
+        self.cmd.respond('debug="in stopGuiding"')
         self.cleanup()
         self.cmd.finish()
         self.controller.guideLoopIsStopped()
@@ -186,7 +187,9 @@ class GuideLoop(object):
         if reply.KVs.has_key('Moved'):
             self.invalidateLoop()
             self.telHasBeenMoved = 'Telescope has been offset'
-            self.offsetWillBeDone = time.time() + CPL.cfg.get('telescope', 'offsetSettlingTime')
+            endTime = time.time() + CPL.cfg.get('telescope', 'offsetSettlingTime')
+            if endTime > self.offsetWillBeDone:
+                self.offsetWillBeDone = endTime
             return
         
         # Has a slew/computed offset just been issued? Put this after the MoveItems logic.
@@ -240,7 +243,7 @@ class GuideLoop(object):
 
         if self.waitingForSlewEnd:
             self.waitingForSlewEnd = False
-            self.cmd.warn('debug="resuming after SlewEnd."')
+            self.cmd.warn('text="resuming guiding after SlewEnd."')
             self._guideLoopTop()
         
     def listenToTCCBoresight(self, reply):
@@ -392,6 +395,7 @@ class GuideLoop(object):
                                           frame, seedPos, self.tweaks)
                 if not star:
                     self.failGuiding('no star found near (%0.1f, %0.1f)' % (seedPos[0], seedPos[1]))
+                    return
             except Exception, e:
                 self.failGuiding(e)
                 return
@@ -399,13 +403,17 @@ class GuideLoop(object):
             try:
                 refpos = self.getBoresight()
                 CCDstar = MyPyGuide.star2CCDXY(star, frame)
-                cmdTxt = self._genOffsetCmd(cmd, CCDstar, frame, refpos, offsetType='guide', doScale=False)
+                cmdTxt, mustWait = self._genOffsetCmd(cmd, CCDstar, frame, refpos, offsetType='guide', doScale=False)
                 if self.cmd.argDict.has_key('noMove'):
                     self.cmd.warn('text="NOT sending tcc %s"' % (cmdTxt))
                 else:
                     if self.invalidLoop:
                         self._guideLoopTop()
                         return
+                    if mustWait:
+                        endTime = time.time() + CPL.cfg.get('telescope', 'offsetSettlingTime')
+                        if endTime > self.offsetWillBeDone:
+                            self.offsetWillBeDone = endTime
                     ret = client.call('tcc', cmdTxt, cid=self.controller.cidForCmd(self.cmd))
             except Exception, e:
                 self.failGuiding(e)
@@ -489,7 +497,7 @@ class GuideLoop(object):
         if self.offsetWillBeDone > 0.0:
             diff = self.offsetWillBeDone - time.time()
             if diff > 0.0:
-                self.cmd.warn('text="deferring guider frame for %0.2f seconds to allow immediate offset to finish"' % (diff))
+                #self.cmd.warn('text="deferring guider frame for %0.2f seconds to allow immediate offset to finish"' % (diff))
                 time.sleep(diff)        # Yup. Better be short, hunh?
             self.offsetWillBeDone = 0.0
                 
@@ -646,6 +654,10 @@ class GuideLoop(object):
             refGpos    - the GImage position to move to/towards
             offsetType - 'guide' or 'calibration'
             doScale    - if True, filter the offset according to self.tweaks
+
+        Return:
+            - the offset command string
+            - whether the offset is uncomputed
         """
 
         # We know the boresight pixel .boresightPixel and the source pixel fromPixel.
@@ -660,7 +672,7 @@ class GuideLoop(object):
            or None in refPVT \
            or None in starPVT:
             self.failGuiding("Could not convert a coordinate")
-            return ''
+            return '', False
 
         # Optionally trail the star across or up&down the slit.
         #trailOffset = self._getTrailOffset()
@@ -683,8 +695,8 @@ class GuideLoop(object):
         # Check whether we have been scaled out of existence.
         if diffPos == (None, None):
             self.cmd.warn('text=%s' % \
-                          (CPL.qstr('SKIPPING large offset (%0.6f,%0.6f)' % (baseDiffPos[0],
-                                                                             baseDiffPos[1]))))
+                          (CPL.qstr('SKIPPING large offset (%0.2f",%0.2f")' % (baseDiffPos[0] * 3600.0,
+                                                                             baseDiffPos[1] * 3600.0))))
             diffPos = [0.0, 0.0]
             
         #  - Generate the offset. Threshold computed & uncomputed
@@ -692,12 +704,15 @@ class GuideLoop(object):
         diffSize = math.sqrt(diffPos[0] * diffPos[0] + diffPos[1] * diffPos[1])
         flag = ''
         if diffSize > (CPL.cfg.get('telescope', 'maxUncomputedOffset', default=10.0) / (60*60)):
+            isUncomputed = False
             flag += "/computed"
+        else:
+            isUncomputed = True
 
         if diffSize <= (self.tweaks.get('minOffset', 0.1) / (60*60)):
             self.cmd.warn('text=%s' % \
-                          (CPL.qstr('SKIPPING small offset (%0.6f,%0.6f)' % (diffPos[0],
-                                                                             diffPos[1]))))
+                          (CPL.qstr('SKIPPING small offset (%0.3f",%0.3f")' % (diffPos[0] * 3600.0,
+                                                                               diffPos[1] * 3600.0))))
             diffPos = [0.0, 0.0]
 
         self.cmd.respond('measOffset=%0.2f,%0.2f; actOffset=%0.2f,%0.2f' % \
@@ -706,10 +721,10 @@ class GuideLoop(object):
             
 
         if diffPos[0] == 0.0 and diffPos[1] == 0.0:
-            return ''
+            return '', False
 
         cmdTxt = 'offset %s %0.6f,%0.6f %s' % (offsetType, diffPos[0], diffPos[1], flag)
-        return cmdTxt
+        return cmdTxt, isUncomputed
     
     def _centerUp(self, cmd, star, frame, refGpos, offsetType='guide', doScale=True, fname=''):
         """ Move the given star to/towards the ref pos.
@@ -732,7 +747,7 @@ class GuideLoop(object):
             self._guideLoopTop()
             return
         
-        cmdTxt = self._genOffsetCmd(cmd, star, frame, refGpos, offsetType, doScale, fname=fname)
+        cmdTxt, mustWait = self._genOffsetCmd(cmd, star, frame, refGpos, offsetType, doScale, fname=fname)
         if not cmdTxt:
             self._guideLoopTop()
             return
@@ -745,6 +760,12 @@ class GuideLoop(object):
             if self.invalidLoop:
                 self._guideLoopTop()
                 return
+
+            # Arrange for the end of uncomputed offsets to be waited for.
+            if mustWait:
+                endTime = time.time() + CPL.cfg.get('telescope', 'offsetSettlingTime')
+                if endTime > self.offsetWillBeDone:
+                    self.offsetWillBeDone = endTime
             cb = client.callback('tcc', cmdTxt, self._doneOffsetting,
                                  cid=self.controller.cidForCmd(self.cmd))
 

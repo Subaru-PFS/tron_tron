@@ -49,6 +49,8 @@ class Guider(Actor.Actor):
         self.guideLoop = None
         self.mask = None
         self.exposureInfo = None
+
+        self.darks = {}
         
         self._setDefaults()
         self.config = self.defaults.copy()
@@ -71,9 +73,9 @@ class Guider(Actor.Actor):
     def genPGStatusKeys(self, cmd):
         """ Generate the default PyGuide status keys. """
         
-        cmd.respond("fsDftThresh=%0.1f; fsDftRadMult=%0.1f" % (self.config['thresh'],
+        cmd.respond("fsDefThresh=%0.1f; fsDefRadMult=%0.1f" % (self.config['thresh'],
                                                                self.config['radMult']))
-        cmd.respond("centDftRadius=%0.1f" % (self.config['radius']))
+        cmd.respond("centDefRadius=%0.1f" % (self.config['cradius']))
         cmd.respond('imageRoot=%s,%s' % (CPL.qstr(self.config['imageHost']),
                                          CPL.qstr(self.config['imageRoot'])))
         
@@ -474,8 +476,7 @@ class Guider(Actor.Actor):
         maskFile, maskbits = self.mask.getMaskForFrame(cmd, camFile, frame)
 
         if tweaks.get('doAutoDark'):
-            self.cmd.warn('text="we do not dark subtract yet."')
-            darkFile = None
+            darkFile = self.getDarkForCamFile(camFile)
         else:
             darkFile = None
             
@@ -487,6 +488,32 @@ class Guider(Actor.Actor):
             
         return camFile, maskFile, darkFile, flatFile
     
+    def getDarkForCamFile(self, camFile):
+        """ Return a dark file corresponding to the given camFile.
+
+        Args:
+            camFile:    a FITS file with all the required cards.
+
+        Returns:
+            - the full pathname of a dark file, or None if something went wrong.
+        """
+
+        camFITS = pyfits.open(camFile)
+        h = camFITS[0].header
+        fits.close()
+
+        expTime = h['EXPTIME']
+        if self.darks[expTime]:
+            return self.darks[expTime]
+
+        # OK, we do not have an appropriate dark. Make one.
+        return None
+    
+        frame = GuideFrame.ImageFrame(self.size)
+        frame.setImageFromFITSFile(camFile)
+
+        
+        
     def findFile(self, cmd, fname):
         """ Get the absolute path for a given filename.
 

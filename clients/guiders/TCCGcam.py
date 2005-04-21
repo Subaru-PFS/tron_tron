@@ -185,7 +185,8 @@ showstatus
         #
         self.imgForTcc = filename
         self.frameForTcc = frame
-
+        self.fileForTcc = filename
+        
         ctr, size = frame.imgFrameAsCtrAndSize()
         ccdTemp = self.camera.cam.read_TempCCD()
         cmd.respond('txtForTcc=%s' % (CPL.qstr('%d %d %d %d %d %d %0.2f %d %0.2f %s' % \
@@ -214,7 +215,7 @@ showstatus
             cmd.finish('txtForTcc=" OK"')
             return
             
-        # Parse out what (little) we need: the number of stars and the predicted size.
+        # Parse out what we need: the number of stars and the predicted size.
         #
         try:
             name, cnt, x0, y0, xSize, ySize, xPredFWHM, yPredFWHM = \
@@ -247,41 +248,40 @@ showstatus
         #cmd.warn('debug="tccDoread frame = %s"' % (doreadFrame))
         #cmd.warn('debug="tccFindstars frame = %s"' % (findstarsFrame))
         
+        maskFile, maskbits = self.mask.getMaskForFrame(cmd, self.fileForTcc, self.frameForTcc)
+
         tweaks = self.config
-        isSat, stars = MyPyGuide.findstars(cmd, self.imgForTcc, self.mask,
-                                           self.frameForTcc, tweaks)
-
-        if not stars:
-            cmd.respond('txtForTcc="no stars found"')
-
+        try:
+            isSat, stars = MyPyGuide.findstars(cmd, self.imgForTcc, maskFile,
+                                               self.frameForTcc, tweaks)
+        except Exception, e:
+            stars = []
+            isSat = False
+            cmd.warn('debug=%s' % (CPL.qstr("pyquide.findstars failed with %s" % (e))))
+            
         i = 0
         for s in stars:
 
             # Ignore stars outside the specified findstars frame....
-            ctr = findstarsFrame.ccdXY2imgXY(s.ctr)
-            if not findstarsFrame.imgXYinFrame(ctr):
-                cmd.warn('debug="ignoring star (%02.f, %0.2f) outside of findstars frame"' % \
-                         (ctr[0], ctr[1]))
+            if not findstarsFrame.imgXYinFrame(s.ctr):
+                #cmd.warn('debug="ignoring star (%02.f, %0.2f) outside of findstars frame"' % \
+                #         (s.ctr[0], s.ctr[1]))
                 continue
 
-            # But generate star keys w.r.t. the full doread frame....
-            ctr = doreadFrame.ccdXY2imgXY(s.ctr)
-            err = (s.err[0] / binning[0],
-                   s.err[1] / binning[1])
-            fwhm = (s.fwhm[0] / binning[0],
-                    s.fwhm[1] / binning[1])
-                    
             cmd.respond('txtForTcc=%s' % \
                         (CPL.qstr("%d %d %0.3f %0.3f %0.3f %0.3f 0.0 0.0 %10.1f 0.0 %0.2f %0.2f 0" % \
                                   (binning[0], binning[1],
-                                   ctr[0], ctr[1],
-                                   fwhm[0], fwhm[1],
+                                   s.ctr[0], s.ctr[1],
+                                   s.fwhm[0], s.fwhm[1],
                                    s.counts,
-                                   err[0], err[1]))))
+                                   s.err[0], s.err[1]))))
             i += 1
             if i >= cnt:
                 break
             
+        if i == 0:
+            cmd.respond('txtForTcc="no stars found"')
+
         cmd.finish('txtForTcc=" OK"')
 
 if __name__ == "__main__":

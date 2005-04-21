@@ -110,7 +110,7 @@ class GimCtrlGCamera(GCamera.GCamera):
         
         return self.rawCmd(cmdLine, itime + 15)
 
-    def cbExpose(self, cmd, cb, expType, itime, frame):
+    def cbExpose(self, cmd, cb, expType, itime, frame, errorsTo=None):
         """ Take an exposure of the given length, optionally binned/windowed.
 
         Args:
@@ -124,10 +124,16 @@ class GimCtrlGCamera(GCamera.GCamera):
         actor, cmdLine = self.genExposeCommand(cmd, expType, itime, frame=frame)
 
         def _cb(cmd, ret):
-            filename = self.copyinNewRawImage()
-            frame = GuideFrame.ImageFrame(self.ccdSize)
-            frame.setImageFromFITSFile(filename)
-            cb(cmd, filename, frame)
+            try:
+                filename = self.copyinNewRawImage()
+                frame = GuideFrame.ImageFrame(self.ccdSize)
+                frame.setImageFromFITSFile(filename)
+                cb(cmd, filename, frame)
+            except Exception, e:
+                if errorsTo:
+                    errorsTo(cmd, e)
+                else:
+                    raise
             
         # Trigger exposure
         cmd.warn('debug=%s' % (CPL.qstr("exposure command: %s" % (cmdLine))))
@@ -155,6 +161,7 @@ class GimCtrlGCamera(GCamera.GCamera):
         oldPath = self._getLastImageName()
         newPath = self._getFilename()
 
+        CPL.log("copyinNewRawImage", "old=%s; new=%s" % (oldPath, newPath))
         inFITS = pyfits.open(oldPath)
         hdr = inFITS[0].header
         inFITS.writeto(newPath)

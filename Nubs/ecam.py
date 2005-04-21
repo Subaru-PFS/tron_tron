@@ -11,7 +11,8 @@ def start(poller):
     stop()
 
     initCmds = ['status']
-    safeCmds = r'status\s*$'
+    #safeCmds = r'status\s*$'
+    safeCmds = r'.*$'
 
     d = Hub.ASCIIReplyDecoder(debug=1)
     e = Hub.ASCIICmdEncoder(debug=1, sendCommander=True)

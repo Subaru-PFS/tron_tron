@@ -7,9 +7,7 @@
 ; CALLING SEQUENCE:
 ;
 ; INPUTS:
-;    infileName        - the name of an existing fits file, assumed
-;                        to be a mask file, where 0-valued pixels indicate
-;                        the mask.
+;    infileName        - the name of an existing unbinned, fullframe fits file
 ;    outfileName       - the name of a fits file we will create, and overwrite 
 ;                        if necessary. 
 ;    offset            - the _binned_ pixel offset of the desired subframe
@@ -27,13 +25,13 @@
 ;
 ; EXAMPLE:
 ;
-; fsubframe, 'na2.fits', 'na2-3x3.fits', [80,90], [40,50], [3x3], 1500
+; fsubframe, 'na2.fits', 'na2-3x3.fits', [80,90], [40,50], [3,3]
 ;
 ; MODIFICATION HISTORY:
 ;
 ;-
 
-pro fsubframe,infileName,outfileName,offset,size,binning,thresh
+pro fsubframe,infileName,outfileName,offset,size,binning
 
                                 ; Read in the unbinned mask file and figure its size
   inData = mrdfits(infileName, /unsigned)
@@ -57,11 +55,8 @@ pro fsubframe,infileName,outfileName,offset,size,binning,thresh
   binnedData = rebin(inData, size)
 
                                 ; For consistency, save to an "unsigned int" fits file.
-                                ; It may be safe, or even desirable, to save a byte array,
-                                ; but numarray can be quirky.
-  maskedData = binnedData * (binnedData ge thresh)
 
-  mwrfits, uint(maskedData), outfileName, iscale=[1.0, 32768.0], /create
+  mwrfits, uint(binnedData), outfileName, iscale=[1.0, 32768.0], /create
 
   return
 end

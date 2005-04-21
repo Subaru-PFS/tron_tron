@@ -192,6 +192,9 @@ def starshape(cmd, frame, img, maskbits, star, tweaks):
         chiSq = shape.chiSq
         bkgnd = shape.bkgnd
         ampl = shape.ampl
+
+        if ampl < 5:
+            raise RuntimeError('amplitude of fit too low (%0.2f)' % (ampl))
     except Exception, e:
         cmd.warn("debug=%s" % \
                  (CPL.qstr("starShape failed, vetoing star at %0.2f,%0.2f: %s" % \
