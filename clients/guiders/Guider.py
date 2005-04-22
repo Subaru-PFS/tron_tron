@@ -109,7 +109,7 @@ class Guider(Actor.Actor):
             
         self.doCmdExpose(cmd, cb, 'expose', tweaks)
 
-    exposeCmd.helpText = ('expose itime=S [window=X0,Y0,X1,Y1] [bin=N] [bin=X,Y]', 
+    exposeCmd.helpText = ('expose time=S [window=X0,Y0,X1,Y1] [bin=N] [bin=X,Y]', 
                           'take an open-shutter exposure')
 
     def darkCmd(self, cmd):
@@ -124,7 +124,7 @@ class Guider(Actor.Actor):
             
         self.doCmdExpose(cmd, cb, 'dark', tweaks)
         
-    darkCmd.helpText = ('dark itime=S [window=X0,Y0,X1,Y1] [bin=N] [bin=X,Y]',
+    darkCmd.helpText = ('dark time=S [window=X0,Y0,X1,Y1] [bin=N] [bin=X,Y]',
                         'take a closed-shutter exposure')
 
     def initCmd(self, cmd):
@@ -184,7 +184,7 @@ class Guider(Actor.Actor):
         MyPyGuide.genStarKeys(cmd, stars, caller='f', cnt=cnt)
         cmd.finish()
         
-    findstarsCmd.helpText = ('findstars itime=S [window=X0,Y0,X1,Y1] [bin=N] [bin=X,Y]')
+    findstarsCmd.helpText = ('findstars time=S [window=X0,Y0,X1,Y1] [bin=N] [bin=X,Y]')
 
     def centroidCmd(self, cmd):
         """ Takes a single guider exposure and runs findstars on it. This overrides but
@@ -235,7 +235,7 @@ class Guider(Actor.Actor):
         MyPyGuide.genStarKey(cmd, star, caller='c')
         cmd.finish()
         
-    centroidCmd.helpText = ('centroid itime=S [window=X0,Y0,X1,Y1] [bin=N] [bin=X,Y] [on=X,Y]',
+    centroidCmd.helpText = ('centroid time=S [window=X0,Y0,X1,Y1] [bin=N] [bin=X,Y] [on=X,Y]',
                                 'centroid file=NAME [on=X,Y]')
     
     def guideLoopIsStopped(self):
@@ -373,10 +373,13 @@ class Guider(Actor.Actor):
             - a 
         """
 
-        matched, notMatched, leftovers = cmd.match([('time', float),
+        matched, notMatched, leftovers = cmd.match([('time', float), ('exptime', float),
                                                     ('window', str),
                                                     ('bin', str),
                                                     ('file', cmd.qstr)])
+
+        if matched.has_key('exptime'):
+            matched['time'] = matched['exptime']
 
         # Extra double hack: have a configuration override to the filenames. And
         # if that does not work, look for a command option override.
@@ -644,7 +647,7 @@ class Guider(Actor.Actor):
         else:
             tweaks = {}
             
-        matched, unmatched, leftovers = cmd.match([('time', float),
+        matched, unmatched, leftovers = cmd.match([('time', float), ('exptime', float),
                                                    ('bin', self.parseBin),
                                                    ('window', self.parseWindow),
                                                    ('bias', float),
@@ -658,6 +661,9 @@ class Guider(Actor.Actor):
                                                    ('forceFile', cmd.qstr),
                                                    ('cnt', int),
                                                    ('ds9', cmd.qstr)])
+
+        if matched.has_key('exptime'):
+            matched['time'] = matched['exptime']
 
         tweaks.update(matched)
 
