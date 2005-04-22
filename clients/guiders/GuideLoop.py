@@ -68,7 +68,7 @@ class GuideLoop(object):
     def statusCmd(self, cmd, doFinish=True):
         """ Generate all our status keywords. """
 
-        self.genTweaksKey(cmd)
+        self.genTweaksKeys(cmd)
         self.genStateKey(cmd)
 
         if doFinish:
@@ -186,7 +186,7 @@ class GuideLoop(object):
         # Has an uncomputed offset just been issued?
         if reply.KVs.has_key('Moved'):
             self.invalidateLoop()
-            self.telHasBeenMoved = 'Telescope has been offset'
+            # self.telHasBeenMoved = 'Telescope has been offset'
             endTime = time.time() + CPL.cfg.get('telescope', 'offsetSettlingTime')
             if endTime > self.offsetWillBeDone:
                 self.offsetWillBeDone = endTime
@@ -695,8 +695,8 @@ class GuideLoop(object):
         # Check whether we have been scaled out of existence.
         if diffPos == (None, None):
             self.cmd.warn('text=%s' % \
-                          (CPL.qstr('SKIPPING large offset (%0.2f",%0.2f")' % (baseDiffPos[0] * 3600.0,
-                                                                             baseDiffPos[1] * 3600.0))))
+                          (CPL.qstr('SKIPPING large offset (%0.2f,%0.2f) arcsec' % (baseDiffPos[0] * 3600.0,
+                                                                                    baseDiffPos[1] * 3600.0))))
             diffPos = [0.0, 0.0]
             
         #  - Generate the offset. Threshold computed & uncomputed
@@ -709,10 +709,10 @@ class GuideLoop(object):
         else:
             isUncomputed = True
 
-        if diffSize <= (self.tweaks.get('minOffset', 0.1) / (60*60)):
+        if diffSize <= (self.tweaks.get('minOffset', 0.1) / (60.0*60.0)):
             self.cmd.warn('text=%s' % \
-                          (CPL.qstr('SKIPPING small offset (%0.3f",%0.3f")' % (diffPos[0] * 3600.0,
-                                                                               diffPos[1] * 3600.0))))
+                          (CPL.qstr('SKIPPING small offset (%0.3f,%0.3f) arcsec' % (diffPos[0] * 3600.0,
+                                                                                    diffPos[1] * 3600.0))))
             diffPos = [0.0, 0.0]
 
         self.cmd.respond('measOffset=%0.2f,%0.2f; actOffset=%0.2f,%0.2f' % \
@@ -848,7 +848,12 @@ class GuideLoop(object):
             now = time.time()
             refPos = self._getExpectedPos(t=now)
             refPos = frame.ccdXY2imgXY(refPos)
+
             self.cmd.respond("guiderPredPos=%0.2f,%0.2f" % (refPos[0], refPos[1]))
+            if not frame.imgXYinFrame(refPos):
+                self.failGuiding("guide star moved off frame.")
+                return
+            
             try:
                 star = MyPyGuide.centroid(self.cmd, procFile, maskFile,
                                           frame, refPos, tweaks=self.tweaks)

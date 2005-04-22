@@ -3,6 +3,7 @@ __all__ = ['centroid',
            'genStarKey',
            'genStarKeys']
 
+import numarray
 import pyfits
 
 import CPL
@@ -63,6 +64,8 @@ def findstars(cmd, imgFile, maskFile, frame, tweaks, cnt=10):
 
     CPL.log('findstars', 'tweaks=%s' % (tweaks))
     
+    skyMed, skySdev = skyStats(cmd, img, maskbits)
+
     try:
         res = PyGuide.findStars(
             img, maskbits,
@@ -95,6 +98,9 @@ def findstars(cmd, imgFile, maskFile, frame, tweaks, cnt=10):
             cmd.warn('debug="trimming predFWHM for starShape from %0.2f to %0.2f"' % (star.rad, rad))
             star.rad = rad
             
+        cmd.warn('debug="sky median=%0.2f, avg. star signal=%0.2f at (%0.2f, %0.2f)"' % \
+                 (skyMed, star.counts / star.pix, star.xyCtr[0], star.xyCtr[1]))
+            
         s = starshape(cmd, frame, img, maskbits, star, tweaks)
         if not s:
             continue
@@ -108,6 +114,17 @@ def findstars(cmd, imgFile, maskFile, frame, tweaks, cnt=10):
     del maskbits
     
     return isSat, starList
+
+def skyStats(cmd, img, mask):
+    """ Get sky statistics via PyGuide.ImUtil.skyStats()
+
+    Returns:
+       - median
+       - std dev.
+    """
+
+    maskedData = numarray.ma.array(img, mask=mask)
+    return PyGuide.ImUtil.skyStats(maskedData)
 
 def centroid(cmd, imgFile, maskFile, frame, seed, tweaks):
     """ Run PyGuide.findstars on the given file
@@ -145,6 +162,8 @@ def centroid(cmd, imgFile, maskFile, frame, seed, tweaks):
         maskbits = img * 0 + 1
         cmd.warn('text="no mask file available to centroid"')
 
+    skyMed, skySdev = skyStats(cmd, img, maskbits)
+    
     #cmd.warn('debug=%s' % (CPL.qstr("calling centroid file=%s, frame=%s, seed=%s" % \
     #                                (imgFile, frame, seed))))
     try:
@@ -164,6 +183,9 @@ def centroid(cmd, imgFile, maskFile, frame, seed, tweaks):
         cmd.warn('text=%s' % (CPL.qstr(e)))
         raise
 
+    cmd.warn('debug="sky median=%0.2f, star signal=%0.2f at (%0.2f, %0.2f)"' % \
+             (skyMed, star.counts / star.pix, star.xyCtr[0], star.xyCtr[1]))
+    
     s = starshape(cmd, frame, img, maskbits, star, tweaks)
     
     del img
@@ -193,27 +215,32 @@ def starshape(cmd, frame, img, maskbits, star, tweaks):
         bkgnd = shape.bkgnd
         ampl = shape.ampl
 
-        if ampl < 5:
-            raise RuntimeError('amplitude of fit too low (%0.2f)' % (ampl))
+        #if ampl < 5:
+        #    raise RuntimeError('amplitude of fit too low (%0.2f)' % (ampl))
     except Exception, e:
         cmd.warn("debug=%s" % \
-                 (CPL.qstr("starShape failed, vetoing star at %0.2f,%0.2f: %s" % \
+                 (CPL.qstr("starShape failed, consider vetoing star at %0.2f,%0.2f: %s" % \
                            (star.xyCtr[0], star.xyCtr[1], e))))
-        return
+        fwhm = 0.0
+        chiSq = 0.0
+        bkgnd = 0.0
+        ampl = 0.0
     
     # Put _eveything into a single structure
     s = StarInfo()
     s.ctr = star.xyCtr
     s.err = star.xyErr
-    s.radius = star.rad
     s.fwhm = (fwhm, fwhm)
     s.angle = 0.0
+    s.radius = star.rad
     s.counts = star.counts
+    s.pixels = star.pix
+    s.asymm = star.asymm
+
     s.bkgnd = bkgnd
     s.ampl = ampl
     s.chiSq = chiSq
-    s.asymm = star.asymm
-    
+
     return s
 
 def star2CCDXY(star, frame):
