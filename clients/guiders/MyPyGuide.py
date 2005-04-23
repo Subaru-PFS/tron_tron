@@ -23,7 +23,7 @@ class StarInfo(object):
 
         return ns
     
-def findstars(cmd, imgFile, maskFile, frame, tweaks, cnt=10):
+def findstars(cmd, imgFile, maskFile, frame, tweaks, radius=None, cnt=10):
     """ Run PyGuide.findstars on the given file
 
     Args:
@@ -38,7 +38,10 @@ def findstars(cmd, imgFile, maskFile, frame, tweaks, cnt=10):
         - the PyGuide.findstars isSat flag
         - a list of StarInfos, in full CCD coordinates
     """
-    
+
+    if tweaks.has_key('cnt'):
+        cnt = tweaks['cnt']
+        
     fits = pyfits.open(imgFile)
     img = fits[0].data
     header = fits[0].header
@@ -52,7 +55,6 @@ def findstars(cmd, imgFile, maskFile, frame, tweaks, cnt=10):
 
     # Prep for optional ds9 output
     ds9 = tweaks.get('ds9', False)
-
 
     if maskFile:
         fits = pyfits.open(maskFile)
@@ -74,6 +76,7 @@ def findstars(cmd, imgFile, maskFile, frame, tweaks, cnt=10):
             tweaks['ccdGain'],
             dataCut = tweaks['thresh'],
             radMult = tweaks['radMult'],
+            rad=radius,
             verbosity=0,
             ds9=ds9
             )
@@ -98,8 +101,8 @@ def findstars(cmd, imgFile, maskFile, frame, tweaks, cnt=10):
             cmd.warn('debug="trimming predFWHM for starShape from %0.2f to %0.2f"' % (star.rad, rad))
             star.rad = rad
             
-        cmd.warn('debug="sky median=%0.2f, avg. star signal=%0.2f at (%0.2f, %0.2f)"' % \
-                 (skyMed, star.counts / star.pix, star.xyCtr[0], star.xyCtr[1]))
+            cmd.warn('debug="sky median=%0.2f, star avg=%0.2f at (%0.2f, %0.2f)"' % \
+                     (skyMed, star.counts / star.pix, star.xyCtr[0], star.xyCtr[1]))
             
         s = starshape(cmd, frame, img, maskbits, star, tweaks)
         if not s:
@@ -183,7 +186,7 @@ def centroid(cmd, imgFile, maskFile, frame, seed, tweaks):
         cmd.warn('text=%s' % (CPL.qstr(e)))
         raise
 
-    cmd.warn('debug="sky median=%0.2f, star signal=%0.2f at (%0.2f, %0.2f)"' % \
+    cmd.warn('debug="sky median=%0.2f, star avg=%0.2f at (%0.2f, %0.2f)"' % \
              (skyMed, star.counts / star.pix, star.xyCtr[0], star.xyCtr[1]))
     
     s = starshape(cmd, frame, img, maskbits, star, tweaks)

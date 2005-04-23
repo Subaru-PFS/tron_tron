@@ -10,6 +10,7 @@ Coordinate notes:
     whenever we go betweem the cameras and the TCC.
 """
 
+import math
 import os
 import sys
 
@@ -231,6 +232,33 @@ class Guider(Actor.Actor):
         if not star:
             cmd.fail('text="no star found"')
             return
+
+        if CPL.cfg.get(self.name, 'vetoWithFindstars', False):
+            # Veto the centroided star if it is not in the findstars list.
+            #
+            # Get the other stars in the field
+            try:
+                xxx, vetoStars = MyPyGuide.findstars(cmd, procFile, maskFile,
+                                                     frame,
+                                                     tweaks,
+                                                     radius=star.radius)
+            except RuntimeError, e:
+                vetoStars = []
+
+            confirmed = False
+            withinLimit = CPL.cfg.get(self.name, 'vetoLimit', 3.0)
+            for s in vetoStars:
+                diff = s.ctr[0] - star.ctr[0], s.ctr[1] - star.ctr[1]
+                dist = math.sqrt(diff[0] * diff[0] + diff[1] * diff[1])
+                CPL.log('guider', 'ctr=%0.2f,%0.2f, diff=%0.2f,%0.2f, dist=%0.2f' % \
+                        (s.ctr[0], s.ctr[1],
+                         diff[0], diff[1],
+                         dist))
+                if dist < withinLimit:
+                    confirmed = True
+            if not confirmed:
+                cmd.finish('text="centroid not confirmed by findstars"')
+                return
 
         MyPyGuide.genStarKey(cmd, star, caller='c')
         cmd.finish()

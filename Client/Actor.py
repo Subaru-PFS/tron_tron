@@ -48,7 +48,8 @@ class Actor(Thread):
         self.queue = FilterQueue.ActorFilter(name=self.name, debug=self.debug)
 
         self.mid = 1
-        self.commands = RO.Alg.OrderedDict({'help':self.helpCmd,
+        self.commands = RO.Alg.OrderedDict({'help': self.helpCmd,
+                                            'ping': self.pingCmd,
                                             'dbg' : self.debugCmd})
 
         # Generic help template.
@@ -95,6 +96,11 @@ class Actor(Thread):
     
         cmd.finish("%sEval=%s" % (self.name, CPL.qstr(ret)))
         CPL.log("%s.debugCmd" % (self.name), "ret = %r" % (ret))
+        
+    def pingCmd(self, cmd):
+        """ Acknowledge our existence. """
+
+        cmd.finish('text="%s is alive"' % (self.name))
         
     def helpCmd(self, cmd):
         """ Return help strings.

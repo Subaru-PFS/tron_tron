@@ -865,7 +865,6 @@ class GuideLoop(object):
             except Exception, e:
                 self.failGuiding(e)
                 return
-            MyPyGuide.genStarKey(cmd, star, caller='c')
 
             # We have successfully centroided, so reset the number of retries we have made.
             self.retries = 0
@@ -876,12 +875,38 @@ class GuideLoop(object):
                                                    frame, tweaks=self.tweaks)
             except RuntimeError, e:
                 stars = []
-
             if stars:
                 MyPyGuide.genStarKeys(cmd, stars, caller='f')
 
-            #self.cmd.warn('debug=%s' % (CPL.qstr('center=%0.2f, %0.2f' % (star.ctr[0],
-            #                                                              star.ctr[1]))))
+            if CPL.cfg.get(self.name, 'vetoWithFindstars', False):
+                # Veto the centroided star if it is not in the findstars list.
+                #
+                # Get the other stars in the field
+                try:
+                    xxx, vetoStars = MyPyGuide.findstars(self.cmd, procFile, maskFile,
+                                                         frame,
+                                                         tweaks=self.tweaks,
+                                                         radius=star.radius)
+                except RuntimeError, e:
+                    vetoStars = []
+
+                confirmed = False
+                withinLimit = CPL.cfg.get(self.controller.name, 'vetoLimit', 3.0)
+                for s in vetoStars:
+                    diff = s.ctr[0] - star.ctr[0], s.ctr[1] - star.ctr[1]
+                    dist = math.sqrt(diff[0] * diff[0] + diff[1] * diff[1])
+                    if dist < withinLimit:
+                        confirmed = True
+                if not confirmed:
+                    if stars:
+                        MyPyGuide.genStarKeys(cmd, stars, caller='f')
+                    cmd.warn('text="guide star not confirmed by findstars"')
+                    self.retryGuiding()
+                    return
+            
+            MyPyGuide.genStarKey(cmd, star, caller='c')
+            if stars:
+                MyPyGuide.genStarKeys(cmd, stars, caller='f')
 
             if self.tweaks.has_key('noGuide'):
                 self.stopGuiding()
