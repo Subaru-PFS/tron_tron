@@ -146,6 +146,10 @@ class perms(InternalCmd):
         """
 
         args = cmd.argDict.keys()[1:]
+        if len(args) == 0:
+            cmd.fail('text="perms register requires one or more program names"')
+            return
+        
         if len(args) == 1 and args[0] == '*':
             programs = []
         else:
@@ -165,6 +169,10 @@ class perms(InternalCmd):
         """
 
         args = cmd.argDict.keys()[1:]
+        if len(args) == 0:
+            cmd.fail('text="perms unregister requires one or more program names"')
+            return
+
         if len(args) == 1 and args[0] == '*':
             programs = []
         else:
