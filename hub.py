@@ -314,7 +314,7 @@ def addActor(nub):
     addNubToDict(nub, g.actors)
     g.KVs.addSource(nub.name)
     if nub.needsAuth:
-        g.perms.addActors([nub.name])
+        g.perms.addActors([nub.needsAuth])
     
 def dropActor(nub):
     # g.perms.dropActors([nub.name])
@@ -418,35 +418,6 @@ def getActor(cmd):
     CPL.log("hub.getActor", "target = %s" % (tgt))
     return tgt
 
-def checkAccess(cmd):
-    """ Return True if a cmd's commander can send a command to actor.
-
-    Rules:
-      - Use the Auth module
-      - HACK: Always allow TUI commands to the tcc with MID > 1000
-    """
-
-    ok = g.perms.checkAccess(cmd.cmdrCid, cmd.actorName, cmd)
-    return ok
-
-    if ok:
-        return True
-
-    # Hack to allow TUI status commands to go through
-    #
-    CPL.log("hub.checkAccess",
-            "contemplating (%s) %s" % (cmd.cmdrID, cmd.cmdrMid))
-    try:
-        cmdr = g.commanders[cmd.cmdrID]
-        if cmdr.nubType == 'TUI' and int(cmd.cmdrMid) > 1000:
-            CPL.log("hub.checkAccess",
-                    "passing TUI status command: %s %s" % (cmd.actorName, cmd.cmd))
-            return True
-    except:
-        return False
-
-    return False
-                
 def addCommand(cmd):
     """ Add a new command, and arrange for it to be executed by the appropriate target.
 
@@ -468,14 +439,20 @@ def addCommand(cmd):
     actor = getActor(cmd)
 
     if actor == None:
-        cmd.fail('NoTarget=%s' % CPL.qstr("the target named %s is not connected" % (cmd.actorName)),
+        cmd.fail('NoTarget=%s' % \
+                 CPL.qstr("the target named %s is not connected" % (cmd.actorName)),
                  src='hub')
         return
-    
-    if not checkAccess(cmd):
-        cmd.fail('NoPermission=%s' % CPL.qstr("you do not have permission to command %s" % (cmd.actorName)),
-                 src='hub')
-        return
+
+    # Enforce permissions if the actor requires them.
+    if actor.needsAuth:
+        ok = g.perms.checkAccess(cmd.cmdrCid, actor.needsAuth, cmd)
+        if not ok:
+            cmd.fail('NoPermission=%s' % \
+                     CPL.qstr("you do not have permission to command %s" % \
+                              (actor.needsAuth)),
+                     src='hub')
+            return
     
     actor.sendCommand(cmd)
 

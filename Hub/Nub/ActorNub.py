@@ -34,8 +34,14 @@ class ActorNub(CoreNub):
         self.initCmds = argv.get('initCmds', [])
         self.inform = argv.get('inform', None)
         self.replyCallback = argv.get('replyCallback', None)
-        self.needsAuth = argv.get("needsAuth", False)
 
+        # Are we subject to permissions? If so, have we been given a name for 
+        # permissions checking, or should we just use our name?
+        #
+        self.needsAuth = argv.get("needsAuth", False)
+        if self.needsAuth == True:
+            self.needsAuth = self.name
+            
         logDir = argv.get("logDir", None)
         if logDir:
             self.log = CPL.Logfile(logDir, EOL='', doEncode=True)

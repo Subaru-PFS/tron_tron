@@ -13,7 +13,9 @@ def start(poller):
     nub = Hub.ShellNub(poller, ['/usr/bin/env',
                                 'PYTHONPATH=%s/Client:%s' % (g.home, g.home),
                                 'clients/expose/%s.py' % (name)],
-                       name=name, encoder=e, decoder=d, debug=1)
+                       name=name, encoder=e, decoder=d,
+                       needsAuth='grim',
+                       debug=1)
     hub.addActor(nub)
     
 def stop():
