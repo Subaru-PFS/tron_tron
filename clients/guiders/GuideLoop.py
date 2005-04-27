@@ -447,6 +447,12 @@ class GuideLoop(object):
             try:
                 CCDstar = MyPyGuide.star2CCDXY(star, frame)
                 self.refPVT = self._GPos2ICRS(CCDstar.ctr)
+
+                # Per Russell: make sure to zero out the velocities on the ICRS reference
+                # position.
+                #
+                self.refPVT[1] = self.refPVT[4] = 0.0
+                
             except Exception, e:
                 self.failGuiding('could not establish the guidestar coordinates: %s' % (e))
                 return
@@ -462,6 +468,11 @@ class GuideLoop(object):
 
                 CCDstar = MyPyGuide.star2CCDXY(stars[0], frame)
                 self.refPVT = self._GPos2ICRS(CCDstar.ctr)
+
+                # Per Russell: make sure to zero out the velocities on the ICRS reference
+                # position.
+                #
+                self.refPVT[1] = self.refPVT[4] = 0.0
             except Exception, e:
                 self.failGuiding('could not establish guide star coordinates: %s' % (e))
                 return
@@ -695,8 +706,9 @@ class GuideLoop(object):
         # Check whether we have been scaled out of existence.
         if diffPos == (None, None):
             self.cmd.warn('text=%s' % \
-                          (CPL.qstr('SKIPPING large offset (%0.2f,%0.2f) arcsec' % (baseDiffPos[0] * 3600.0,
-                                                                                    baseDiffPos[1] * 3600.0))))
+                          (CPL.qstr('SKIPPING large offset (%0.2f,%0.2f) arcsec' % \
+                                    (baseDiffPos[0] * 3600.0,
+                                     baseDiffPos[1] * 3600.0))))
             diffPos = [0.0, 0.0]
             
         #  - Generate the offset. Threshold computed & uncomputed
@@ -711,8 +723,9 @@ class GuideLoop(object):
 
         if diffSize <= (self.tweaks.get('minOffset', 0.1) / (60.0*60.0)):
             self.cmd.warn('text=%s' % \
-                          (CPL.qstr('SKIPPING small offset (%0.3f,%0.3f) arcsec' % (diffPos[0] * 3600.0,
-                                                                                    diffPos[1] * 3600.0))))
+                          (CPL.qstr('SKIPPING small offset (%0.3f,%0.3f) arcsec' % \
+                                    (diffPos[0] * 3600.0,
+                                     diffPos[1] * 3600.0))))
             diffPos = [0.0, 0.0]
 
         self.cmd.respond('measOffset=%0.2f,%0.2f; actOffset=%0.2f,%0.2f' % \
