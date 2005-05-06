@@ -22,7 +22,7 @@ def start(poller):
                                 'clients/guiders/%s.py' % (name)],
                        name=name, encoder=e, decoder=d,
                        logDir=os.path.join(g.logDir, name),
-                       needsAuth='echelle',
+                       needsAuth=True,
                        grabCID='ping',
                        #initCmds=initCmds,
                        safeCmds=safeCmds,

@@ -21,6 +21,9 @@ class InternalCmd(object):
         self.ID = name
         self.isActor = isActor
         self.needsAuth = argv.get("needsAuth", False)
+        if self.needsAuth == True:
+            self.needsAuth = self.name
+            
         self.locked = False
         
         self.debug = argv.get('debug', 0)
