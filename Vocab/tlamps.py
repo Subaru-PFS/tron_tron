@@ -21,6 +21,7 @@ import Vocab.InternalCmd as InternalCmd
 class tlamps(InternalCmd.InternalCmd):
     def __init__(self, **argv):
         argv['safeCmds'] = '^\s*(list|status)\s*$'
+        argv['needsAuth'] = True
         InternalCmd.InternalCmd.__init__(self, 'tlamps', **argv)
 
         self.commands = { 'list' : self.doList,
