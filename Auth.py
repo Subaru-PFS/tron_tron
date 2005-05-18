@@ -57,28 +57,29 @@ class Auth(CPL.Object):
         if not cmd:
             cmd = self.defaultCmd
 
+        # Do we enforce authorization at all? If so, which actor do we use, only for authorization?
+        authName = actor.needsAuth
+        if not authName:
+            return True
+        actorName = actor.name
+
         # We can lock actors that we ordinarily don't know about, so check .lockedActors first
-        if actor in self.lockedActors:
+        if authName in self.lockedActors:
             access = program in self.gods
             if access:
                 return True
             else:
-                cmd.warn("permsTxt=%s" % (CPL.qstr("%s is locked by APO" % (actor))))
+                cmd.warn("text=%s" % (CPL.qstr("%s is locked by APO" % (actorName))))
                 return False
 
         # If we don't know about an actor, let the command go through
-        if actor not in self.actors:
+        if authName not in self.actors:
             if self.hackOn:
-                CPL.log("Auth.checkAccess", "unregistered actor %s" % (actor))
+                CPL.log("Auth.checkAccess", "unregistered actor %s" % (actorName))
             return True
 
         # If the command is declared safe by the actor, let it go though.
-        actorNub = g.actors.get(actor, None)
-        if not actorNub:
-            cmd.warn("permsTxt=%s" % (CPL.qstr("actor %s is not really connected" % (actor))))
-            return False
-
-        safeCmds = actorNub.safeCmds
+        safeCmds = actor.safeCmds
         CPL.log("auth.checkAccess", "checking '%s' against %s" % (cmd.cmd, safeCmds))
         if safeCmds != None and cmd.cmd != None:
             if safeCmds.search(cmd.cmd):
@@ -91,7 +92,7 @@ class Auth(CPL.Object):
             if self.debug > 5:
                 CPL.log("Auth.checkAccess", "cmdr %s accessList = %s" % (cmdr, accessList))
 
-                ok = actor in accessList
+                ok = authName in accessList
 
                 if self.hackOn:
                     CPL.log("Auth.checkAccess", "actor in accessList = %s" % (ok))

@@ -152,6 +152,7 @@ class GuideLoop(object):
         """ Actually start the guide loop. """
 
         self.state = 'starting'
+        self.genTweaksKeys(self.cmd)
         self._doGuide()
         
     def stop(self, cmd, doFinish=True):
@@ -177,8 +178,6 @@ class GuideLoop(object):
               We
           - SlewSuperceded, dunno exactly how to use that.
           - SlewEnd, indicating the end of a real slew or a computed offset
-
-          
         """
 
         mi = reply.KVs.get('MoveItems', 'XXXXXXXX')
@@ -888,10 +887,8 @@ class GuideLoop(object):
                                                    frame, tweaks=self.tweaks)
             except RuntimeError, e:
                 stars = []
-            if stars:
-                MyPyGuide.genStarKeys(cmd, stars, caller='f')
 
-            if CPL.cfg.get(self.name, 'vetoWithFindstars', False):
+            if CPL.cfg.get(self.controller.name, 'vetoWithFindstars', False):
                 # Veto the centroided star if it is not in the findstars list.
                 #
                 # Get the other stars in the field
