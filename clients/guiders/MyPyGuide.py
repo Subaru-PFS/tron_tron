@@ -68,13 +68,18 @@ def findstars(cmd, imgFile, maskFile, frame, tweaks, radius=None, cnt=10):
     
     skyMed, skySdev = skyStats(cmd, img, maskbits)
 
+    thresh = tweaks['thresh']
+    if thresh < 1.5:
+        cmd.warn('text=%s' % (CPL.qstr("adjusted too small threshold (%0.2f) up to 1.5" % (thresh,))))
+        thresh = 1.5
+
     try:
         res = PyGuide.findStars(
             img, maskbits,
             tweaks['bias'],
             tweaks['readNoise'],
             tweaks['ccdGain'],
-            dataCut = tweaks['thresh'],
+            dataCut = thresh,
             radMult = tweaks['radMult'],
             rad=radius,
             verbosity=0,

@@ -12,8 +12,8 @@ def start(poller):
 
     initCmds = ['status']
     #safeCmds = r'status\s*$'
-    safeCmds = r'.*$'
-
+    safeCmds = r'.*'
+    
     d = Hub.ASCIIReplyDecoder(debug=1)
     e = Hub.ASCIICmdEncoder(debug=1, sendCommander=True)
     nub = Hub.ShellNub(poller, ['/usr/bin/env',
@@ -22,7 +22,7 @@ def start(poller):
                                 'clients/guiders/%s.py' % (name)],
                        name=name, encoder=e, decoder=d,
                        logDir=os.path.join(g.logDir, name),
-                       needsAuth=True,
+                       needsAuth='echelle',
                        grabCID='ping',
                        #initCmds=initCmds,
                        safeCmds=safeCmds,

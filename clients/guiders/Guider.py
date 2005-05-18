@@ -77,6 +77,9 @@ class Guider(Actor.Actor):
         cmd.respond("fsDefThresh=%0.1f; fsDefRadMult=%0.1f" % (self.config['thresh'],
                                                                self.config['radMult']))
         cmd.respond("centDefRadius=%0.1f" % (self.config['cradius']))
+        cmd.respond("fsActThresh=%0.1f; fsActRadMult=%0.1f" % (self.config['thresh'],
+                                                               self.config['radMult']))
+        cmd.respond("centActRadius=%0.1f" % (self.config['cradius']))
         cmd.respond('imageRoot=%s,%s' % (CPL.qstr(self.config['imageHost']),
                                          CPL.qstr(self.config['imageRoot'])))
         
@@ -154,8 +157,6 @@ class Guider(Actor.Actor):
             return self.doTccFindstars(cmd)
 
         tweaks = self.parseCmdTweaks(cmd, self.config)
-        cmd.respond("fsActThresh=%0.1f; fsActRadMult=%0.1f" % (tweaks['thresh'],
-                                                               tweaks['radMult']))
         
         # Get the image and call the real findstars routine.
         self.doCmdExpose(cmd, self._findstarsCB, 'expose', tweaks=tweaks)
@@ -171,6 +172,8 @@ class Guider(Actor.Actor):
                                                                      tweaks)
         self.genFilesKey(cmd, 'f', tweaks['newFile'],
                          procFile, maskFile, camFile, darkFile, flatFile)
+        cmd.respond("fsActThresh=%0.1f; fsActRadMult=%0.1f" % (tweaks['thresh'],
+                                                               tweaks['radMult']))
         
         isSat, stars = MyPyGuide.findstars(cmd, procFile, maskFile, frame, tweaks)
         if not stars:
@@ -197,7 +200,6 @@ class Guider(Actor.Actor):
             return self.doTccCentroid(cmd)
 
         tweaks = self.parseCmdTweaks(cmd, self.config)
-        cmd.respond("centActRadius=%0.1f" % (tweaks['cradius']))
         
         # Get the image
         self.doCmdExpose(cmd, self._centroidCB, 'expose', tweaks=tweaks)
@@ -210,6 +212,7 @@ class Guider(Actor.Actor):
 
         procFile, maskFile, darkFile, flatFile = self.processCamFile(cmd, camFile,
                                                                      tweaks)
+        cmd.respond("centActRadius=%0.1f" % (tweaks['cradius']))
         self.genFilesKey(cmd, 'c', tweaks['newFile'],
                          procFile, maskFile, camFile, darkFile, flatFile)
         
