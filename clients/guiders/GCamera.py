@@ -143,6 +143,8 @@ class GCamera(object):
                  "%-80s" % ('BZERO   = 32768.0'),
                  "%-80s" % ("IMAGETYP= '%s'" % d['type']),
                  "%-80s" % ('EXPTIME = %0.2f' % d['iTime']),
+                 "%-80s" % ("TIMESYS = 'UTC'"),
+                 "%-80s" % ("DATE-OBS= '%s'" % (CPL.isoTS(d['startTime']))),
                  "%-80s" % ('CCDTEMP = %0.1f' % (self.getCCDTemp())),
                  "%-80s" % ("FILENAME= '%s'" % (basename)),
                  "%-80s" % ("FULLX   = %d" % (self.ccdSize[0])),

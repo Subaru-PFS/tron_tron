@@ -75,11 +75,19 @@ class GuideLoop(object):
             cmd.finish()
 
     def genTweaksKeys(self, cmd):
-        cmd.respond("fsActThresh=%0.1f; fsActRadMult=%0.1f" % (self.tweaks['thresh'],
-                                                               self.tweaks['radMult']))
-        cmd.respond("centActRadius=%0.1f" % (self.tweaks['cradius']))
+        cmd.respond("fsActThresh=%0.1f; fsActRadMult=%0.1f; centActRadius=%0.1f" % \
+                    (self.tweaks['thresh'],
+                     self.tweaks['radMult'],
+                     self.tweaks['cradius']))
         cmd.respond("retryCnt=%d; restart=%s" % (self.tweaks['retry'],
                                                  CPL.qstr(self.tweaks['restart'])))
+    def genChangedTweaks(self, cmd):
+        cmd.respond("fsActThresh=%0.1f; fsActRadMult=%0.1f; centActRadius=%0.1f" % \
+                    (self.tweaks['thresh'],
+                     self.tweaks['radMult'],
+                     self.tweaks['cradius']))
+        
+        
     def tweakCmd(self, cmd, newTweaks):
         """ Adjust the running guide loop.
 
@@ -337,6 +345,7 @@ class GuideLoop(object):
             try:
                 seedPos = self.controller.parseCoord(gstar)
             except Exception, e:
+                CPL.tback('guideloop._doGuide', e)
                 self.failGuiding(e)
                 return
                 
@@ -396,6 +405,7 @@ class GuideLoop(object):
                     self.failGuiding('no star found near (%0.1f, %0.1f)' % (seedPos[0], seedPos[1]))
                     return
             except Exception, e:
+                CPL.tback('guideloop._firstExposure', e)
                 self.failGuiding(e)
                 return
 
@@ -415,6 +425,7 @@ class GuideLoop(object):
                             self.offsetWillBeDone = endTime
                     ret = client.call('tcc', cmdTxt, cid=self.controller.cidForCmd(self.cmd))
             except Exception, e:
+                CPL.tback('guideloop._firstExposure-2', e)
                 self.failGuiding(e)
                 return
 
@@ -440,6 +451,7 @@ class GuideLoop(object):
                     self.failGuiding('no star found near (%d, %d)' % seedPos)
                     return
             except Exception, e:
+                CPL.tback('guideloop._firstExposure-3', e)
                 self.failGuiding(e)
                 return
 
@@ -459,8 +471,8 @@ class GuideLoop(object):
             # otherwise use the "best" object as the guide star.
             #
             try:
-                isSat, stars = MyPyGuide.findstars(self.cmd, camFile, maskFile,
-                                                   frame, self.tweaks)
+                stars = MyPyGuide.findstars(self.cmd, camFile, maskFile,
+                                            frame, self.tweaks)
                 if not stars:
                     self.failGuiding("no stars found")
                     return
@@ -794,6 +806,12 @@ class GuideLoop(object):
         """ If our command requests a filename, we need to read a sequence of files.
         """
 
+        if self.state == 'off':
+            return
+        if self.state == 'stopping':
+            self.stopGuiding()
+            return
+
         if self.trackFilename == None:
             name = self.controller.findFile(self.cmd, self.cmd.qstr(startName))
             if not name:
@@ -852,17 +870,22 @@ class GuideLoop(object):
 
             self.controller.genFilesKey(self.cmd, 'g', True,
                                         procFile, maskFile, camFile, darkFile, flatFile)
-
+            self.genChangedTweaks(self.cmd)
+            
             frame = GuideFrame.ImageFrame(self.controller.size)
             frame.setImageFromFITSFile(procFile)
 
             # Still need to interpolate to the middle of the exposure.
             now = time.time()
-            refPos = self._getExpectedPos(t=now)
-            refPos = frame.ccdXY2imgXY(refPos)
-
+            ccdRefPos = self._getExpectedPos(t=now)
+            refPos = frame.ccdXY2imgXY(ccdRefPos)
             self.cmd.respond("guiderPredPos=%0.2f,%0.2f" % (refPos[0], refPos[1]))
+
             if not frame.imgXYinFrame(refPos):
+                CPL.log("GuideLoop", "left frame. ccdRefPos=%0.1f,%0.1f, refPos=%0.1f,%0.1f, frame=%s" % \
+                        (ccdRefPos[0], ccdRefPos[1],
+                         refPos[0], refPos[1],
+                         frame))
                 self.failGuiding("guide star moved off frame.")
                 return
             
@@ -875,6 +898,7 @@ class GuideLoop(object):
                 self.retryGuiding()
                 return
             except Exception, e:
+                CPL.tback('guideloop._handleGuideFrame', e)
                 self.failGuiding(e)
                 return
 
@@ -883,8 +907,8 @@ class GuideLoop(object):
 
             # Get the other stars in the field
             try:
-                isSat, stars = MyPyGuide.findstars(self.cmd, procFile, maskFile,
-                                                   frame, tweaks=self.tweaks)
+                stars = MyPyGuide.findstars(self.cmd, procFile, maskFile,
+                                            frame, tweaks=self.tweaks)
             except RuntimeError, e:
                 stars = []
 
@@ -893,10 +917,10 @@ class GuideLoop(object):
                 #
                 # Get the other stars in the field
                 try:
-                    xxx, vetoStars = MyPyGuide.findstars(self.cmd, procFile, maskFile,
-                                                         frame,
-                                                         tweaks=self.tweaks,
-                                                         radius=star.radius)
+                    vetoStars = MyPyGuide.findstars(self.cmd, procFile, maskFile,
+                                                    frame,
+                                                    tweaks=self.tweaks,
+                                                    radius=star.radius)
                 except RuntimeError, e:
                     vetoStars = []
 
@@ -923,6 +947,7 @@ class GuideLoop(object):
             else:
                 self._centerUp(self.cmd, star, frame, refPos, fname=procFile)
         except Exception, e:
+            CPL.tback('guideloop._handleGuideFrame-2', e)
             self.failGuiding(e)
             
     def _extractCnvPos(self, res):
