@@ -262,7 +262,12 @@ showstatus
         for s in stars:
 
             # Ignore stars outside the specified findstars frame....
-            if not findstarsFrame.ccdXYinFrame(s.ctr):
+            p = s.ctr[0] - findstarsFrame.frameOffset[0], s.ctr[1] - findstarsFrame.frameOffset[1],
+            if not findstarsFrame.imgXYinFrame(p):
+                CPL.log("TCCGcam", "out of frame. pos=%0.1f,%0.1f, p=%0.1f,%0.1f, frame=%s" % \
+                        (s.ctr[0], s.ctr[1],
+                         p[0], p[1], 
+                         findstarsFrame))
                 continue
 
             cmd.respond('txtForTcc=%s' % \
