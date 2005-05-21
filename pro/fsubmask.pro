@@ -58,17 +58,15 @@ pro fsubmask,infileName,outfileName,offset,size,binning,thresh
 
                                 ; dilate the mask to smooth the edges.
                                 ; While at it, expand the mask a scooch.
-  r3 = replicate(1,3,3)
-  r5 = replicate(1,5,5)
+  ;r3 = replicate(1,3,3)
+  ;r5 = replicate(1,5,5)
 
-  mask = binnedData lt thresh
-  mask = dilate(erode(mask, r3), r5)
+  ;mask = binnedData lt thresh
+  ;mask = dilate(erode(mask, r3), r5)
 
-                                ; For consistency, save to an "unsigned int" fits file.
-                                ; It may be safe, or even desirable, to save a byte array,
-                                ; but numarray can be quirky.
+  mask = binnedData
 
-  mwrfits, uint(mask), outfileName, iscale=[1.0, 32768.0], /create
+  mwrfits, mask, outfileName, /create
 
   return
 end

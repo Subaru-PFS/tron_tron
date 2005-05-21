@@ -252,20 +252,17 @@ showstatus
 
         tweaks = self.config
         try:
-            isSat, stars = MyPyGuide.findstars(cmd, self.imgForTcc, maskFile,
-                                               self.frameForTcc, tweaks)
+            stars = MyPyGuide.findstars(cmd, self.imgForTcc, maskFile,
+                                        self.frameForTcc, tweaks)
         except Exception, e:
             stars = []
-            isSat = False
             cmd.warn('debug=%s' % (CPL.qstr("pyquide.findstars failed with %s" % (e))))
             
         i = 0
         for s in stars:
 
             # Ignore stars outside the specified findstars frame....
-            if not findstarsFrame.imgXYinFrame(s.ctr):
-                #cmd.warn('debug="ignoring star (%02.f, %0.2f) outside of findstars frame"' % \
-                #         (s.ctr[0], s.ctr[1]))
+            if not findstarsFrame.ccdXYinFrame(s.ctr):
                 continue
 
             cmd.respond('txtForTcc=%s' % \

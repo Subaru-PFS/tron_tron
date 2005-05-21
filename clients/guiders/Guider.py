@@ -14,6 +14,8 @@ import math
 import os
 import sys
 
+import pyfits
+
 import Command
 import Actor
 import CPL
@@ -65,8 +67,9 @@ class Guider(Actor.Actor):
                      'ccdSize', 'binning',
                      'thresh', 'cradius', 'radMult',
                      'retry', 'restart',
-                     'maskFile', 'imageHost', 'imageRoot', 'imageDir',
-                     'fitErrorScale'):
+                     'maskFile', 'biasFile',
+                     'imageHost', 'imageRoot', 'imageDir',
+                     'fitErrorScale', 'doFlatfield'):
             self.defaults[name] = CPL.cfg.get(self.name, name)
         self.size = self.defaults['ccdSize']
         self.defaults['minOffset'] = CPL.cfg.get('telescope', 'minOffset')
@@ -175,7 +178,7 @@ class Guider(Actor.Actor):
         cmd.respond("fsActThresh=%0.1f; fsActRadMult=%0.1f" % (tweaks['thresh'],
                                                                tweaks['radMult']))
         
-        isSat, stars = MyPyGuide.findstars(cmd, procFile, maskFile, frame, tweaks)
+        stars = MyPyGuide.findstars(cmd, procFile, maskFile, frame, tweaks)
         if not stars:
             cmd.fail('text="no stars found"')
             return
@@ -219,8 +222,8 @@ class Guider(Actor.Actor):
         if cmd.argDict.has_key('on'):
             seed = self.parseCoord(cmd.argDict['on'])
         else:
-            isSat, stars = MyPyGuide.findstars(cmd, camFile, maskFile,
-                                               frame, tweaks,
+            stars = MyPyGuide.findstars(cmd, camFile, maskFile,
+                                        frame, tweaks,
                                                cnt=1)
             if not stars:
                 cmd.fail('text="no stars found"')
@@ -241,10 +244,10 @@ class Guider(Actor.Actor):
             #
             # Get the other stars in the field
             try:
-                xxx, vetoStars = MyPyGuide.findstars(cmd, procFile, maskFile,
-                                                     frame,
-                                                     tweaks,
-                                                     radius=star.radius)
+                vetoStars = MyPyGuide.findstars(cmd, procFile, maskFile,
+                                                frame,
+                                                tweaks,
+                                                radius=star.radius)
             except RuntimeError, e:
                 vetoStars = []
 
@@ -507,21 +510,63 @@ class Guider(Actor.Actor):
             frame = GuideFrame.ImageFrame(self.size)
             frame.setImageFromFITSFile(camFile)
 
-        maskFile, maskbits = self.mask.getMaskForFrame(cmd, camFile, frame)
+        maskFile, maskBits = self.mask.getMaskForFrame(cmd, camFile, frame)
 
         if tweaks.get('doAutoDark'):
             darkFile = self.getDarkForCamFile(camFile)
         else:
+            darkFile = tweaks['biasFile']
             darkFile = None
             
         if tweaks.get('doFlatfield'):
-            self.cmd.warn('text="we do not flat-field yet."')
-            flatFile = None
+            flatFile = maskFile
         else:
             flatFile = None
+
+        procFile = camFile
+        if flatFile:
+            camFITS = pyfits.open(camFile)
+            camBits = camFITS[0].data
+
+            darkFITS = pyfits.open(darkFile)
+            darkBits = darkFITS[0].data * 1.0
+            darkFITS.close()
+            camBits -= darkBits
+                
+            camBits *= maskBits
+
+            # Add a pedestal back in. We could tell the PyGuide routines that the bias is 0, too.
+            camBits += tweaks['bias'] + tweaks['readNoise']
+            procFile = self.changeFileBase(camFile, "proc")
+
+            try:
+                os.remove(procFile)
+            except:
+                pass
             
-        return camFile, maskFile, darkFile, flatFile
+            camFITS.writeto(procFile)
+            camFITS.close()
+            
+        return procFile, maskFile, darkFile, flatFile
     
+    def changeFileBase(self, filename, newbase):
+        """ Replace the 'name' part of the filename with some other prefix.
+
+        E.g. 'g0123.fits' -> 'mask0123.fits'
+
+        """
+        
+
+        basedir, basefile = os.path.split(filename)
+        numIdx = 0
+        for i in range(len(basefile)):
+            if basefile[i].isdigit():
+                numIdx = i
+                break
+        basefile = newbase + basefile[numIdx:]
+        return os.path.join(basedir, basefile)
+
+            
     def getDarkForCamFile(self, camFile):
         """ Return a dark file corresponding to the given camFile.
 
