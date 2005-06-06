@@ -512,11 +512,7 @@ class Guider(Actor.Actor):
 
         maskFile, maskBits = self.mask.getMaskForFrame(cmd, camFile, frame)
 
-        if tweaks.get('doAutoDark'):
-            darkFile = self.getDarkForCamFile(camFile)
-        else:
-            darkFile = tweaks['biasFile']
-            darkFile = None
+        darkFile = self.getDarkForCamFile(camFile, tweaks)
             
         if tweaks.get('doFlatfield'):
             flatFile = maskFile
@@ -528,15 +524,18 @@ class Guider(Actor.Actor):
             camFITS = pyfits.open(camFile)
             camBits = camFITS[0].data
 
-            darkFITS = pyfits.open(darkFile)
-            darkBits = darkFITS[0].data * 1.0
-            darkFITS.close()
-            camBits -= darkBits
+            if darkFile:
+                darkFITS = pyfits.open(darkFile)
+                darkBits = darkFITS[0].data * 1.0
+                darkFITS.close()
+            else:
+                darkBits = camBits * 0.0 + tweaks['bias']
                 
+            camBits -= darkBits
             camBits *= maskBits
 
             # Add a pedestal back in. We could tell the PyGuide routines that the bias is 0, too.
-            camBits += tweaks['bias'] + tweaks['readNoise']
+            camBits += tweaks['bias'] + math.sqrt(tweaks['readNoise'])
             procFile = self.changeFileBase(camFile, "proc")
 
             try:
@@ -567,7 +566,7 @@ class Guider(Actor.Actor):
         return os.path.join(basedir, basefile)
 
             
-    def getDarkForCamFile(self, camFile):
+    def getDarkForCamFile(self, camFile, tweaks):
         """ Return a dark file corresponding to the given camFile.
 
         Args:
@@ -577,21 +576,24 @@ class Guider(Actor.Actor):
             - the full pathname of a dark file, or None if something went wrong.
         """
 
-        camFITS = pyfits.open(camFile)
-        h = camFITS[0].header
-        fits.close()
+        if tweaks.get('doAutoDark'):
+            camFITS = pyfits.open(camFile)
+            h = camFITS[0].header
+            camFITS.close()
 
-        expTime = h['EXPTIME']
-        if self.darks[expTime]:
-            return self.darks[expTime]
+            expTime = h['EXPTIME']
+            if self.darks[expTime]:
+                darkFile = self.darks[expTime]
+            else:
+                darkFile = None
+        else:
+            darkFile = None
 
-        # OK, we do not have an appropriate dark. Make one.
-        return None
-    
+        if not darkFile:
+            return None
+        
         frame = GuideFrame.ImageFrame(self.size)
         frame.setImageFromFITSFile(camFile)
-
-        
         
     def findFile(self, cmd, fname):
         """ Get the absolute path for a given filename.
