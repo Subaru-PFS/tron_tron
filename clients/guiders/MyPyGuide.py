@@ -141,7 +141,10 @@ def skyStats(cmd, img, mask):
     """
 
     maskedData = numarray.ma.array(img, mask=mask)
-    return PyGuide.ImUtil.skyStats(maskedData)
+    stats = PyGuide.ImUtil.skyStats(maskedData)
+    del maskedData
+
+    return stats
 
 def centroid(cmd, imgFile, maskFile, frame, seed, tweaks):
     """ Run PyGuide.findstars on the given file
