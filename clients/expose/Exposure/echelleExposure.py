@@ -1,5 +1,6 @@
 import os
 import socket
+import time
 
 import CPL
 import Parsing
@@ -39,21 +40,21 @@ class echelleCB(Exposure.CB):
                 length = float(length)
                 CPL.log('echelleCB.cbDribble', "newstate=%s length=%0.2f" % (maybeNewState, length))
 
-                if maybeNewState in ('flushing', 'reading', 'paused'):
+                if maybeNewState in ('flushing', 'reading', 'paused', 'finishing'):
                     newState = maybeNewState
                 elif maybeNewState == 'integrating':
                     newState = maybeNewState
-                    # self.exposure.integrationStarted()
+                    self.exposure.integrationStarted()
                 elif maybeNewState == 'aborted':
                     CPL.log("nicfps.dribble", "aborted what=%s newState=%s" % (self.what, maybeNewState))
                     if self.exposure.aborting:
                         newState = "aborted"
                     else:
-                        newState = "done"
-                        # self.exposure.finishUp()
+                        newState = None
+                        self.exposure.finishUp()
                 elif maybeNewState == 'done':
-                    newState = maybeNewState
-                    # self.exposure.finishUp()
+                    newState = None
+                    self.exposure.finishUp()
 
             if newState != None:
                 CPL.log('echelleCB.cbDribble', "newstate=%s seq=%s" % (newState, self.sequence))
@@ -86,7 +87,11 @@ class echelleExposure(Exposure.Exposure):
             except:
                 raise Exception("%s exposures require a time argument" % (expType))
 
+        # Where the Echelle puts its image files.
+        self.rawDir = ('/export/images/echelle', 'forTron')
+
         self.reserveFilenames()
+        self.aborting = False
 
     def reserveFilenames(self):
         """ Reserve filenames, and set .basename.
@@ -97,6 +102,64 @@ class echelleExposure(Exposure.Exposure):
 
     def _basename(self):
         return os.path.join(*self.pathParts)
+
+    def integrationStarted(self):
+        """ Called when the integration is _known_ to have started. """
+
+        outfile = self._basename()
+        if self.debug > 1:
+            CPL.log("echelleExposure", "starting echelle FITS header to %s" % (outfile))
+
+        cmdStr = 'start echelle outfile=%s' % (outfile)
+        if self.comment:
+            cmdStr += ' comment=%s' % (CPL.qstr(self.comment))
+        self.callback('fits', cmdStr)
+
+    def finishUp(self):
+        """ Clean up and close out the FITS files.
+
+        This is HORRIBLE! -- we are blocking at the worst time for the exposure. FIX THIS!!!
+        
+        """
+
+        CPL.log("echelle.finishUp", "state=%s" % (self.state))
+
+        rawFile = os.path.join(*self.rawpath)
+        self.cmd.warn('debug="finishing from rawfile=%s"' % (rawFile))
+        
+        if self.state != "aborted":
+            self.callback('fits', 'finish echelle infile=%s' % (rawFile))
+        else:
+            self.callback('fits', 'abort echelle')
+
+        self.setState('done', 0.0)
+            
+    def genRawfileName(self, cmd):
+        """ Generate a filename for the ICC to write to.
+
+        Returns:
+           root      - the part of the path that only _we_ know and care about,
+           path      - the part of the path that both we and the ICC care about.
+           filename  - a filename which is known not to exist now.
+        """
+
+        root, path = self.rawDir
+
+        n = 1
+        timestamp = time.strftime('%Y%m%dT%H%M%SZ', time.gmtime())
+        while 1:
+            filename = "%s%02d.fits" % (timestamp, n)
+            pathname = os.path.join(root, path, filename)
+            if os.path.exists(filename):
+                n += 1
+                cmd.warn('debug="raw filename %s existed"' % pathname)
+            else:
+                break
+
+            if n > 2:
+                raise RuntimeException("Could not create a scratch file for the Echelle. Last tried %s" % (pathname))
+            
+        return root, path, filename
 
     def lastFilesKey(self):
         return self.filesKey(keyName="echelleFiles")
@@ -126,37 +189,45 @@ class echelleExposure(Exposure.Exposure):
                 CPL.qstr(userDir),
                 CPL.qstr(self.pathParts[-1]))
         
+    
+    def _expose(self, cmd):
+        """ Start a single object exposure. Requires several self. variables. """
+
+        self.rawpath = self.genRawfileName(self.cmd)
+        cb = echelleCB(None, self.sequence, self, cmd)
+        r = self.callback("echelle", "expose %s diskname=%s %s" % \
+                          (cmd, os.path.join(*self.rawpath), self.commentArg),
+                          callback=cb.cbDribble, responseTo=self.cmd, dribble=True)
+        
     def bias(self):
         """ Start a single bias. Requires several self. variables. """
-         
-        cb = echelleCB(None, self.sequence, self, "bias", debug=2)
-        r = self.callback("echelle", "expose bias diskname=%s %s" % \
-                          (self._basename(), self.commentArg),
-                          callback=cb.cbDribble, responseTo=self.cmd, dribble=True)
+
+        self._expose('bias')
         
     def object(self):
         """ Start a single object exposure. Requires several self. variables. """
 
-        cb = echelleCB(None, self.sequence, self, "object", debug=2)
-        r = self.callback("echelle", "expose object time=%s diskname=%s %s" % \
-                          (self.expTime, self._basename(), self.commentArg),
-                          callback=cb.cbDribble, responseTo=self.cmd, dribble=True)
+        self._expose('object time=%0.2f' % (self.expTime))
         
     def flat(self):
         """ Start a single flat exposure. Requires several self. variables. """
 
-        cb = echelleCB(None, self.sequence, self, "flat", debug=2)
-        r = self.callback("echelle", "expose flat time=%s diskname=%s %s" % \
-                          (self.expTime, self._basename(), self.commentArg),
-                          callback=cb.cbDribble, responseTo=self.cmd, dribble=True)
+        self._expose('flat time=%0.2f' % (self.expTime))
+        
+    def arc(self):
+        """ Start a single flat exposure. Requires several self. variables. """
+
+        self._expose('arc time=%0.2f' % (self.expTime))
         
     def dark(self):
         """ Start a single dark. Requires several self. variables. """
 
-        cb = echelleCB(None, self.sequence, self, "dark", debug=2)
-        r = self.callback("echelle", "expose dark time=%s diskname=%s %s" % \
-                          (self.expTime, self._basename(), self.commentArg),
-                          callback=cb.cbDribble, responseTo=self.cmd, dribble=True)
+        self._expose('dark time=%0.2f' % (self.expTime))
+
+    def flat(self):
+        """ Start a single flat exposure. Requires several self. variables. """
+
+        self._expose('dark time=%0.2f' % (self.expTime))
         
     def stop(self, cmd, **argv):
         """ Stop the current exposure: cause it to read out immediately, and save the data. """
