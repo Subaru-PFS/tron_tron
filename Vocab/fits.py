@@ -39,7 +39,7 @@ class fits(InternalCmd.InternalCmd):
                              'echelle' : echelleFITS,
                              'dis' : disFITS,
                              'nicfps' : nicfpsFITS }
-        
+
     def getInst(self, cmd, inst):
         """ Return the instrument object, or fail the command. """
 
@@ -246,10 +246,43 @@ class InstFITS(object):
         self.allowOverwrite = argv.get('alwaysAllowOverwrite', False)
         self.flipSign = flipSign
         
+        self.isImager = False
+        
         outfileName = argv.get('outfile', None)
         if outfileName:
             self.createOutfile(cmd, outfileName)
             
+    def TS(self, t, format="%Y-%m-%d %H:%M:%S", zone="", goodTo=2):
+        """ Return a formatted timestamp for t
+
+        Args:
+           t       - seconds.
+           format  - the strftime format string for the integral seconds.
+           zone    - an optional ISO marker for the end of the string
+           goodTo  - how precise the timestamp is. 10e-goodTo seconds. Must be >= 0
+        """
+
+        if zone == None:
+            zone = ''
+
+        # Parts:
+        #  - the to-a-second timestamp
+        #
+        iSecs = time.strftime(format, time.gmtime(t))
+
+        # The fractional seconds.
+        #
+        if goodTo <= 0:
+            fSecs = ""
+        else:
+            fSecsFmt = ".%%0%dd" % (goodTo)
+            multiple = 10 ** goodTo
+            fSecs = fSecsFmt % ((10 ** goodTo) * math.modf(t)[0])
+
+        # Add it all up:
+        #
+        return "%s%s%s" % (iSecs, fSecs, zone)
+
     def fetchValueAs(self, cmd, src, keyName, cnv, idx=None):
         """ Fetch and convert a keyword value. """
         
@@ -439,10 +472,11 @@ class InstFITS(object):
             self.fetchCardAs(cmd, 'OBJOFFY', 'tcc', 'ObjOff', asFloat, RealCard, 'TCC object offset Y', idx=3)
             self.fetchCardAs(cmd, 'CALOFFX', 'tcc', 'CalibOff', asFloat, RealCard, 'TCC calibration offset X', idx=0)
             self.fetchCardAs(cmd, 'CALOFFY', 'tcc', 'CalibOff', asFloat, RealCard, 'TCC calibration offset Y', idx=3)
-            try:
-                self.fetchWCSCards(cmd)
-            except Exception, e:
-                cmd.warn('errorTxt=%s' % (CPL.qstr("Failed to generate WCS cards: %s" % (e))))
+            if self.isImager:
+                try:
+                    self.fetchWCSCards(cmd)
+                except Exception, e:
+                    cmd.warn('errorTxt=%s' % (CPL.qstr("Failed to generate WCS cards: %s" % (e))))
             
 
     def _setUTC_TAI(self, cmd):
@@ -455,7 +489,7 @@ class InstFITS(object):
 
         self.UTC_TAI = UTC_TAI
         
-    def start(self, cmd, inFile):
+    def start(self, cmd, inFile=None):
         self._setUTC_TAI(cmd)
         self.fetchObjectCards(cmd)
         self.fetchWeatherCards(cmd)
@@ -571,63 +605,6 @@ class InstFITS(object):
 
         return True
         
-class grimFITS(InstFITS):
-    """ The Grim-specific FITS routines.
-    """
-
-    def __init__(self, cmd, **argv):
-        InstFITS.__init__(self, cmd, **argv)
-        self.instName = 'grim'
-        
-    def start(self, cmd, inFile=None):
-        InstFITS.start(self, cmd, inFile)
-
-        self.fetchInstCards(cmd)
-        
-    def fetchNiceInstCards(self, cmd):
-        """ Generate gussied up, human-readable versions of the instrument state """
-        pass
-    
-    def fetchInstCards(self, cmd):
-        self.fetchNiceInstCards(cmd)
-        
-        self.fetchCardAs(cmd, 'FILTER1M', 'grim', 'filter1', asInt, IntCard, 'The physical position of filter wheel 1')
-        self.fetchCardAs(cmd, 'FILTER2M', 'grim', 'filter2', asInt, IntCard, 'The physical position of filter wheel 2')
-        self.fetchCardAs(cmd, 'LENSMOTR', 'grim', 'lens', asInt, IntCard, 'The physical position of the camera motor')
-        self.fetchCardAs(cmd, 'GRISMMOT', 'grim', 'grism', asInt, IntCard, 'The physical position of the grism motor')
-        self.fetchCardAs(cmd, 'SLITMOTR', 'grim', 'slit', asInt, IntCard, 'The physical position of the slit motor')
-
-    def TS(self, t, format="%Y-%m-%d %H:%M:%S", zone="", goodTo=1):
-        """ Return a formatted timestamp for t
-
-        Args:
-           t       - seconds.
-           format  - the strftime format string for the integral seconds.
-           zone    - an optional ISO marker for the end of the string
-           goodTo  - how precise the timestamp is. 10e-goodTo seconds. Must be >= 0
-        """
-
-        if zone == None:
-            zone = ''
-
-        # Parts:
-        #  - the to-a-second timestamp
-        #
-        iSecs = time.strftime(format, time.gmtime(t))
-
-        # The fractional seconds.
-        #
-        if goodTo <= 0:
-            fSecs = ""
-        else:
-            fSecsFmt = ".%%0%dd" % (goodTo)
-            multiple = 10 ** goodTo
-            fSecs = fSecsFmt % ((10 ** goodTo) * math.modf(t)[0])
-
-        # Add it all up:
-        #
-        return "%s%s%s" % (iSecs, fSecs, zone)
-    
     def baseTimeCards(self, cmd, expStart, expLength, goodTo=0.1):
         """ Return the core time cards.
 
@@ -681,9 +658,10 @@ class nicfpsFITS(InstFITS):
         argv['alwaysAllowOverwrite'] = True
         InstFITS.__init__(self, cmd, **argv)
         self.instName = 'nicfps'
+        self.isImager = True
         
     def start(self, cmd, inFile=None):
-        InstFITS.start(self, cmd, inFile)
+        InstFITS.start(self, cmd, inFile=inFile)
         
         self.fetchInstCards(cmd)
 
@@ -820,14 +798,67 @@ class echelleFITS(InstFITS):
     """
 
     def __init__(self, cmd, **argv):
+        argv['alwaysAllowOverwrite'] = True
         InstFITS.__init__(self, cmd, **argv)
         self.instName = 'echelle'
         
-    def start(self, cmd, inFile=None):
-        InstFITS.start(self, cmd, inFile)
-        
     def fetchInstCards(self, cmd):
         pass
+    
+    def prepFITS(self, cmd, fits):
+        """ Hook to let us fiddle with the header directly. """
+
+        pass
+        
+    def fetchNiceInstCards(self, cmd):
+        """ Generate gussied up, human-readable versions of the instrument state """
+        pass
+    
+    
+    def baseTimeCards(self, cmd, expStart, expLength, goodTo=0.1):
+        """ Return the core time cards.
+
+        Args:
+           cmd       - the controlling Command.
+           expStart  - the start of the exposure, TAI
+           expLength - the length of the exposure, seconds.
+           goodTo    - the precision of the timestamps.
+        """
+
+        cards = []
+
+        #cards.append(StringCard('TIMESYS', 'TAI', 'Timebase for DATE-OBS'))
+        #cards.append(StringCard('DATE-OBS',
+        #                        self.TS(expStart, format="%Y-%m-%dT%H:%M:%S", goodTo=3),
+        #                        'Start of integration.'))
+
+        #cards.append(RealCard('UTC-TAI', self.UTC_TAI, 'UTC offset from TAI, seconds.'))
+        #cards.append(StringCard('UTC-OBS',
+        #                        self.TS(expStart + self.UTC_TAI, format="%H:%M:%S", goodTo=3),
+        #                        'Start of integration.'))
+        #cards.append(StringCard('UTMIDDLE',
+        #                        self.TS(expStart + self.UTC_TAI + (expLength/2.0), format="%H:%M:%S", goodTo=3),
+        #                        'Middle of integration.'))
+        #cards.append(RealCard('EXPTIME', expLength, 'Exposure time, seconds'))
+
+        return cards
+    
+    def fetchTimeCards(self, cmd):
+
+        # Calculate Unix time for the beginning of the exposure.
+        #
+        #time_s = self.fetchValueAs(cmd, 'grim', 'STARTTIME', str)
+        #date_s = self.fetchValueAs(cmd, 'grim', 'STARTDATE', str)
+        #opentime = self.fetchValueAs(cmd, 'grim', 'OPENTIME', float)
+        #if time_s == None or date_s == None:
+        #    return
+
+        #dt_s = "%s %s" % (date_s, time_s)
+        #utcExpStart = time.mktime(time.strptime(dt_s, "%m/%d/%Y %H:%M:%S")) - time.timezone
+
+        cards = self.baseTimeCards(cmd, 0, 0)
+        
+        return cards
     
 class disFITS(InstFITS):
     """ The DIS-specific FITS routines.
