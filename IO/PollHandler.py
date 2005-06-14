@@ -61,8 +61,9 @@ class PollHandler(CPL.Object):
 
         self.files = {}
         self.lock = Lock()
-
+        
         self.timedCallbacks = []
+        self.cbLock = Lock()
         
         self.timeout = argv.get('timeout', 0.5)
         self.timeoutHandler = argv.get('timeoutHandler', None)
@@ -93,6 +94,7 @@ class PollHandler(CPL.Object):
            - whether we have arranged for the loop to be restarted.
         """
 
+        self.cbLock.acquire()
         self.timedCallbacks.append((timer['time'], timer))
         self.timedCallbacks.sort()
 
@@ -100,19 +102,23 @@ class PollHandler(CPL.Object):
         #
         if self.loopback and self.timedCallbacks[0][1] == timer:
             os.write(self.loopback, 'I')
+        self.cbLock.release()
         
     def removeTimer(self, timer):
         """ Remove an existing timer.
 
         """
-
+        self.cbLock.acquire()
         self.timedCallbacks.remove((timer['time'], timer))
+        self.cbLock.release()
         
     def callMeIn(self, callback, delay):
         """ Arrange to call callback after delay seconds. """
 
+        self.cbLock.acquire()
         self.timedCallbacks.append((time.time() + delay, callback))
         self.timedCallbacks.sort()
+        self.cbLock.release()
         
     def startLoopback(self):
         """ Create a pipe that the poller listens to, that we can write to when the
@@ -382,6 +388,7 @@ class PollHandler(CPL.Object):
             # Calculate the proper timeout. Basically, use the loop default
             # or the next item in .timedCallbacks
             timeout = self.timeout
+            self.cbLock.acquire()
             if self.timedCallbacks != []:
                 nextTick, nextTimer = self.timedCallbacks[0]
                 
@@ -390,6 +397,7 @@ class PollHandler(CPL.Object):
                     timeout = nextTick - now
                     if timeout < 0.0:
                         timeout = 0.001
+            self.cbLock.release()
 
             try:
                 events = self.poller.poll(timeout * 1000.0)
@@ -428,11 +436,21 @@ class PollHandler(CPL.Object):
             #
             if self.timedCallbacks != []:
                 now = time.time()
+                timers = []
+                self.cbLock.acquire()
                 for i in range(len(self.timedCallbacks)):
-                    tick, timer = self.timedCallbacks[i]
+                    try:
+                        tick, timer = self.timedCallbacks[i]
+                    except IndexError:
+                        break
+                    
                     if tick > now:
                         break
+                    timers.append(timer)
                     del self.timedCallbacks[i]
+                self.cbLock.release()
+
+                for timer in timers:
                     timer['callback'](timer)
                     
             # Walk through all new events, and fire on all of them. Round-robinning provides

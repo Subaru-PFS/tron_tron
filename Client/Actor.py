@@ -84,7 +84,7 @@ class Actor(Thread):
         for m in sys.modules.values():
             for sym in dir(m):
                 o = getattr (m, sym)
-                if type(o) is types.ClassType:
+                if type(o) in (types.ClassType, types.TypeType):
                     d[o] = sys.getrefcount (o)
         # sort by refcount
         pairs = map (lambda x: (x[1],x[0]), d.items())

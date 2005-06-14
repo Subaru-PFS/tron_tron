@@ -1,6 +1,7 @@
 __all__ = ['GuiderMask']
 
 import os
+import sys
 
 import CPL
 import pyfits
@@ -72,6 +73,11 @@ class GuiderMask(object):
         if self.cachedMask != None \
                and frame == self.frame \
                and os.path.dirname(self.cachedFile) == os.path.dirname(basename):
+
+            #cmd.warn('debug="mask refs = %d %d %d"' % (sys.getrefcount(self.cachedMask),
+            #                                           sys.getrefcount(self),
+            #                                           sys.getrefcount(frame)))
+
             return self.cachedFile, self.cachedMask
         else:
             CPL.log('GuiderMask', 'debug=%s' % \
@@ -119,6 +125,11 @@ class GuiderMask(object):
         self.cachedFile = newFile
         self.cachedMask = im
         self.frame = frame
+
+        cmd.warn('debug="mask refs = %d %d %d"' % (sys.getrefcount(self.cachedMask),
+                                                   sys.getrefcount(self),
+                                                   sys.getrefcount(frame)))
+                                                
         
         return self.cachedFile, self.cachedMask
 

@@ -14,7 +14,6 @@ class echelleCB(Exposure.CB):
         Args:
            cmd      - a Command to finish or fail. Can be None.
            sequence - an ExpSequence to alert on the command success/failure. Can be None.
-           exp      - an Exposure to alert to state changes.
            what     - a string describing the command.
         """
 
@@ -29,48 +28,44 @@ class echelleCB(Exposure.CB):
             CPL.log("echelleCB.cbDribble", "res=%s" % (res))
         try:
             # Check for new exposureState:
-            maybeNewState = res.KVs.get('ECHELLETXT', None)
+            maybeNewState = res.KVs.get('exposureState', None)
+            CPL.log("echelleCB.cbDribble", "exposureState=%s" % (maybeNewState))
             newState = None
             
-            # Guess at their length (this is for ECHELLE only)
+            # Guess at their length
             if maybeNewState != None:
-                maybeNewState = eval(maybeNewState, {}, {})
-                CPL.log("echelle.cbDribble", "maybeNewState=%s" % (maybeNewState))
-                        
-                length = 0.0
-                if maybeNewState == 'flushing...':
-                    newState = "flushing"
-                    length = 37.0
-                elif maybeNewState in ('resuming'):
-                    newState = "integrating"
-                elif maybeNewState[:-1] in ('integrating dark',
-                                            'bias integration',
-                                            'integrating..'):
-                    newState = "integrating"
-                    self.exposure.integrationStarted()
-                elif maybeNewState == 'pausing':
-                    newState = "paused"
-                elif maybeNewState == 'integration aborted, will not read chip':
-                    newState = "aborted"
-                elif maybeNewState in ('reading chip...', 'stopping'):
-                    newState = "reading"
-                    length = 115.0
-                elif maybeNewState == 'Sending image to MC':
-                    newState = "processing"
-                    length = 12.0
-                elif maybeNewState in ('Done', 'integration stopped prematurely, chip was read'):
-                    self.exposure.finishUp()
-                    newState = "done"
-                    
+                maybeNewState, length = maybeNewState
+                maybeNewState = Parsing.dequote(maybeNewState)
+                length = float(length)
+                CPL.log('echelleCB.cbDribble', "newstate=%s length=%0.2f" % (maybeNewState, length))
+
+                if maybeNewState in ('flushing', 'reading', 'paused'):
+                    newState = maybeNewState
+                elif maybeNewState == 'integrating':
+                    newState = maybeNewState
+                    # self.exposure.integrationStarted()
+                elif maybeNewState == 'aborted':
+                    CPL.log("nicfps.dribble", "aborted what=%s newState=%s" % (self.what, maybeNewState))
+                    if self.exposure.aborting:
+                        newState = "aborted"
+                    else:
+                        newState = "done"
+                        # self.exposure.finishUp()
+                elif maybeNewState == 'done':
+                    newState = maybeNewState
+                    # self.exposure.finishUp()
+
             if newState != None:
                 CPL.log('echelleCB.cbDribble', "newstate=%s seq=%s" % (newState, self.sequence))
                 if self.exposure:
                     self.exposure.setState(newState, length)
+
         except Exception, e:
             CPL.log('dribble', 'exposureState barf = %s' % (e))
         
         Exposure.CB.cbDribble(self, res)
         
+
 class echelleExposure(Exposure.Exposure):
     def __init__(self, actor, seq, cmd, path, expType, **argv):
         Exposure.Exposure.__init__(self, actor, seq, cmd, path, expType, **argv)
@@ -79,57 +74,29 @@ class echelleExposure(Exposure.Exposure):
         #
         opts, notMatched, leftovers = cmd.match([('time', float),
                                                  ('comment', Parsing.dequote)])
-        self.instArgs = opts
 
         self.comment = opts.get('comment', None)
+        self.commentArg = ""
+        if self.comment != None:
+            self.commentArg = 'comment=%s ' % (CPL.qstr(self.comment))
 
         if expType in ("object", "dark", "flat"):
-            if opts.has_key('time'):
-                t = opts['time']
-                self.expTime = t
-            else:
+            try:
+                self.expTime = opts['time']
+            except:
                 raise Exception("%s exposures require a time argument" % (expType))
-            
+
         self.reserveFilenames()
 
     def reserveFilenames(self):
         """ Reserve filenames, and set .basename.
+
         """
 
         self.pathParts = self.path.getFilenameInParts(keepPath=True)
 
     def _basename(self):
         return os.path.join(*self.pathParts)
-    
-    def integrationStarted(self):
-        """ Called when the integration is _known_ to have started. """
-
-        if self.state == "paused":
-            return
-        
-        outfile = self._basename()
-        if self.debug > 1:
-            CPL.log("echelleExposure", "starting echelle FITS header to %s" % (outfile))
-
-        cmdStr = 'start echelle outfile=%s' % (outfile)
-        if self.comment:
-            cmdStr += ' comment=%s' % (CPL.qstr(self.comment))
-        self.callback('fits', cmdStr)
-        
-    def finishUp(self):
-        """ Clean up and close out the FITS files.
-
-        This is HORRIBLE! -- we are blocking at a) the worst time for the exposure, and b) in a way
-        that can block _other_ instruments!  FIX THIS!!!
-        
-        """
-
-        CPL.log("echelle.finishUp", "state=%s" % (self.state))
-
-        if self.state != "aborted":
-            self.callback('fits', 'finish echelle inkey=scratchFile')
-        else:
-            self.callback('fits', 'abort echelle')
 
     def lastFilesKey(self):
         return self.filesKey(keyName="echelleFiles")
@@ -158,64 +125,70 @@ class echelleExposure(Exposure.Exposure):
                 CPL.qstr(self.pathParts[1] + os.sep),
                 CPL.qstr(userDir),
                 CPL.qstr(self.pathParts[-1]))
-                
         
     def bias(self):
         """ Start a single bias. Requires several self. variables. """
-
-        cb = echelleCB(None, self.sequence, self, "bias")
-        r = self.callback("echelle", "bias: 0",
-                          callback=cb.cbDribble, responseTo=self.cmd, dribble=True)
-        
-    def _expose(self, type):
-        """ Start a single object exposure. Requires several self. variables. """
-
-        cb = echelleCB(None, self.sequence, self, type)
-        r = self.callback("echelle", "integrate: %d" % (int(self.expTime * 1000)),
+         
+        cb = echelleCB(None, self.sequence, self, "bias", debug=2)
+        r = self.callback("echelle", "expose bias diskname=%s %s" % \
+                          (self._basename(), self.commentArg),
                           callback=cb.cbDribble, responseTo=self.cmd, dribble=True)
         
     def object(self):
-        self._expose('object')
+        """ Start a single object exposure. Requires several self. variables. """
+
+        cb = echelleCB(None, self.sequence, self, "object", debug=2)
+        r = self.callback("echelle", "expose object time=%s diskname=%s %s" % \
+                          (self.expTime, self._basename(), self.commentArg),
+                          callback=cb.cbDribble, responseTo=self.cmd, dribble=True)
         
-    def flat(self, **argv):
-        self._expose('flat')
+    def flat(self):
+        """ Start a single flat exposure. Requires several self. variables. """
+
+        cb = echelleCB(None, self.sequence, self, "flat", debug=2)
+        r = self.callback("echelle", "expose flat time=%s diskname=%s %s" % \
+                          (self.expTime, self._basename(), self.commentArg),
+                          callback=cb.cbDribble, responseTo=self.cmd, dribble=True)
         
     def dark(self):
         """ Start a single dark. Requires several self. variables. """
 
-        cb = echelleCB(None, self.sequence, self, "dark")
-        r = self.callback("echelle", "dark: %d" % (int(self.expTime * 1000)),
+        cb = echelleCB(None, self.sequence, self, "dark", debug=2)
+        r = self.callback("echelle", "expose dark time=%s diskname=%s %s" % \
+                          (self.expTime, self._basename(), self.commentArg),
                           callback=cb.cbDribble, responseTo=self.cmd, dribble=True)
         
     def stop(self, cmd, **argv):
         """ Stop the current exposure: cause it to read out immediately, and save the data. """
 
-        cb = echelleCB(cmd, None, self, "stop", failOnFail=False)
-        self.callback("echelle", "stop:",
+        cb = echelleCB(cmd, None, self, "stop", failOnFail=False, debug=2)
+        self.callback("echelle", "expose stop",
                       callback=cb.cbDribble, responseTo=cmd, dribble=True)
         
-        
     def abort(self, cmd, **argv):
-        """ Stop the current exposure immediately, and DISCARD the data. """
+        """ Stop the current exposure immediately, and ECHELLECARD the data. """
 
-        cb = echelleCB(cmd, None, self, "abort", failOnFail=False)
-        self.callback("echelle", "abort:",
+        cb = echelleCB(cmd, None, self, "abort", failOnFail=False, debug=2)
+        self.callback("echelle", "expose abort",
                       callback=cb.cbDribble, responseTo=cmd, dribble=True)
         
     def pause(self, cmd, **argv):
         """ Pause the current exposure. """
 
-        cb = echelleCB(cmd, None, self, "pause", failOnFail=False)
-        self.callback("echelle", "pause:",
+        cb = echelleCB(cmd, None, self, "pause", failOnFail=False, debug=2)
+        self.callback("echelle", "expose pause",
                       callback=cb.cbDribble, responseTo=cmd, dribble=True)
         
     def resume(self, cmd, **argv):
         """ Resume the current exposure. """
 
-        cb = echelleCB(cmd, None, self, "resume", failOnFail=False)
-        self.callback("echelle", "resume:",
+        if self.state != "paused":
+            cmd.fail("echelleTxt", "can only resume paused exposures")
+            return
+
+        cb = echelleCB(cmd, None, self, "resume", failOnFail=False, debug=2)
+        self.callback("echelle", "expose resume",
                       callback=cb.cbDribble, responseTo=cmd, dribble=True)
-        
 
         
         

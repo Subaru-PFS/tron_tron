@@ -10,8 +10,10 @@ hub.init()
 startAllConnections(['client', 'ping',
                      'tcc', 'TUI',
                      'tcc2ecam', 'tcc2gcam',
-                     'ecam', 'gcam',
+                     'ecam',
+                     'gcam',
                      'disExpose', 'dis',
-                     'echelleExpose', 'echelle',
-                     'nicfpsExpose', 'nicfps'])
+                     'nicfpsExpose', 'nicfps',
+#                     'echelleExpose', 'echelle',
+                     ])
 hub.run()

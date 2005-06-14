@@ -3,6 +3,8 @@ __all__ = ['centroid',
            'genStarKey',
            'genStarKeys']
 
+import sys
+
 import numarray
 import pyfits
 
@@ -46,12 +48,11 @@ def findstars(cmd, imgFile, maskFile, frame, tweaks, radius=None, cnt=10):
     img = img.astype('u2')
     header = fits[0].header
     fits.close()
-
+    del fits
+    
     if not frame:
         frame = GuideFrame.ImageFrame(img.shape)
     frame.setImageFromFITSHeader(header)
-
-    # cmd.warn('debug=%s' % (CPL.qstr(frame)))
 
     # Prep for optional ds9 output
     ds9 = tweaks.get('ds9', False)
@@ -62,6 +63,7 @@ def findstars(cmd, imgFile, maskFile, frame, tweaks, radius=None, cnt=10):
         maskbits = maskbits < 0.01
         maskbits = maskbits.astype('u2')
         fits.close()
+        del fits
     else:
         maskbits = img * 0 + 1
         cmd.warn('text="no mask file available to findstars"')
@@ -82,7 +84,7 @@ def findstars(cmd, imgFile, maskFile, frame, tweaks, radius=None, cnt=10):
             img, maskbits, ccdInfo,
             thresh = thresh,
             radMult = tweaks['radMult'],
-            rad=radius,
+            rad=None,
             verbosity=0,
             doDS9=ds9
             )
@@ -112,11 +114,11 @@ def findstars(cmd, imgFile, maskFile, frame, tweaks, radius=None, cnt=10):
                 cmd.warn('text="object at (%0.1f,%0.1f): %d has saturated pixels"' % \
                          (star.xyCtr[0], star.xyCtr[1], star.nSat))
         
-        rad = star.rad
-        if rad > tweaks['cradius']:
-            rad = tweaks['cradius']
-            cmd.warn('debug="trimming predFWHM for starShape from %0.2f to %0.2f"' % (star.rad, rad))
-            star.rad = rad
+        #rad = star.rad
+        #if rad > tweaks['cradius']:
+        #    rad = tweaks['cradius']
+        #    cmd.warn('debug="trimming predFWHM for starShape from %0.2f to %0.2f"' % (star.rad, rad))
+        #    star.rad = rad
             
         s = starshape(cmd, frame, img, maskbits, star, tweaks)
         if not s:
@@ -167,6 +169,7 @@ def centroid(cmd, imgFile, maskFile, frame, seed, tweaks):
     img = img.astype('u2')
     header = fits[0].header
     fits.close()
+    del fits
 
     # Prep for optional ds9 output
     ds9 = tweaks.get('ds9', False)
@@ -181,6 +184,7 @@ def centroid(cmd, imgFile, maskFile, frame, seed, tweaks):
         maskbits = maskbits < 0.01
         maskbits = maskbits.astype('u2')
         fits.close()
+        del fits
     else:
         maskbits = img * 0 + 1
         cmd.warn('text="no mask file available to centroid"')
@@ -243,6 +247,7 @@ def starshape(cmd, frame, img, maskbits, star, tweaks):
         star      - PyGuide centroid info.
     """
 
+    # cmd.warn('debug="ss img refs 1 = %d"' % (sys.getrefcount(img)))
 
     try:
         shape = PyGuide.starShape(img, maskbits,

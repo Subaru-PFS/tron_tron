@@ -23,6 +23,7 @@ import GuideLoop
 import GuiderMask
 import GuideFrame
 import MyPyGuide
+import client
 
 class Guider(Actor.Actor):
     """ The Guider class is expected to be subclassed for the specific guiders.
@@ -387,7 +388,7 @@ class Guider(Actor.Actor):
             self.genPGStatusKeys(cmd)
             
 	cmd.finish('')
-                   
+
     def doCmdExpose(self, cmd, cb, type, tweaks):
         """ Parse the exposure arguments and act on them.
 
@@ -403,7 +404,7 @@ class Guider(Actor.Actor):
             bin    - binning, (N) or (X,Y)
             file   - a file name. If specified, the time,window,and bin arguments are ignored.
             
-        Returns:
+            Returns:
             - a 
         """
 
@@ -429,6 +430,7 @@ class Guider(Actor.Actor):
         
         if filename:
             imgFile = self.findFile(cmd, filename)
+
             if not imgFile:
                 cmd.fail('text=%s' % (CPL.qstr("No such file: %s" % (filename))))
                 return
@@ -437,7 +439,8 @@ class Guider(Actor.Actor):
             frame.setImageFromFITSFile(imgFile)
 
             cb(cmd, imgFile, frame, tweaks=tweaks)
-
+            return
+        
         else:
             if not matched.has_key('time') :
                 cmd.fail('text="Exposure commands must specify exposure times"')
@@ -482,7 +485,7 @@ class Guider(Actor.Actor):
                 cmd.respond('darkFile=%s'% (CPL.qstr(filename)))
             cb(cmd, filename, frame, **cbArgs)
             
-        # cmd.warn('debug=%s' % (CPL.qstr("exposing %s(%s) frame=%s" % (type, itime, frame))))
+        CPL.log('Guider', 'exposing %s(%s) frame=%s' % (type, itime, frame))
         
         mycb = self.camera.cbExpose(cmd, _cb, type, itime, frame)
         return mycb
