@@ -73,7 +73,8 @@ class ImageFrame(object):
         fits = pyfits.open(filename)
         h = fits[0].header
         fits.close()
-
+        del fits
+        
         self.setImageFromFITSHeader(h)
     
     def setImageFromFITSHeader(self, h):

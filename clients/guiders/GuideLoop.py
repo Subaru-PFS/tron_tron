@@ -139,7 +139,7 @@ class GuideLoop(object):
 
         if self.retries < self.tweaks['retry']:
             self.retries += 1
-            self.cmd.warn('text="no star found; retrying (%d of %d tries)"' % \
+            self.cmd.warn('noStarsFound; text="no star found; retrying (%d of %d tries)"' % \
                           (self.retries, self.tweaks['retry']))
             self._guideLoopTop()
         else:
@@ -396,7 +396,7 @@ class GuideLoop(object):
             # if "centerOn" is specified, offset the given position to the boresight,
             # then continue nudging it there.
             seedPos = self.tweaks['centerOn']
-            self.cmd.respond('text="offsetting object at (%d, %d) to the boresight...."' % \
+            self.cmd.respond('text="offsetting object at (%0.1f, %0.1f) to the boresight...."' % \
                              (seedPos[0], seedPos[1]))
             try:
                 star = MyPyGuide.centroid(self.cmd, camFile, maskFile,
@@ -448,7 +448,7 @@ class GuideLoop(object):
                 star = MyPyGuide.centroid(self.cmd, camFile, maskFile,
                                           frame, seedPos, self.tweaks)
                 if not star:
-                    self.failGuiding('no star found near (%d, %d)' % seedPos)
+                    self.failGuiding('no star found near (%0.1f, %0.1f)' % (seedPos[0], seedPos[1]))
                     return
             except Exception, e:
                 CPL.tback('guideloop._firstExposure-3', e)
@@ -519,7 +519,8 @@ class GuideLoop(object):
         if self.offsetWillBeDone > 0.0:
             diff = self.offsetWillBeDone - time.time()
             if diff > 0.0:
-                #self.cmd.warn('text="deferring guider frame for %0.2f seconds to allow immediate offset to finish"' % (diff))
+                CPL.log('gcam',
+                        'deferring guider frame for %0.2f seconds to allow immediate offset to finish' % (diff))
                 time.sleep(diff)        # Yup. Better be short, hunh?
             self.offsetWillBeDone = 0.0
                 
@@ -541,6 +542,9 @@ class GuideLoop(object):
         
         Think about a dead zone, or a scaling function that decreases close to the boresight.
         """
+
+        # Guage star quality somehow.
+
 
         # Convert to axis arcsec
         fitErrors = (abs(star.err[0] * 3600.0 / self.imScale[0]),
