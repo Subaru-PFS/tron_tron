@@ -61,6 +61,8 @@ class GuideLoop(object):
         # Force updates of the above keywords:
         client.call("tcc", "show inst/full") # ImCtr, ImScale
         client.call("tcc", "show object") # Boresight
+
+        self.loopCnt = 0
         
     def __str__(self):
         return "GuideLoop(guiding=%s, listeners=%s)" % (self.state, self.listeners)
@@ -102,7 +104,7 @@ class GuideLoop(object):
     def genStateKey(self, cmd=None):
         if cmd == None:
             cmd = self.cmd
-        cmd.respond('guiding=%s' % (CPL.qstr(self.state)))
+        cmd.respond('guideState=%s,""' % (CPL.qstr(self.state)))
         
     def cleanup(self):
         """ """
@@ -139,7 +141,7 @@ class GuideLoop(object):
 
         if self.retries < self.tweaks['retry']:
             self.retries += 1
-            self.cmd.warn('noStarsFound; text="no star found; retrying (%d of %d tries)"' % \
+            self.cmd.warn('noGuideStar; text="no star found; retrying (%d of %d tries)"' % \
                           (self.retries, self.tweaks['retry']))
             self._guideLoopTop()
         else:
@@ -159,6 +161,8 @@ class GuideLoop(object):
     def run(self):
         """ Actually start the guide loop. """
 
+        ret = client.call('tcc', 'show inst')
+        
         self.state = 'starting'
         self.genTweaksKeys(self.cmd)
         self._doGuide()
@@ -225,7 +229,7 @@ class GuideLoop(object):
             self.telHasBeenMoved = 'Boresight position was changed'
             return
         if mi[6] == 'Y':
-            self.telHasBeenMoved = 'Rotator was moved'
+            self.telHasBeenMoved = 'Rotation was changed'
             return
         if mi[8] == 'Y':
             self.telHasBeenMoved = 'Calibration offset was changed'
@@ -361,7 +365,6 @@ class GuideLoop(object):
         self.genStateKey()
         self.controller.doCmdExpose(self.cmd, self._firstExposure, 'expose', self.tweaks)
 
-
     def _firstExposure(self, cmd, camFile, frame, tweaks=None):
         """ Callback called when the first guide loop exposure is available.
 
@@ -399,19 +402,8 @@ class GuideLoop(object):
             self.cmd.respond('text="offsetting object at (%0.1f, %0.1f) to the boresight...."' % \
                              (seedPos[0], seedPos[1]))
             try:
-                star = MyPyGuide.centroid(self.cmd, camFile, maskFile,
-                                          frame, seedPos, self.tweaks)
-                if not star:
-                    self.failGuiding('no star found near (%0.1f, %0.1f)' % (seedPos[0], seedPos[1]))
-                    return
-            except Exception, e:
-                CPL.tback('guideloop._firstExposure', e)
-                self.failGuiding(e)
-                return
-
-            try:
                 refpos = self.getBoresight()
-                CCDstar = MyPyGuide.star2CCDXY(star, frame)
+                CCDstar = MyPyGuide.imgPos2CCDXY(seedPos, frame)
                 cmdTxt, mustWait = self._genOffsetCmd(cmd, CCDstar, frame, refpos, offsetType='guide', doScale=False)
                 if self.cmd.argDict.has_key('noMove'):
                     self.cmd.warn('text="NOT sending tcc %s"' % (cmdTxt))
@@ -523,7 +515,7 @@ class GuideLoop(object):
                         'deferring guider frame for %0.2f seconds to allow immediate offset to finish' % (diff))
                 time.sleep(diff)        # Yup. Better be short, hunh?
             self.offsetWillBeDone = 0.0
-                
+
         self.controller.doCmdExpose(self.cmd, self._handleGuiderFrame,
                                     'expose', tweaks=self.tweaks)
         
@@ -880,8 +872,9 @@ class GuideLoop(object):
             frame.setImageFromFITSFile(procFile)
 
             # Still need to interpolate to the middle of the exposure.
-            now = time.time()
-            ccdRefPos = self._getExpectedPos(t=now)
+            expMiddle = time.time() - tweaks['exptime'] / 2.0
+            
+            ccdRefPos = self._getExpectedPos(t=expMiddle)
             refPos = frame.ccdXY2imgXY(ccdRefPos)
             self.cmd.respond("guiderPredPos=%0.2f,%0.2f" % (refPos[0], refPos[1]))
 
@@ -942,6 +935,7 @@ class GuideLoop(object):
                     self.retryGuiding()
                     return
             
+            self.genStateKey()
             MyPyGuide.genStarKey(cmd, star, caller='c')
             if stars:
                 MyPyGuide.genStarKeys(cmd, stars, caller='f')

@@ -1,5 +1,6 @@
 __all__ = ['Actor']
 
+import gc
 import inspect
 import pprint
 import sys
@@ -52,6 +53,7 @@ class Actor(Thread):
         self.commands = RO.Alg.OrderedDict({'help': self.helpCmd,
                                             'ping': self.pingCmd,
                                             'dbg' : self.debugCmd,
+                                            'gc'  : self.gcCmd,
                                             'refs' : self.memRefsCmd})
 
         # Generic help template.
@@ -78,6 +80,23 @@ class Actor(Thread):
         return funcHelp
 
     def memRefsCmd(self, cmd):
+        d = {}
+        sys.modules
+        # collect all classes
+        for m in sys.modules.values():
+            for sym in dir(m):
+                o = getattr (m, sym)
+                if type(o) in (types.ClassType, types.TypeType):
+                    d[o] = sys.getrefcount (o)
+        # sort by refcount
+        pairs = map (lambda x: (x[1],x[0]), d.items())
+        pairs.sort()
+        pairs.reverse()
+
+        for n, c in pairs[:100]:
+            CPL.log('memrefs', '%10d %s' % (n, c.__name__))
+
+    def gcCmd(self, cmd):
         d = {}
         sys.modules
         # collect all classes

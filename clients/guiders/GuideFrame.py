@@ -76,7 +76,8 @@ class ImageFrame(object):
         del fits
         
         self.setImageFromFITSHeader(h)
-    
+        del h
+        
     def setImageFromFITSHeader(self, h):
         """ Set our image subframe from the given pyfits header .
 
