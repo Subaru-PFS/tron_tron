@@ -126,9 +126,9 @@ class GuiderMask(object):
         self.cachedMask = im
         self.frame = frame
 
-        cmd.warn('debug="mask refs = %d %d %d"' % (sys.getrefcount(self.cachedMask),
-                                                   sys.getrefcount(self),
-                                                   sys.getrefcount(frame)))
+        #cmd.warn('debug="mask refs = %d %d %d"' % (sys.getrefcount(self.cachedMask),
+        #                                           sys.getrefcount(self),
+        #                                           sys.getrefcount(frame)))
                                                 
         
         return self.cachedFile, self.cachedMask

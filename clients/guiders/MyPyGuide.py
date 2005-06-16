@@ -44,11 +44,12 @@ def findstars(cmd, imgFile, maskFile, frame, tweaks, radius=None, cnt=10):
         cnt = tweaks['cnt']
         
     fits = pyfits.open(imgFile)
-    img = fits[0].data
-    img = img.astype('u2')
+    img0 = fits[0].data
+    img = img0.astype('u2')
     header = fits[0].header
     fits.close()
     del fits
+    del img0
     
     if not frame:
         frame = GuideFrame.ImageFrame(img.shape)
@@ -59,19 +60,19 @@ def findstars(cmd, imgFile, maskFile, frame, tweaks, radius=None, cnt=10):
 
     if maskFile:
         fits = pyfits.open(maskFile)
-        maskbits = fits[0].data
-        maskbits = maskbits < 0.01
-        maskbits = maskbits.astype('u2')
+        maskbits0 = fits[0].data
+        maskbits1 = maskbits0 < 0.01
+        maskbits = maskbits1.astype('u2')
         fits.close()
         del fits
+        del maskbits0
+        del maskbits1
     else:
         maskbits = img * 0 + 1
         cmd.warn('text="no mask file available to findstars"')
 
     CPL.log('findstars', 'tweaks=%s' % (tweaks))
     
-    # skyMed, skySdev = skyStats(cmd, img, maskbits)
-
     thresh = tweaks['thresh']
     if thresh < 1.5:
         cmd.warn('text=%s' % (CPL.qstr("adjusted too small threshold (%0.2f) up to 1.5" % (thresh,))))
@@ -105,21 +106,20 @@ def findstars(cmd, imgFile, maskFile, frame, tweaks, radius=None, cnt=10):
                      (star.xyCtr[0], star.xyCtr[1], star.msgStr))
             continue
         
+        #if star.rad > 2 * tweaks['cradius']:
+        #    cmd.warn('text="ignoring huge object (rad=%0.1f) at (%0.1f,%0.1f)"' % \
+        #             (star.rad,
+        #              star.xyCtr[0], star.xyCtr[1]))
+        #    continue
+
         if star.nSat:
-            if star.nSat >=4:
+            if star.nSat >= 5:
                 cmd.warn('text="ignoring object at (%0.1f,%0.1f): %d saturated pixels"' % \
                          (star.xyCtr[0], star.xyCtr[1], star.nSat))
                 continue
-            if star.nSat >=4:
-                cmd.warn('text="object at (%0.1f,%0.1f): %d has saturated pixels"' % \
-                         (star.xyCtr[0], star.xyCtr[1], star.nSat))
+            cmd.warn('text="object at (%0.1f,%0.1f): %d has saturated pixels"' % \
+                     (star.xyCtr[0], star.xyCtr[1], star.nSat))
         
-        #rad = star.rad
-        #if rad > tweaks['cradius']:
-        #    rad = tweaks['cradius']
-        #    cmd.warn('debug="trimming predFWHM for starShape from %0.2f to %0.2f"' % (star.rad, rad))
-        #    star.rad = rad
-            
         s = starshape(cmd, frame, img, maskbits, star, tweaks)
         if not s:
             continue
@@ -133,20 +133,6 @@ def findstars(cmd, imgFile, maskFile, frame, tweaks, radius=None, cnt=10):
     del maskbits
     
     return starList
-
-def skyStats(cmd, img, mask):
-    """ Get sky statistics via PyGuide.ImUtil.skyStats()
-
-    Returns:
-       - median
-       - std dev.
-    """
-
-    maskedData = numarray.ma.array(img, mask=mask)
-    stats = PyGuide.ImUtil.skyStats(maskedData)
-    del maskedData
-
-    return stats
 
 def centroid(cmd, imgFile, maskFile, frame, seed, tweaks):
     """ Run PyGuide.findstars on the given file
@@ -165,11 +151,12 @@ def centroid(cmd, imgFile, maskFile, frame, seed, tweaks):
     """
     
     fits = pyfits.open(imgFile)
-    img = fits[0].data
-    img = img.astype('u2')
+    img0 = fits[0].data
+    img = img0.astype('u2')
     header = fits[0].header
     fits.close()
     del fits
+    del img0
 
     # Prep for optional ds9 output
     ds9 = tweaks.get('ds9', False)
@@ -180,11 +167,13 @@ def centroid(cmd, imgFile, maskFile, frame, seed, tweaks):
 
     if maskFile:
         fits = pyfits.open(maskFile)
-        maskbits = fits[0].data
-        maskbits = maskbits < 0.01
-        maskbits = maskbits.astype('u2')
+        maskbits0 = fits[0].data
+        maskbits1 = maskbits0 < 0.01
+        maskbits = maskbits1.astype('u2')
         fits.close()
         del fits
+        del maskbits0
+        del maskbits1
     else:
         maskbits = img * 0 + 1
         cmd.warn('text="no mask file available to centroid"')
@@ -296,6 +285,25 @@ def starshape(cmd, frame, img, maskbits, star, tweaks):
     s.chiSq = chiSq
 
     return s
+
+def imgPos2CCDXY(pos, frame):
+    """ Convert an image position to a CCD StarInfo.
+
+    Args:
+         pos     - an (x,y) pair in image coordinates
+         frame   - a CCD/image coordinate frame
+
+    Returns
+        - a StarInfo 
+    """
+
+    s = StarInfo()
+    s.ctr = pos
+    s.err = (0.0, 0.0)
+    s.fwhm = (0.0, 0.0)
+
+    return star2CCDXY(s)
+
 
 def star2CCDXY(star, frame):
     """ Convert all convertable star coordinates from image to CCD coordinates

@@ -30,7 +30,7 @@
    filter what is sent to our layer with passed chunks.
 """
 
-__all__ = ['run', 'call', 'callback', 'listenFor', 'waitFor']
+__all__ = ['run', 'call', 'callback', 'listenFor', 'waitFor', 'timer']
 
 import signal
 import threading
@@ -321,6 +321,7 @@ class TimerCallback(threading.Thread):
         
     def run(self):
 
+        doCallback = False
         self.keepRunning = True
         while self.keepRunning:
             tick = self.hubQueue.get()
@@ -330,11 +331,15 @@ class TimerCallback(threading.Thread):
             if self.debug > 4:
                 CPL.log('timerCallback.run', 'get: %s' % (tick,))
 
-            self.callback()
+            doCallback = True
             break
 
         if self.debug > 0:
             CPL.log("Callback.run", "stopping %s" % (self))
+        hubLink.finishedWith(self.hubQueue)
+
+        if doCallback:
+            self.callback()
 
 def timer(howLong, callback, debug=0):
     """ Arrange for callback to be called in howLong seconds."""

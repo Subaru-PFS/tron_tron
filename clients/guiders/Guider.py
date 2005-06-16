@@ -10,9 +10,11 @@ Coordinate notes:
     whenever we go betweem the cameras and the TCC.
 """
 
+import gc
 import math
 import os
 import sys
+import time
 
 import pyfits
 
@@ -98,7 +100,7 @@ class Guider(Actor.Actor):
         if self.guideLoop:
             self.guideLoop.statusCmd(cmd, doFinish=False)
         else:
-            cmd.respond('guiding="off"')
+            cmd.respond('guideState="off",""')
             
         if doFinish:
             cmd.finish()
@@ -416,6 +418,9 @@ class Guider(Actor.Actor):
         if matched.has_key('exptime'):
             matched['time'] = matched['exptime']
 
+        if matched.get('itime'):
+            tweaks['itime'] = matched['time']
+        
         # Extra double hack: have a configuration override to the filenames. And
         # if that does not work, look for a command option override.
         tweaks['newFile'] = True
@@ -509,6 +514,7 @@ class Guider(Actor.Actor):
         are both unimplemented.
         """
 
+        #t0 = time.time()
         if not frame:
             frame = GuideFrame.ImageFrame(self.size)
             frame.setImageFromFITSFile(camFile)
@@ -531,16 +537,25 @@ class Guider(Actor.Actor):
                 darkFITS = pyfits.open(darkFile)
                 darkBits = darkFITS[0].data * 1.0
                 darkFITS.close()
+
+                x0, y0, x1, y1 = frame.imgFrameAsWindow(inclusive=False)
+
+                darkBits = darkBits[y0:y1, x0:x1]
+                #cmd.warn('debug="dark shape=%s; img shape=%s"' % (darkBits.getshape(),
+                #                                                  camBits.getshape()))
             else:
                 darkBits = camBits * 0.0 + tweaks['bias']
-                
-            camBits -= darkBits
-            camBits *= maskBits
 
-            # Add a pedestal back in. We could tell the PyGuide routines that the bias is 0, too.
-            camBits += tweaks['bias'] + math.sqrt(tweaks['readNoise'])
-            procFile = self.changeFileBase(camFile, "proc")
+            try:
+                camBits -= darkBits
+                camBits *= maskBits
 
+                # Add a pedestal back in. We could tell the PyGuide routines that the bias is 0, too.
+                camBits += tweaks['bias'] + math.sqrt(tweaks['readNoise'])
+                procFile = self.changeFileBase(camFile, "proc")
+            except Exception, e:
+                cmd.warn('text="flatfielding failed: %s"' % (e))
+                         
             try:
                 os.remove(procFile)
             except:
@@ -548,7 +563,11 @@ class Guider(Actor.Actor):
             
             camFITS.writeto(procFile)
             camFITS.close()
-            
+
+        #t1 = time.time()
+        #cmd.warn('debug="procFiles took %0.1fs"' % (t1-t0))
+        
+        darkFile = None
         return procFile, maskFile, darkFile, flatFile
     
     def changeFileBase(self, filename, newbase):
@@ -589,6 +608,8 @@ class Guider(Actor.Actor):
                 darkFile = self.darks[expTime]
             else:
                 darkFile = None
+        elif tweaks.get('biasFile'):
+            return tweaks['biasFile']
         else:
             darkFile = None
 
