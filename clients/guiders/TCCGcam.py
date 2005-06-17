@@ -73,12 +73,12 @@ showstatus
  OK
 
         '''
-        
+        temp = 0.0    # self.camera.cam.read_TempCCD(),
         cmd.respond('txtForTcc=%s' % (CPL.qstr(cmd.raw_cmd)))
         cmd.respond("txtForTcc=%s" % (CPL.qstr('%d "%s" %d %d %d %0.2f nan "%s"' % \
                                             (self.GImCamID, self.GImName,
                                              self.size[0], self.size[1], 16,
-                                             self.camera.cam.read_TempCCD(),
+                                             temp,
                                              "camera: ID# name sizeXY bits/pixel temp lastFileNum"))))
         cmd.respond('txtForTcc=%s' % (CPL.qstr('%d %d %d %d %d %d nan 0 nan "%s"' % \
                                             (1, 1, 0, 0, 0, 0,
@@ -103,7 +103,7 @@ showstatus
         gid = int(cmd.argv[-1])
         self.GImCamID = gid
         
-        lastImageNum = self.camera.lastImageNum() # 'nan'
+        lastImageNum = 'nan' # self.camera.lastImageNum() # 'nan'
         
         cmd.respond('txtForTcc=%s' % (CPL.qstr(cmd.raw_cmd)))
         cmd.respond('txtForTcc=%s' % (CPL.qstr('%d "%s" %d %d %d nan %s "%s"' % \
@@ -188,7 +188,7 @@ showstatus
         self.fileForTcc = filename
         
         ctr, size = frame.imgFrameAsCtrAndSize()
-        ccdTemp = self.camera.cam.read_TempCCD()
+        ccdTemp = 0.0   # self.camera.cam.read_TempCCD()
         cmd.respond('txtForTcc=%s' % (CPL.qstr('%d %d %d %d %d %d %0.2f %d %0.2f %s' % \
                                             (frame.frameBinning[0], frame.frameBinning[1],
                                              ctr[0], ctr[1],

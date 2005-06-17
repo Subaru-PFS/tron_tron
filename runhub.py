@@ -9,6 +9,7 @@ def startAllConnections(names=[]):
 hub.init()
 startAllConnections(['client', 'ping',
                      'tcc', 'TUI',
+                     'gcamera',
                      'tcc2ecam', 'tcc2gcam',
                      'ecam',
                      'gcam',

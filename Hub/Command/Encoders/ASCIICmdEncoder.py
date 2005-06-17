@@ -19,6 +19,7 @@ class ASCIICmdEncoder(CommandEncoder):
         self.useCID = argv.get('useCID', True)
         self.useTarget = argv.get('useTarget', False)
         self.sendCmdr = argv.get('sendCommander', False)
+        self.sendCmdrCID = argv.get('sendCommanderCID', False)
         
     def encode(self, cmd):
         if self.useCID:
@@ -26,7 +27,9 @@ class ASCIICmdEncoder(CommandEncoder):
         else:
             ids = "%s 0 " % (cmd.actorMid,)
 
-        if self.sendCmdr:
+        if self.sendCmdrCID:
+            cmdrInfo = "%s " % (cmd.cmdrCid)
+        elif self.sendCmdr:
             cmdrInfo = "%s " % (cmd.cmdrName)
         else:
             cmdrInfo = ""

@@ -108,7 +108,7 @@ class GCamera(object):
     def cidForCmd(self, cmd):
         return "%s.%s" % (cmd.fullname, self.name)
 
-    def writeFITS(self, cmd, frame, d):
+    def writeFITS(self, cmd, frame, d, filename=None):
         """ Write an image to a new FITS file.
 
         Args:
@@ -122,7 +122,9 @@ class GCamera(object):
 
         """
 
-        filename = self._getFilename()
+        if filename == None:
+            filename = self._getFilename()
+            
         f = file(filename, 'w')
         os.chmod(filename, 0644)
         

@@ -92,7 +92,7 @@ class Guider(Actor.Actor):
     def statusCmd(self, cmd, doFinish=True):
         """ Returns camera and guide loop status keywords. """
 
-        self.camera.statusCmd(cmd, doFinish=False)
+        # self.camera.statusCmd(cmd, doFinish=False)
         self.mask.statusCmd(cmd, doFinish=False)
 
         self.genPGStatusKeys(cmd)
@@ -351,7 +351,7 @@ class Guider(Actor.Actor):
 	    self.guideLoop.stop(cmd, doFinish=False)
 	    self.guideLoop = None
 
-        self.camera.zap(cmd)
+        # self.camera.zap(cmd)
         cmd.finish('')
     zapCmd.helpText = ('zap', 'stop and active exposure and/or cleanup.')
 
@@ -443,7 +443,14 @@ class Guider(Actor.Actor):
             frame = GuideFrame.ImageFrame(self.size)
             frame.setImageFromFITSFile(imgFile)
 
-            cb(cmd, imgFile, frame, tweaks=tweaks)
+            def _cb(cmd, filename, frame):
+                if type == 'expose':
+                    cmd.respond('camFile=%s'% (CPL.qstr(filename)))
+                else:
+                    cmd.respond('darkFile=%s'% (CPL.qstr(filename)))
+                cb(cmd, filename, frame, tweaks=tweaks)
+                
+            self.camera.cbFakefile(cmd, _cb, imgFile)
             return
         
         else:
@@ -472,7 +479,7 @@ class Guider(Actor.Actor):
 
         Args:
             cmd         - the controlling command
-            cb          - the callback function
+o            cb          - the callback function
             type        - 'object' or 'dark'
             time        - integration time in seconds.
             frame       - requested ImageFrame

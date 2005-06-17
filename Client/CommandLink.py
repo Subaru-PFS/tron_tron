@@ -13,7 +13,7 @@ class CommandNub(IO.IOHandler):
     #
     cmdRe = re.compile("""
     \s*
-    (?P<username>[a-z0-9_][a-z0-9-_]*\.[a-z0-9_][a-z0-9-_]*)
+    (?P<username>[a-z0-9_][a-z0-9-_]*\.[a-z0-9_][a-z0-9-_.]*)
     \s*
     (?P<mid>[0-9]+)
     \s+
