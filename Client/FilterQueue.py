@@ -38,6 +38,8 @@ class ClientCmdFilter(BaseFilter):
         self.cid = str(command.cmdrCid)
         self.mid = str(command.cmdrMid)
 
+        CPL.log('Filters', 'created %s' % (self))
+        
     def __str__(self):
         return "ClientCmdFilter(cid=%s, mid=%s, debug=%s, id=%s)" % \
                (self.cid, self.mid, self.debug, id(self))
@@ -70,6 +72,8 @@ class ActorFilter(BaseFilter):
         self.name = name
         self.cmds = {}
 
+        CPL.log('Filters', 'created %s' % (self))
+
     def __str__(self):
         return "ActorFilter(name=%s, cmds=%s, debug=%d, id=%d)" % \
                (self.name, self.cmds, self.debug, id(self))
@@ -97,12 +101,16 @@ class ActorFilter(BaseFilter):
         reply = obj
         key = (str(reply.cmdrCid), str(reply.cmdrMid))
         if key in self.cmds:
-            if self.debug > 6:
-                CPL.log('ClientCmdFilter', 'yes, qsize=%d' % (self.qsize()))
+            if self.debug > 5:
+                CPL.log('ActorFilter', 'yes, qsize=%d, key=%s cmds=%s' % \
+                        (self.qsize(),
+                         key, self.cmds.keys()))
             self.put(obj)
         else:
-            if self.debug > 6:
-                CPL.log('ClientCmdFilter', 'no, qsize=%d' % (self.qsize()))
+            if self.debug > 5:
+                CPL.log('ActorFilter', 'no, qsize=%d, key=%s cmds=%s' % \
+                        (self.qsize(),
+                         key, self.cmds.keys()))
 
 class ClientFilter(BaseFilter):
     """ Filter on reply sources and on key names.

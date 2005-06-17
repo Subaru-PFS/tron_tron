@@ -99,7 +99,6 @@ class AltaGCamera(GCamera.GCamera):
             else:
                 raise
         
-        
     def expose(self, cmd, expType, itime, frame):
         """ Take an exposure of the given length, optionally binned/windowed.
 

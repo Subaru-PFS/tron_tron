@@ -79,10 +79,8 @@ class hubCommands(InternalCmd.InternalCmd):
 
         nubs = cmd.argDict.keys()[1:]
         if len(nubs) == 0:
-            nubs = ('tcc',
-                    'dis', 'grim', 'echelle',
-                    'disExpose', 'grimExpose', 'echelleExpose',
-                    'TUI')
+            cmd.fail('text="must specify one or more nubs to start..."')
+            return
 
         ok = True
         for nub in nubs:

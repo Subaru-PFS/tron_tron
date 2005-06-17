@@ -231,7 +231,8 @@ class Callback(threading.Thread):
         self.start()
 
     def __str__(self):
-        return "Callback(id=%s, q=%s)" % (id(self), self.hubQueue)
+        return "Callback(id=%s, q=%s, callback=%s, dribble=%s)" % (id(self), self.hubQueue,
+                                                       self.callback, self.dribble)
     
     def _del_(self):
         CPL.log("Callback.__del__", "deleting Callback: %s" % (self))
@@ -281,7 +282,7 @@ class Callback(threading.Thread):
                     res.ok = False
                     break
 
-        CPL.log("Callback.run", "stopping %s" % (self))
+        CPL.log("Callback.run", "stopping %s" % (self, ))
         hubLink.finishedWith(self.hubQueue)
 
         if not self.dribble and self.callback:

@@ -35,8 +35,7 @@ class fits(InternalCmd.InternalCmd):
         # FITS
         self.headers = {}
 
-        self.instClasses = { 'grim' : grimFITS,
-                             'echelle' : echelleFITS,
+        self.instClasses = { 'echelle' : echelleFITS,
                              'dis' : disFITS,
                              'nicfps' : nicfpsFITS }
 
