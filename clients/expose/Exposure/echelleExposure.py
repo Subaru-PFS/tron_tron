@@ -203,6 +203,7 @@ class echelleExposure(Exposure.Exposure):
         """ Start a single bias. Requires several self. variables. """
 
         self._expose('bias')
+        self.integrationStarted()
         
     def object(self):
         """ Start a single object exposure. Requires several self. variables. """
@@ -224,11 +225,6 @@ class echelleExposure(Exposure.Exposure):
 
         self._expose('dark time=%0.2f' % (self.expTime))
 
-    def flat(self):
-        """ Start a single flat exposure. Requires several self. variables. """
-
-        self._expose('dark time=%0.2f' % (self.expTime))
-        
     def stop(self, cmd, **argv):
         """ Stop the current exposure: cause it to read out immediately, and save the data. """
 

@@ -24,7 +24,7 @@ class StarInfo(object):
             ns.__dict__[k] = v
 
         return ns
-    
+
 def findstars(cmd, imgFile, maskFile, frame, tweaks, radius=None, cnt=10):
     """ Run PyGuide.findstars on the given file
 
@@ -44,12 +44,15 @@ def findstars(cmd, imgFile, maskFile, frame, tweaks, radius=None, cnt=10):
         cnt = tweaks['cnt']
         
     fits = pyfits.open(imgFile)
-    img0 = fits[0].data
-    img = img0.astype('u2')
+    img = fits[0].data
+    min = img.min()
+    max = img.max()
+    if min < 0 or max > 65536:
+        cmd.warn('text="bad pixel values for findstars: %0.1f .. %0.1f"' % (min, max))
+    img = img.astype('u2')
     header = fits[0].header
     fits.close()
     del fits
-    del img0
     
     if not frame:
         frame = GuideFrame.ImageFrame(img.shape)
@@ -60,13 +63,11 @@ def findstars(cmd, imgFile, maskFile, frame, tweaks, radius=None, cnt=10):
 
     if maskFile:
         fits = pyfits.open(maskFile)
-        maskbits0 = fits[0].data
-        maskbits1 = maskbits0 < 0.01
-        maskbits = maskbits1.astype('u2')
+        maskbits = fits[0].data
+        maskbits = maskbits < 0.01
+        maskbits = maskbits.astype('u2')
         fits.close()
         del fits
-        del maskbits0
-        del maskbits1
     else:
         maskbits = img * 0 + 1
         cmd.warn('text="no mask file available to findstars"')
@@ -78,7 +79,9 @@ def findstars(cmd, imgFile, maskFile, frame, tweaks, radius=None, cnt=10):
         cmd.warn('text=%s' % (CPL.qstr("adjusted too small threshold (%0.2f) up to 1.5" % (thresh,))))
         thresh = 1.5
 
-    ccdInfo = PyGuide.CCDInfo(tweaks['bias'], tweaks['readNoise'], tweaks['ccdGain'])
+    ccdInfo = PyGuide.CCDInfo(tweaks['bias'], tweaks['readNoise'], int(tweaks['ccdGain']))
+
+    CPL.log('findstars', 'imgFile=%s, maskFile=%s, tweaks=%s' % (imgFile, maskFile, tweaks))
     
     try:
         res = PyGuide.findStars(
@@ -151,12 +154,15 @@ def centroid(cmd, imgFile, maskFile, frame, seed, tweaks):
     """
     
     fits = pyfits.open(imgFile)
-    img0 = fits[0].data
-    img = img0.astype('u2')
+    img = fits[0].data
+    min = img.min()
+    max = img.max()
+    if min < 0 or max > 65536:
+        cmd.warn('text="bad pixel values for findstars: %0.1f .. %0.1f"' % (min, max))
+    img = img.astype('u2')
     header = fits[0].header
     fits.close()
     del fits
-    del img0
 
     # Prep for optional ds9 output
     ds9 = tweaks.get('ds9', False)
@@ -167,13 +173,11 @@ def centroid(cmd, imgFile, maskFile, frame, seed, tweaks):
 
     if maskFile:
         fits = pyfits.open(maskFile)
-        maskbits0 = fits[0].data
-        maskbits1 = maskbits0 < 0.01
-        maskbits = maskbits1.astype('u2')
+        maskbits = fits[0].data
+        maskbits = maskbits < 0.01
+        maskbits = maskbits.astype('u2')
         fits.close()
         del fits
-        del maskbits0
-        del maskbits1
     else:
         maskbits = img * 0 + 1
         cmd.warn('text="no mask file available to centroid"')
@@ -183,7 +187,7 @@ def centroid(cmd, imgFile, maskFile, frame, seed, tweaks):
         cmd.warn('text=%s' % (CPL.qstr("adjusted too small threshold (%0.2f) up to 1.5" % (thresh,))))
         thresh = 1.5
 
-    ccdInfo = PyGuide.CCDInfo(tweaks['bias'], tweaks['readNoise'], tweaks['ccdGain'])
+    ccdInfo = PyGuide.CCDInfo(tweaks['bias'], tweaks['readNoise'], int(tweaks['ccdGain']))
     
     #cmd.warn('debug=%s' % (CPL.qstr("calling centroid file=%s, frame=%s, seed=%s" % \
     #                                (imgFile, frame, seed))))
@@ -302,7 +306,7 @@ def imgPos2CCDXY(pos, frame):
     s.err = (0.0, 0.0)
     s.fwhm = (0.0, 0.0)
 
-    return star2CCDXY(s)
+    return star2CCDXY(s, frame)
 
 
 def star2CCDXY(star, frame):

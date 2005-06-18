@@ -45,23 +45,6 @@ class GimCtrlGCamera(GCamera.GCamera):
         pass
 
 
-    def rawCmd(self, cmd, timeout):
-        """ Send a command directly to the controller. """
-
-        cmdStr = cmd.raw_cmd
-
-        # 
-        if cmd.program() != "TC01":
-            cmdStr.strip()
-        cmd.warn("debug=%r" % (cmdStr))
-        
-        return self.sendCmdTxt(cmdStr, timeout)
-        
-    def sendCmdTxt(self, cmdTxt, timeout):
-        """ Send a command string directly to the controller. """
-
-        return self.conn.sendCmd(cmdTxt, timeout)
-        
     def genExposeCommand(self, cmd, expType, itime, frame):
         """ Generate the command line for a given exposure.
 
@@ -95,21 +78,6 @@ class GimCtrlGCamera(GCamera.GCamera):
 
         return None, ' '.join(cmdParts)
 
-    def expose(self, cmd, expType, itime):
-        """ Take an exposure of the given length, optionally binned/windowed.
-
-        Args:
-            expType  - 'dark' or 'expose'
-            itime    - seconds to integrate for
-            frame    - ImageFrame
-
-        """
-
-        # Build arguments
-        actor, cmdLine = self.genExposeCommand(cmd, expType, itime, frame=frame)
-        
-        return self.rawCmd(cmdLine, itime + 15)
-
     def cbExpose(self, cmd, cb, expType, itime, frame, errorsTo=None):
         """ Take an exposure of the given length, optionally binned/windowed.
 
@@ -138,35 +106,4 @@ class GimCtrlGCamera(GCamera.GCamera):
         # Trigger exposure
         cmd.warn('debug=%s' % (CPL.qstr("exposure command: %s" % (cmdLine))))
         return self.conn.sendExposureCmd(cmd, cmdLine, itime, _cb)
-
-    def getLastImageName(self, cmd):
-        filename = self._getLastImageName()
-        cmd.respond("%sRawImage=%s" % (self.name, CPL.qstr(filename)))
-
-        return filename
-        
-    def _getLastImageName(self):
-        """ Fetch the name of the last image read from the last.image name.
-        """
-        
-        f = open(os.path.join(self.inPath, "last.image"), "r")
-        l = f.read()
-        f.close()
-
-        return os.path.join(self.inPath, l)
-    
-    def copyinNewRawImage(self):
-        """ Copy (and annotate) the latest raw GimCtrl image into the new directory."""
-        
-        oldPath = self._getLastImageName()
-        newPath = self._getFilename()
-
-        CPL.log("copyinNewRawImage", "old=%s; new=%s" % (oldPath, newPath))
-        inFITS = pyfits.open(oldPath)
-        hdr = inFITS[0].header
-        inFITS.writeto(newPath)
-        inFITS.close()
-        os.chmod(newPath, 0644)
-        
-        return newPath
 

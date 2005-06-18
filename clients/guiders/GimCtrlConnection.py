@@ -63,6 +63,7 @@ class GimCtrlConnection(object):
             lines.append(l.replace('\n', ''))
 
         return lines
+
     
     def sendExposureCmd(self, cmd, cmdString, expTime, callback):
         """ Start an exposure, and arrange for a callback to be called after the exposure is done.
