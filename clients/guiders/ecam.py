@@ -10,25 +10,19 @@ import sys
 import client
 import CPL
 import Guider
-import GimCtrlGCamera
 import TCCGcam
 import GuideFrame
-
+import CameraShim
+                         
 class ecam(Guider.Guider, TCCGcam.TCCGcam):
-    """ 
-    """
-    
     def __init__(self, **argv):
-        ccdSize = CPL.cfg.get('ecam', 'ccdSize')
-
+        ccdSize = CPL.cfg.get('ecamera', 'ccdSize')
         path = os.path.join(CPL.cfg.get('ecam', 'imageRoot'), CPL.cfg.get('ecam', 'imageDir'))
-        camera = GimCtrlGCamera.GimCtrlGCamera('ecam',
-                                               '/export/images/guider', path,
-                                               ccdSize,
-                                               **argv)
-        Guider.Guider.__init__(self, camera, 'ecam', **argv)
+        cameraShim = CameraShim.CameraShim('ecamera', ccdSize, self)
+        Guider.Guider.__init__(self, cameraShim, 'ecam', **argv)
         TCCGcam.TCCGcam.__init__(self, **argv)
 
+        # Addition commands for GimCtrl camera
         self.commands.update({'rawCmd':    self.doRawCmd})
         
     def _setDefaults(self):
@@ -40,19 +34,19 @@ class ecam(Guider.Guider, TCCGcam.TCCGcam):
     def initCmd(self, cmd):
         """ Pass on an 'init' command from a TCC to our camera. """
         
-        ret = self.camera.rawCmd(cmd, 10)
+        ret = self.rawCmd(cmd, 10)
         self.echoToTcc(cmd, ret)
     
     def doTccSetcam(self, cmd):
         """ Pass on a 'setcam' command from a TCC to our camera. """
 
-        ret = self.camera.rawCmd(cmd, 30)
+        ret = self.rawCmd(cmd, 30)
         self.echoToTcc(cmd, ret)
     
     def doTccShowstatus(self, cmd):
         """ Pass on a 'setcam' command from a TCC to our camera. """
 
-        ret = self.camera.rawCmd(cmd, 10)
+        ret = self.rawCmd(cmd, 10)
         self.echoToTcc(cmd, ret)
     
     def doRawCmd(self, cmd):
@@ -62,10 +56,10 @@ class ecam(Guider.Guider, TCCGcam.TCCGcam):
         space = rawCmd.find(' ')
         if space >= 0:
             rawCmd = rawCmd[space:]
-            
-        ret = self.camera.sendCmdTxt(rawCmd, 30)
-	for i in range(len(ret)):
-	    cmd.respond('rawTxt=%s' % (CPL.qstr(ret[i])))
+
+        ret = client.call('ecamera', 'raw %s' % (rawCmd))
+	for i in range(len(ret.lines)):
+	    cmd.respond(ret.lines[i])
 	cmd.finish()
     
     def doTccDoread(self, cmd):
@@ -79,7 +73,7 @@ class ecam(Guider.Guider, TCCGcam.TCCGcam):
             cmd.fail('txtForTcc=%s' % (CPL.qstr("Could not parse command %s" % (cmd.raw_cmd))))
             return
 
-        ret = self.camera.rawCmd(cmd, 120)
+        ret = self.rawCmd(cmd, 120)
         fname = self.camera.copyinNewRawImage()
         frame = GuideFrame.ImageFrame(self.size)
         frame.setImageFromFITSFile(fname)

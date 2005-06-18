@@ -15,7 +15,9 @@ import math
 import os
 import sys
 import time
+import pprint
 
+import numarray
 import pyfits
 
 import Command
@@ -62,6 +64,13 @@ class Guider(Actor.Actor):
         self.config = self.defaults.copy()
         self._setMask(None, self.config['maskFile'])
     
+    def xxx(self):
+        refs = gc.get_referents(self)
+        for x in refs:
+            CPL.log("refs", "Guide ref: %s" % (pprint.pformat(x)))
+            for y in gc.get_referents(x):
+                CPL.log("refs", "++++++++++ ref: %s" % (pprint.pformat(y)))
+        
     def _setDefaults(self):
         self.defaults = {}
 
@@ -415,6 +424,9 @@ class Guider(Actor.Actor):
                                                     ('bin', str),
                                                     ('file', cmd.qstr)])
 
+        #if notMatched:
+        #    cmd.warn('text="unknown arguments: %s"' % (notMatched))
+            
         if matched.has_key('exptime'):
             matched['time'] = matched['exptime']
 
@@ -539,7 +551,8 @@ o            cb          - the callback function
         if flatFile:
             camFITS = pyfits.open(camFile)
             camBits = camFITS[0].data
-
+            camBits = camBits * 1.0
+            
             if darkFile:
                 darkFITS = pyfits.open(darkFile)
                 darkBits = darkFITS[0].data * 1.0
@@ -557,8 +570,24 @@ o            cb          - the callback function
                 camBits -= darkBits
                 camBits *= maskBits
 
-                # Add a pedestal back in. We could tell the PyGuide routines that the bias is 0, too.
-                camBits += tweaks['bias'] + math.sqrt(tweaks['readNoise'])
+                # Shove bias-level pixels into the mask so that displays look OK.
+                maskBits = maskBits > 0.01
+                
+                # If necessary, squeeze pixels back into 16-bit unsigned values.
+                min = camBits.min()
+                max = camBits.max()
+                bias = tweaks['bias'] + math.sqrt(tweaks['readNoise'])
+
+                if min < 0 or (max - min) > (65536 - bias):
+                    camBits -= min
+                    camBits *= ((65536 - bias) / max)
+
+                camBits *= maskBits
+
+                # Add a pedestal back in.
+                # We could tell the PyGuide routines that the bias is 0, too.
+                camBits += bias
+                #camBits = camBits.astype('u2')
                 procFile = self.changeFileBase(camFile, "proc")
             except Exception, e:
                 cmd.warn('text="flatfielding failed: %s"' % (e))
@@ -567,13 +596,20 @@ o            cb          - the callback function
                 os.remove(procFile)
             except:
                 pass
+
             
+            camFITS[0].data = camBits
             camFITS.writeto(procFile)
             camFITS.close()
 
+            del darkBits
+            del camBits
+            
         #t1 = time.time()
         #cmd.warn('debug="procFiles took %0.1fs"' % (t1-t0))
         
+        del maskBits
+
         darkFile = None
         return procFile, maskFile, darkFile, flatFile
     
@@ -771,6 +807,9 @@ o            cb          - the callback function
                                                    ('cnt', int),
                                                    ('ds9', cmd.qstr)])
 
+        #if unmatched:
+        #    cmd.warn('text="unknown arguments: %s"' % (unmatched))
+            
         if matched.has_key('exptime'):
             matched['time'] = matched['exptime']
 

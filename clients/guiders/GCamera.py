@@ -16,28 +16,31 @@ import os.path
 import time
 
 import CPL
+import GuideFrame
 
 class GCamera(object):
-    def __init__(self, name, path, ccdSize, **argv):
+    def __init__(self, name, **argv):
         """ Create a GCamera instance.
 
         Args:
              name        - a unique, human-readable name.
-             path        - a root path for image files. We add a per-day subdirectory
-             ccdSize     - [x, y] - the size of the unbinned fullframe CCD.
         """
         
         self.name = name
         self.nameChar = name[0]
         
+        self.ccdSize = CPL.cfg.get(name, 'ccdSize')
+        self.path = CPL.cfg.get(name, 'path')
+
         # Basic sanity checks _now_
         #
-        if not os.path.isdir(path):
+        if not os.path.isdir(self.path):
             raise RuntimeError("path given to %s is not a directory: %s" % (name, path))
-
-        self.ccdSize = ccdSize
-        self.path = path
-
+        # Track binning and window, since we don't necessarily
+        # want to have to set them for each exposure.
+        self.binning = [None, None]
+        self.window = [None, None, None, None]
+    
         self.lastImage = None
         self.lastDir = None
         self.lastID = None
@@ -47,6 +50,148 @@ class GCamera(object):
     def __str__(self):
         return "GCamera(name=%s, ccdSize=%s, path=%s)" % (self.name, self.ccdSize, self.path)
     
+    def initCmd(self, cmd, doFinish=True):
+        self._doConnect()
+        cmd.finish('text="loaded camera connection"')
+
+        if doFinish:
+            cmd.finish()
+            
+    def exposeCmd(self, cmd):
+        """ Take a single guider exposure and return it. 
+        """
+        
+        self.doCmdExpose(cmd, 'expose', {})
+
+    exposeCmd.helpText = ('expose time=S filename=FNAME [window=X0,Y0,X1,Y1] [bin=N] [bin=X,Y]', 
+                          'take an open-shutter exposure')
+
+    def darkCmd(self, cmd):
+        """ Take a single guider dark and return it. This overrides but
+        does not stop the guiding loop.
+        """
+
+        self.doCmdExpose(cmd, 'dark', {})
+        
+    darkCmd.helpText = ('dark time=S filename=FNAME [window=X0,Y0,X1,Y1] [bin=N] [bin=X,Y]',
+                        'take a closed-shutter exposure')
+
+    def doCmdExpose(self, cmd, type, tweaks):
+        """ Parse the exposure arguments and act on them.
+
+        Args:
+            cmd    - the controlling Command
+            type   - 'object' or 'dark'
+            tweaks - dictionary of configuration values.
+            
+        CmdArgs:
+            time   - exposure time, in seconds. exptime iis an alias, for som reason.
+            window - subframe, (X0,Y0,X1,Y1)
+            bin    - binning, (N) or (X,Y)
+            offset - the LL pixel to acquire. (X,Y)
+            size   - the size of the rectangle to acquire. (X,Y)
+            usefile - an existing full path name.
+                        If specified, the time,window,and bin arguments are ignored,
+                        and the given file is simply returned.
+
+        Cmd
+            
+            Returns:
+            - a 
+        """
+
+        matched, notMatched, leftovers = cmd.match([('time', float), ('exptime', float),
+                                                    ('bin', str),
+                                                    ('offset', str),
+                                                    ('size', str),
+                                                    ('usefile', cmd.qstr)])
+        if matched.has_key('exptime'):
+            matched['time'] = matched['exptime']
+
+        # Extra double hack: use a disk file instead of acquiring a new image
+        filename = None
+        if matched.has_key('usefile'):
+            filename = matched['usefile']
+            cmd.finish('camFile=%s' % (filename))
+            return
+
+
+        if not matched.has_key('time') :
+            cmd.fail('text="Exposure commands must specify exposure times"')
+            return
+        time = matched['time']
+
+        if matched.has_key('bin'):
+            bin = self.parseBin(matched['bin'])
+        else:
+            bin = 1,1
+
+        if matched.has_key('offset'):
+            offset = self.parseCoord(matched['offset'])
+        else:
+            offset = 0,0
+                
+        if matched.has_key('size'):
+            size = self.parseCoord(matched['size'])
+        else:
+            size = self.ccdSize
+
+        frame = GuideFrame.ImageFrame(self.ccdSize)
+        frame.setImageFromFrame(bin, offset, size)
+        
+        filename = self._expose(cmd, filename, type, time, frame)
+        cmd.finish('camFile=%s' % (filename))
+
+    def parseCoord(self, c):
+        """ Parse a coordinate pair of the form X,Y.
+
+        Args:
+           s    - a string of the form "X,Y"
+
+        Returns:
+           - the window coordinates, as a pair of integers.
+
+        Raises:
+           Exception on parsing errors.
+           
+        """
+
+        try:
+            parts = c.split(',')
+            coords = map(float, parts)
+            if len(coords) != 2:
+                raise Exception
+        except:
+            raise Exception("cooordinate format must be X,Y with all coordinates being floats (not %s)." % (parts))
+
+        return coords
+
+    def parseBin(self, s):
+        """ Parse a binning specification of the form X,Y or N
+
+        Args:
+           s    - a string of the form "X,Y" or "N"
+
+        Returns:
+           - the binning factors coordinates, as a duple of integers.
+
+        Raises:
+           Exception on parsing errors.
+           
+        """
+
+        try:
+            parts = s.split(',')
+            if len(parts) == 1:
+                parts = parts * 2
+            if len(parts) != 2:
+                raise Exception
+            coords = map(int, parts)
+        except:
+            raise Exception("binning must be specified as X,Y or N with all coordinates being integers.")
+
+        return coords
+        
     def _getFilename(self):
         """ Return the next available filename.
 
@@ -108,72 +253,3 @@ class GCamera(object):
     def cidForCmd(self, cmd):
         return "%s.%s" % (cmd.fullname, self.name)
 
-    def writeFITS(self, cmd, frame, d, filename=None):
-        """ Write an image to a new FITS file.
-
-        Args:
-            cmd    - the controlling Command
-            frame  - the ImageFrame
-            d   - dictionary including:
-                     type:     FITS IMAGETYP
-                     iTime:    integration time
-                     filename: the given filename, or None
-                     data:     the image data as a string, or None if saved to a file.
-
-        """
-
-        if filename == None:
-            filename = self._getFilename()
-            
-        f = file(filename, 'w')
-        os.chmod(filename, 0644)
-        
-        basename = os.path.basename(filename)
-
-        binning = frame.frameBinning
-        corner, size = frame.imgFrameAsCornerAndSize()
-        
-        # cmd.warn('debug=%s' % (CPL.qstr("writeFITS frame=%s" % (frame))))
-
-        cards = ["%-80s" % ('SIMPLE  = T'),
-                 "%-80s" % ('BITPIX  = 16'),
-                 "%-80s" % ('NAXIS   = 2'),
-                 "%-80s" % ('NAXIS1  = %d' % (size[0])),
-                 "%-80s" % ('NAXIS2  = %d' % (size[1])),
-                 "%-80s" % ("INSTRUME= '%s'" % self.name),
-                 "%-80s" % ('BSCALE  = 1.0'),
-                 "%-80s" % ('BZERO   = 32768.0'),
-                 "%-80s" % ("IMAGETYP= '%s'" % d['type']),
-                 "%-80s" % ('EXPTIME = %0.2f' % d['iTime']),
-                 "%-80s" % ("TIMESYS = 'UTC'"),
-                 "%-80s" % ("DATE-OBS= '%s'" % (CPL.isoTS(d['startTime']))),
-                 "%-80s" % ('CCDTEMP = %0.1f' % (self.getCCDTemp())),
-                 "%-80s" % ("FILENAME= '%s'" % (basename)),
-                 "%-80s" % ("FULLX   = %d" % (self.ccdSize[0])),
-                 "%-80s" % ("FULLY   = %d" % (self.ccdSize[1])),
-                 "%-80s" % ("BEGX    = %d" % (corner[0])),
-                 "%-80s" % ("BEGY    = %d" % (corner[1])),
-                 "%-80s" % ("BINX    = %d" % (binning[0])),
-                 "%-80s" % ("BINY    = %d" % (binning[1])),
-                 "%-80s" % ('END')]
-
-        # Write out all our header cards
-        for c in cards:
-            f.write(c)
-
-        # Fill the header out to the next full FITS block (2880 bytes, 36 80-byte cards.)
-        partialBlock = len(cards) % 36
-        if partialBlock != 0:
-            blankCard = ' ' * 80
-            f.write(blankCard * (36 - partialBlock))
-
-        # Write out the data and fill out the file to a full FITS block.
-        f.write(d['data'])
-        partialBlock = len(d['data']) % 2880
-        if partialBlock != 0:
-            f.write(' ' * (2880 - partialBlock))
-
-        f.close()
-        
-        return filename
-    

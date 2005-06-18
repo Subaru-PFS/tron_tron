@@ -48,8 +48,18 @@ class GuideLoop(object):
         self._startingUTCoffset = -32.0
         self.tccDtime = -3506716800.0 + self._startingUTCoffset
 
+        self.dontCareAboutSlews = False
+        
         # We pay attention to a bunch of keywords.
         self.listeners = []
+        self.listenToThem()
+        
+        self.loopCnt = 0
+        
+    def __str__(self):
+        return "GuideLoop(guiding=%s, listeners=%s)" % (self.state, self.listeners)
+    
+    def listenToThem(self):
         self.listeners.append(client.listenFor('tcc', ['MoveItems', 'Moved', 'SlewBeg', 'SlewSuperceded'],
                                                self.listenToMoveItems))
         self.listeners.append(client.listenFor('tcc', ['TCCStatus'], self.listenToTCCStatus))
@@ -61,12 +71,7 @@ class GuideLoop(object):
         # Force updates of the above keywords:
         client.call("tcc", "show inst/full") # ImCtr, ImScale
         client.call("tcc", "show object") # Boresight
-
-        self.loopCnt = 0
         
-    def __str__(self):
-        return "GuideLoop(guiding=%s, listeners=%s)" % (self.state, self.listeners)
-    
     def statusCmd(self, cmd, doFinish=True):
         """ Generate all our status keywords. """
 
@@ -192,6 +197,9 @@ class GuideLoop(object):
           - SlewEnd, indicating the end of a real slew or a computed offset
         """
 
+        if self.dontCareAboutSlews:
+            return
+        
         mi = reply.KVs.get('MoveItems', 'XXXXXXXX')
         
         # Has an uncomputed offset just been issued?
@@ -239,6 +247,9 @@ class GuideLoop(object):
         """ Figure out if the telescope has been moved by examining the TCC's TCCStatus key.
         """
 
+        if self.dontCareAboutSlews:
+            return
+        
         stat = reply.KVs['TCCStatus']
         axisStat = stat[0]
 
@@ -251,6 +262,9 @@ class GuideLoop(object):
     def listenToTCCSlewEnd(self, reply):
         """ Wait for a computed offset to finish.
         """
+
+        if self.dontCareAboutSlews:
+            return
 
         if self.waitingForSlewEnd:
             self.waitingForSlewEnd = False
@@ -321,8 +335,9 @@ class GuideLoop(object):
             self.guidingType = 'boresight'
             self.refPVT = None
 
-            self.state = 'on'
+            self.state = 'starting'
             self.genStateKey()
+            self.state = 'on'
             self.controller.doCmdExpose(self.cmd, self._handleGuiderFrame,
                                         'expose', tweaks=self.tweaks)
             return
@@ -342,7 +357,10 @@ class GuideLoop(object):
 
             if self.cmd.argDict.has_key('noGuide'):
                 self.tweaks['noGuide'] = True
-
+                self.dontCareAboutSlews = True
+                self.centerAndExpose(self.cmd)
+                return
+            
         elif gstar:
             # if "gstar" is specified, use that as the guide star.
             #
@@ -361,10 +379,44 @@ class GuideLoop(object):
             #
             self.guidingType = 'field'
 
-        self.state = 'starting'
-        self.genStateKey()
+        if not self.tweaks.has_key('noGuide'):
+            self.state = 'starting'
+            self.genStateKey()
         self.controller.doCmdExpose(self.cmd, self._firstExposure, 'expose', self.tweaks)
 
+    def centerAndExpose(self, cmd):
+
+        # if "centerOn" is specified, offset the given position to the boresight,
+        # then continue nudging it there.
+        seedPos = self.tweaks['centerOn']
+
+        self.cmd.respond('text="offsetting object at (%0.1f, %0.1f) to the boresight...."' % \
+                         (seedPos[0], seedPos[1]))
+        try:
+            refpos = self.getBoresight()
+            frame = GuideFrame.ImageFrame(self.controller.size)
+            CCDstar = MyPyGuide.imgPos2CCDXY(seedPos, frame)
+            cmdTxt, mustWait = self._genOffsetCmd(cmd, CCDstar,
+                                                  frame, refpos,
+                                                  offsetType='guide',
+                                                  doScale=False)
+            self.state = 'offsetting'
+            ret = client.call('tcc', cmdTxt,
+                        cid=self.controller.cidForCmd(self.cmd))
+            if mustWait:
+                time.sleep(CPL.cfg.get('telescope', 'offsetSettlingTime'))
+            self.controller.doCmdExpose(self.cmd, self._handleGuiderFrame,
+                                        'expose', tweaks=self.tweaks)
+
+        except Exception, e:
+            CPL.tback('guideloop._firstExposure-2', e)
+            self.failGuiding(e)
+            return
+
+        if not ret.ok:
+            self.failGuiding('centering offset failed')
+            return
+            
     def _firstExposure(self, cmd, camFile, frame, tweaks=None):
         """ Callback called when the first guide loop exposure is available.
 
@@ -407,6 +459,15 @@ class GuideLoop(object):
                 cmdTxt, mustWait = self._genOffsetCmd(cmd, CCDstar, frame, refpos, offsetType='guide', doScale=False)
                 if self.cmd.argDict.has_key('noMove'):
                     self.cmd.warn('text="NOT sending tcc %s"' % (cmdTxt))
+                # If we just want to center up and confirm the star, shortcut here
+                elif self.tweaks.has_key('noGuide'):
+                    client.call('tcc', cmdTxt,
+                                 cid=self.controller.cidForCmd(self.cmd))
+                    self.stopGuiding()
+                    #self.state = 'offsetting'
+                    #self.controller.doCmdExpose(self.cmd, self._handleGuiderFrame,
+                    #                            'expose', tweaks=self.tweaks)
+                    return
                 else:
                     if self.invalidLoop:
                         self._guideLoopTop()
@@ -766,7 +827,8 @@ class GuideLoop(object):
         if self.invalidLoop:
             self._guideLoopTop()
             return
-        
+
+        self.genStateKey()
         cmdTxt, mustWait = self._genOffsetCmd(cmd, star, frame, refGpos, offsetType, doScale, fname=fname)
         if not cmdTxt:
             self._guideLoopTop()
@@ -868,6 +930,10 @@ class GuideLoop(object):
                                         procFile, maskFile, camFile, darkFile, flatFile)
             self.genChangedTweaks(self.cmd)
             
+            if self.tweaks.has_key('noGuide'):
+                self.stopGuiding()
+                return
+            
             frame = GuideFrame.ImageFrame(self.controller.size)
             frame.setImageFromFITSFile(procFile)
 
@@ -934,8 +1000,7 @@ class GuideLoop(object):
                     cmd.warn('text="guide star not confirmed by findstars"')
                     self.retryGuiding()
                     return
-            
-            self.genStateKey()
+
             MyPyGuide.genStarKey(cmd, star, caller='c')
             if stars:
                 MyPyGuide.genStarKeys(cmd, stars, caller='f')
