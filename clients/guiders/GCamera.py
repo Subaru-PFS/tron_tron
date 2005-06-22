@@ -104,18 +104,22 @@ class GCamera(object):
                                                     ('bin', str),
                                                     ('offset', str),
                                                     ('size', str),
+                                                    ('filename', cmd.qstr),
                                                     ('usefile', cmd.qstr)])
         if matched.has_key('exptime'):
             matched['time'] = matched['exptime']
 
         # Extra double hack: use a disk file instead of acquiring a new image
-        filename = None
         if matched.has_key('usefile'):
             filename = matched['usefile']
             cmd.finish('camFile=%s' % (filename))
             return
 
-
+        if not matched.has_key('filename') :
+            cmd.fail('text="Exposure commands must specify a filename"')
+            return
+        filename = matched['filename']
+        
         if not matched.has_key('time') :
             cmd.fail('text="Exposure commands must specify exposure times"')
             return

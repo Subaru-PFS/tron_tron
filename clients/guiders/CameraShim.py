@@ -14,7 +14,7 @@ class CameraShim(object):
         if doFinish:
             cmd.finish()
             
-    def cbExpose(self, cmd, cb, type, itime, frame):
+    def cbExpose(self, cmd, cb, type, itime, frame, filename=None):
         """
         Args:
              cb        callback that gets (filename, frame)
@@ -22,23 +22,24 @@ class CameraShim(object):
 
         def _cb(ret):
             CPL.log('cbExpose', '_cb got %s' % (ret))
-            filename = ret.KVs.get('camFile', None)
-            if not filename:
+            camFilename = ret.KVs.get('camFile', None)
+            if not camFilename:
                 cb(None, None)
                 return
-            filename = cmd.qstr(filename)
+            camFilename = cmd.qstr(camFilename)
             
             frame = GuideFrame.ImageFrame(self.size)
-            frame.setImageFromFITSFile(filename)
+            frame.setImageFromFITSFile(camFilename)
 
-            cb(cmd, filename, frame)
+            cb(camFilename, frame)
 
         client.callback(self.name,
-                        '%s exptime=%0.1f bin=%d,%d offset=%d,%d size=%d,%d' % \
+                        '%s exptime=%0.1f bin=%d,%d offset=%d,%d size=%d,%d filename=%s' % \
                         (type, itime,
                          frame.frameBinning[0], frame.frameBinning[1], 
                          frame.frameOffset[0], frame.frameOffset[1], 
-                         frame.frameSize[0], frame.frameSize[1]),
+                         frame.frameSize[0], frame.frameSize[1],
+                         filename),
                         cid=self.controller.cidForCmd(cmd),
                         callback=_cb)
 

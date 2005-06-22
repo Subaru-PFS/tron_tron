@@ -170,7 +170,7 @@ class AltaActor(GCamera.GCamera, Actor.Actor):
         else:
             d = self.cam.dark(itime)
 
-        filename = self.writeFITS(cmd, frame, d)
+        self.writeFITS(cmd, frame, d, filename=filename)
         
         # Try hard to recover image memory. 
         del d

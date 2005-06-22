@@ -49,7 +49,7 @@ def findstars(cmd, imgFile, maskFile, frame, tweaks, radius=None, cnt=10):
     max = img.max()
     if min < 0 or max > 65536:
         cmd.warn('text="bad pixel values for findstars: %0.1f .. %0.1f"' % (min, max))
-    img = img.astype('u2')
+    #img = img.astype('u2')
     header = fits[0].header
     fits.close()
     del fits
@@ -137,7 +137,7 @@ def findstars(cmd, imgFile, maskFile, frame, tweaks, radius=None, cnt=10):
     
     return starList
 
-def centroid(cmd, imgFile, maskFile, frame, seed, tweaks):
+def centroid(cmd, imgFile, maskFile, frame, seed, tweaks, xxx=None):
     """ Run PyGuide.findstars on the given file
 
     Args:
@@ -152,17 +152,22 @@ def centroid(cmd, imgFile, maskFile, frame, seed, tweaks):
         - one StarInfo, or None. In full CCD coordinates.
 
     """
-    
+
+    if xxx:
+        xxx(cmd, "centroid_1")
     fits = pyfits.open(imgFile)
     img = fits[0].data
     min = img.min()
     max = img.max()
     if min < 0 or max > 65536:
         cmd.warn('text="bad pixel values for findstars: %0.1f .. %0.1f"' % (min, max))
-    img = img.astype('u2')
+    #img = img.astype('u2')
     header = fits[0].header
     fits.close()
     del fits
+
+    if xxx:
+        xxx(cmd, "centroid_2")
 
     # Prep for optional ds9 output
     ds9 = tweaks.get('ds9', False)
@@ -171,16 +176,22 @@ def centroid(cmd, imgFile, maskFile, frame, seed, tweaks):
         frame = GuideFrame.ImageFrame(img.shape)
     frame.setImageFromFITSHeader(header)
 
+    if xxx:
+        xxx(cmd, "centroid_3")
+
     if maskFile:
         fits = pyfits.open(maskFile)
         maskbits = fits[0].data
         maskbits = maskbits < 0.01
-        maskbits = maskbits.astype('u2')
+        maskbits = maskbits.astype('b')
         fits.close()
         del fits
     else:
         maskbits = img * 0 + 1
         cmd.warn('text="no mask file available to centroid"')
+
+    if xxx:
+        xxx(cmd, "centroid_4")
 
     thresh = tweaks['thresh']
     if thresh < 1.5:
@@ -208,6 +219,9 @@ def centroid(cmd, imgFile, maskFile, frame, seed, tweaks):
         cmd.warn('text=%s' % (CPL.qstr(e)))
         raise
 
+    if xxx:
+        xxx(cmd, "centroid_5")
+
     if not star.isOK:
         cmd.warn('debug="ignoring object at (%0.1f,%0.1f): %s"' % \
                  (seed[0], seed[1], star.msgStr))
@@ -226,6 +240,9 @@ def centroid(cmd, imgFile, maskFile, frame, seed, tweaks):
     
     del img
     del maskbits
+
+    if xxx:
+        xxx(cmd, "centroid_6")
     
     return s
 

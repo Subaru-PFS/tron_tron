@@ -7,12 +7,14 @@ def startAllConnections(names=[]):
         hub.startNub(n)
     
 hub.init()
-startAllConnections(['client', 'ping',
-                     'tcc', 'TUI',
-                     'gcamera',
+startAllConnections(['client',
+                     'ping',
+                     'TUI',
+                     'tcc', 
+#                     'gcamera', 'ecamera',
                      'tcc2ecam', 'tcc2gcam',
-                     'ecam',
-                     'gcam',
+#                     'ecam',
+#                     'gcam',
                      'disExpose', 'dis',
                      'nicfpsExpose', 'nicfps',
 #                     'echelleExpose', 'echelle',

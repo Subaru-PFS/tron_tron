@@ -1,0 +1,87 @@
+__all__ = ['GuiderPath']
+
+import os
+
+import CPL
+
+class GuiderPath(object):
+    def __init__(self, rootDir, nameChar):
+        self.rootDir = rootDir
+        self.reservedPath = None, None
+        self.nameChar = nameChar
+        self.retries = 0
+
+    def __str__(self):
+        return "GuiderPath(rootDir=%s, reservedPath=%s, nameChar=%s" % \
+               (self.rootDir, self.reservedPath, self.nameChar)
+    
+
+    def getReservedFile(self): return self.reservedPath[1]
+    def getReservedDir(self): return self.reservedPath[0]
+    def getReservedPath(self): return os.path.join(*self.reservedPath)
+
+    def lockNextFilename(self, cmd):
+        if self.getReservedFile():
+            if self.retries == 0:
+                cmd.warn('text="a filename has been already been reserved. Try again to overwrite it."')
+                self.retries += 1
+                return False
+            else:
+                self.retries = 0
+                cmd.warn('text="overwriting reserved filename."')
+
+        self._reserveFilename()
+
+        return self.getReservedPath()
+
+    def unlock(self, cmd, filename):
+        if not self.getReservedFile():
+            cmd.warn('text="no filename has been reserved"')
+        elif self.getReservedPath() != filename:
+            cmd.warn('text=%s' % \
+                     (CPL.qstr("reserved filename (%s) does not match consumed filename (%s)" % \
+                               (self.getReservedPath(), filename))))
+            return False
+
+        self._updateLastImageFile()
+        self.reservedPath = None, None
+
+    def _updateLastImageFile(self):
+        f = open(os.path.join(self.reservedPath[0], "last.image"), "w+")
+        f.seek(0,0)
+        f.write('%s\n' % (self.getReservedFile()))
+        f.close()
+        
+    def _reserveFilename(self):
+        """ Return the next available filename.
+
+        We try to not suffer collisions by putting the files in per-day directories.
+
+        This is where we create any necessary directories. And we do that expensively,
+        by checking for each file whether the right directory exists.
+
+        We want the directories to change at local noon and be named after the
+        new day's date. 
+        """
+
+        dateString = CPL.getDayDirName()
+        dirName = os.path.join(self.rootDir, dateString)
+        if not os.path.isdir(dirName):
+            os.mkdir(dirName)
+            os.chmod(dirName, 0775)
+
+            id = 1
+        else:
+            # Update the last.image file
+            #
+            f = open(os.path.join(dirName, "last.image"), "r+")
+            lastFileName = f.readline()
+            lastID = int(lastFileName[1:5], 10)
+            id = lastID + 1
+            
+            if id > 9999:
+                raise RuntimeError("guider image number in %s is more than 9999." % (dirName))
+
+        fileName = "%s%04d.fits" % (self.nameChar, id)
+        self.reservedPath = dirName, fileName
+

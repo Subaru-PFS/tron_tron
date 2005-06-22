@@ -29,7 +29,7 @@ class GImCtrlActor(GCamera.GCamera, Actor.Actor):
                               'expose':     self.exposeCmd,
                               'dark':       self.darkCmd,
                               'init':       self.initCmd,
-                              'rawCmd':     self.doRawCmd
+                              'raw':        self.doRawCmd
                               })
 
     
@@ -55,14 +55,18 @@ class GImCtrlActor(GCamera.GCamera, Actor.Actor):
     def doRawCmd(self, cmd):
         """ Pass on a raw command to our camera. """
 
+
         rawCmd = cmd.raw_cmd
-        i = rawCmd.index('rawCmd')
-        rawCmd = rawCmd[i+8]
+        #cmd.warn('debug=%r' % (rawCmd))
+
+        i = rawCmd.index('raw')
+        rawCmd = rawCmd[i+4:]
         space = rawCmd.find(' ')
         if space >= 0:
             rawCmd = rawCmd[space:]
+        #cmd.warn('debug=%r' % (rawCmd))
             
-        ret = self.cam.sendCmdTxt(rawCmd, 30)
+        ret = self.sendCmdTxt(rawCmd, 30)
 	for i in range(len(ret)):
 	    cmd.respond('rawTxt=%s' % (CPL.qstr(ret[i])))
 	cmd.finish()
@@ -75,14 +79,18 @@ class GImCtrlActor(GCamera.GCamera, Actor.Actor):
         # 
         if cmd.program() != "TC01":
             cmdStr.strip()
-        cmd.warn("debug=%r" % (cmdStr))
+        #cmd.warn("debug=%r" % (cmdStr))
         
         return self.sendCmdTxt(cmdStr, timeout)
         
     def sendCmdTxt(self, cmdTxt, timeout):
         """ Send a command string directly to the controller. """
 
-        return self.conn.sendCmd(cmdTxt, timeout)
+        CPL.log("sendTxt", "sending %r" % (cmdTxt))
+        ret = self.conn.sendCmd(cmdTxt, timeout)
+        CPL.log("sendTxt", "got %r" % (ret))
+                
+        return ret
         
     def statusCmd(self, cmd, doFinish=True):
         """ Generate status keywords. Does NOT finish teh command.
@@ -147,7 +155,7 @@ class GImCtrlActor(GCamera.GCamera, Actor.Actor):
         actor, cmdStr = self.genExposeCommand(cmd, expType, itime, frame)
         ret = self.conn.sendCmd(cmdStr, itime + 15)
         
-        filename = self.copyinNewRawImage()
+        self.copyinNewRawImage(filename)
         
         return filename
 
@@ -167,11 +175,10 @@ class GImCtrlActor(GCamera.GCamera, Actor.Actor):
 
         return os.path.join(self.inPath, l)
     
-    def copyinNewRawImage(self):
+    def copyinNewRawImage(self, newPath):
         """ Copy (and annotate) the latest raw GimCtrl image into the new directory."""
         
         oldPath = self._getLastImageName()
-        newPath = self._getFilename()
 
         CPL.log("copyinNewRawImage", "old=%s; new=%s" % (oldPath, newPath))
         inFITS = pyfits.open(oldPath)

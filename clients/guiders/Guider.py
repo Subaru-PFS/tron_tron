@@ -16,6 +16,7 @@ import os
 import sys
 import time
 import pprint
+import inspect
 
 import numarray
 import pyfits
@@ -26,6 +27,7 @@ import CPL
 import GuideLoop
 import GuiderMask
 import GuideFrame
+import GuiderPath
 import MyPyGuide
 import client
 
@@ -50,26 +52,71 @@ class Guider(Actor.Actor):
                               'set':        self.setCmd,
                               'setMask':    self.setMaskCmd,
                               'guide':      self.guideCmd,
-                              'zap':        self.zapCmd
+                              'zap':        self.zapCmd,
+                              'xxx':        self.realXxxCmd
                               })
 
         self.camera = camera
         self.guideLoop = None
         self.mask = None
         self.exposureInfo = None
-
         self.darks = {}
         
         self._setDefaults()
         self.config = self.defaults.copy()
         self._setMask(None, self.config['maskFile'])
+        self.pathControl = GuiderPath.GuiderPath(os.path.join(self.config['imageRoot'],
+                                                              self.config['imageDir']),
+                                                 self.name[0])
+        self.ubufIDs = {}
+        
+    def realXxxCmd(self, cmd):
+        self.xxxCmd(cmd, doFinish=True)
+        
+    def xxxCmd(self, cmd, place=None, doFinish=False):
+        
+        bufs = self.xxx(cmd)
+        cmd.warn('ubufsCnt=%d; place=%s' % (len(bufs), place))
+        gc.collect()
+        cmd.warn('ubufsCnt=%d; place=%s' % (len(bufs), place))
+        if doFinish:
+            cmd.finish()
+        
+    def xxx(self, cmd):
+        ubufs = gc.get_referrers(numarray.numarraycore._UBuffer)
+
+        for u in ubufs:
+            if isinstance(u, numarray.numarraycore._UBuffer):
+                if not self.ubufIDs.has_key(id(u)):
+                    self.ubufIDs[id(u)] = True
+                else:
+                    urefs = gc.get_referrers(u)
+                    #for ur in urefs:
+                    #    if type(ur) == type([]):
+                    #        urefrefs = gc.get_referrers(ur)
+                    #        for urr in urefrefs:
+                    #            cmd.warn('ref=%0.8x,%s' % (id(u),
+                    #                                       type(urr)))
+                            
+                    #    if inspect.isframe(ur):
+                    #        pass
+                            #c = ur.f_code
+                            #if c.co_name != 'xxx':
+                            #    cmd.warn('ubufRefs=%d,%08x,%s,%s' % (len(urefs), id(u),
+                            #                                         c.co_filename, c.co_name))
+
+                #for i in range(len(urefs)):
+                #    CPL.log("refs", "ubuf %08x ref %d: %s" % (id(u), i,
+                #                                              pprint.pformat(urefs[i])))
+                
+            
+        return ubufs
     
-    def xxx(self):
-        refs = gc.get_referents(self)
-        for x in refs:
-            CPL.log("refs", "Guide ref: %s" % (pprint.pformat(x)))
-            for y in gc.get_referents(x):
-                CPL.log("refs", "++++++++++ ref: %s" % (pprint.pformat(y)))
+        #refs = gc.get_referents(self)
+        #for x in refs:
+        #    CPL.log("refs", "Guide ref: %s" % (pprint.pformat(x)))
+        #    for y in gc.get_referents(x):
+        #        CPL.log("refs", "++++++++++ ref: %s" % (pprint.pformat(y)))
         
     def _setDefaults(self):
         self.defaults = {}
@@ -81,7 +128,8 @@ class Guider(Actor.Actor):
                      'retry', 'restart',
                      'maskFile', 'biasFile',
                      'imageHost', 'imageRoot', 'imageDir',
-                     'fitErrorScale', 'doFlatfield'):
+                     'fitErrorScale', 'doFlatfield',
+                     'requiredInst', 'requiredPort'):
             self.defaults[name] = CPL.cfg.get(self.name, name)
         self.size = self.defaults['ccdSize']
         self.defaults['minOffset'] = CPL.cfg.get('telescope', 'minOffset')
@@ -502,7 +550,8 @@ o            cb          - the callback function
 
         """
 
-        def _cb(cmd, filename, frame):
+        def _cb(filename, frame):
+            self.pathControl.unlock(cmd, filename)
             if type == 'expose':
                 cmd.respond('camFile=%s'% (CPL.qstr(filename)))
             else:
@@ -510,8 +559,9 @@ o            cb          - the callback function
             cb(cmd, filename, frame, **cbArgs)
             
         CPL.log('Guider', 'exposing %s(%s) frame=%s' % (type, itime, frame))
-        
-        mycb = self.camera.cbExpose(cmd, _cb, type, itime, frame)
+
+        filename = self.pathControl.lockNextFilename(cmd)
+        mycb = self.camera.cbExpose(cmd, _cb, type, itime, frame, filename)
         return mycb
 
     def processCamFile(self, cmd, camFile, tweaks, frame=None):
@@ -891,7 +941,6 @@ o            cb          - the callback function
         else:
             if len(d0) > 0 and d0[-1] != '/':
                 d0 = d0 + '/'
-        
         
         qfiles = map(CPL.qstr, files)
         cmd.respond("files=%s,%d,%s,%s" % (CPL.qstr(caller),
