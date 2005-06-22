@@ -8,6 +8,7 @@ import client
 import CPL
 import GuideFrame
 import MyPyGuide
+import Parsing
 
 class GuideLoop(object):
     def __init__(self, controller, cmd, tweaks):
@@ -101,6 +102,11 @@ class GuideLoop(object):
         Args:
             cmd       - the command that is changing the tweaks.
             newTweaks - a dictionary containing only the changed variables.
+
+        The loop sends a copy of the tweaks dictionary down to the exposure and offset callbacks, and
+        uses those copies when it runs. But when a new iteration is started, the new tweaks will apply.
+        It would be bad to change, say, the binning or windowing between the request for the exposure
+        and the calculations of the offset.
         """
 
         self.tweaks.update(newTweaks)
@@ -162,11 +168,37 @@ class GuideLoop(object):
         """
 
         self.stopGuiding()
+
+    def isRightPort(self):
+        # First, check whether we are in the right place:
+        ret = client.call('tcc', 'show inst')
+        instName = ret.KVs.get('Inst', 'unknown')
+        portName = ret.KVs.get('InstPos', 'unknown')
+        instName = Parsing.dequote(instName)
+        portName = Parsing.dequote(portName)
+
+        requiredInst = self.tweaks.get('requiredInst', 'undefined')
+        requiredPort = self.tweaks.get('requiredPort', 'undefined')
+
+        if requiredInst and instName.lower() != requiredInst.lower():
+            self.failGuiding('The instrument must be %s, not %s' % (requiredInst,
+                                                                    instName))
+            return False
+
+        if requiredPort and portName.lower() != requiredPort.lower():
+            self.failGuiding('The instrument port must be %s, not %s' % (requiredPort,
+                                                                         portName))
+            return False
+
+        return True
         
     def run(self):
         """ Actually start the guide loop. """
 
-        ret = client.call('tcc', 'show inst')
+        rightPort = self.isRightPort()
+
+        if not rightPort:
+            return
         
         self.state = 'starting'
         self.genTweaksKeys(self.cmd)
@@ -577,6 +609,8 @@ class GuideLoop(object):
                 time.sleep(diff)        # Yup. Better be short, hunh?
             self.offsetWillBeDone = 0.0
 
+        self.controller.xxxCmd(self.cmd, '_guideLoopTop')
+
         self.controller.doCmdExpose(self.cmd, self._handleGuiderFrame,
                                     'expose', tweaks=self.tweaks)
         
@@ -819,6 +853,8 @@ class GuideLoop(object):
             doScale    - if True, filter the offset according to self.tweaks
         """
 
+        self.controller.xxxCmd(cmd, '_centerUp')
+
         if self.state == 'off':
             return
         if self.state == 'stopping':
@@ -850,6 +886,8 @@ class GuideLoop(object):
                     self.offsetWillBeDone = endTime
             cb = client.callback('tcc', cmdTxt, self._doneOffsetting,
                                  cid=self.controller.cidForCmd(self.cmd))
+
+        self.controller.xxxCmd(cmd, '_centerUp_end')
 
     def _doneOffsetting(self, ret):
         """ Callback called at the end of the guide offset.
@@ -896,6 +934,8 @@ class GuideLoop(object):
         a new guider frame.
         """
 
+        self.controller.xxxCmd(cmd, '_handleGuiderFrame')
+        
         # This is a callback, so we need to catch all exceptions.
         try:
             if self.state == 'off':
@@ -925,6 +965,7 @@ class GuideLoop(object):
             # Optionally dark-subtract and/or flat-field
             procFile, maskFile, darkFile, flatFile = \
                       self.controller.processCamFile(cmd, camFile, self.tweaks)
+            self.controller.xxxCmd(cmd, '_handleGuiderFrame_2')
 
             self.controller.genFilesKey(self.cmd, 'g', True,
                                         procFile, maskFile, camFile, darkFile, flatFile)
@@ -952,9 +993,11 @@ class GuideLoop(object):
                 self.failGuiding("guide star moved off frame.")
                 return
             
+            self.controller.xxxCmd(cmd, '_handleGuiderFrame_3')
             try:
                 star = MyPyGuide.centroid(self.cmd, procFile, maskFile,
-                                          frame, refPos, tweaks=self.tweaks)
+                                          frame, refPos, tweaks=self.tweaks,
+                                          xxx=self.controller.xxxCmd)
                 if not star:
                     raise RuntimeError('no star found')
             except RuntimeError, e:
@@ -968,6 +1011,7 @@ class GuideLoop(object):
             # We have successfully centroided, so reset the number of retries we have made.
             self.retries = 0
 
+            self.controller.xxxCmd(cmd, '_handleGuiderFrame_4')
             # Get the other stars in the field
             try:
                 stars = MyPyGuide.findstars(self.cmd, procFile, maskFile,
@@ -1013,6 +1057,8 @@ class GuideLoop(object):
             CPL.tback('guideloop._handleGuideFrame-2', e)
             self.failGuiding(e)
             
+        self.controller.xxxCmd(cmd, '_handleGuiderFrame_end')
+
     def _extractCnvPos(self, res):
         """ Extract and convert the converted position from a tcc convert.
 

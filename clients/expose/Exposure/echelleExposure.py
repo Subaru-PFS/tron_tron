@@ -42,7 +42,7 @@ class echelleCB(Exposure.CB):
 
                 if maybeNewState in ('flushing', 'reading', 'paused', 'finishing'):
                     newState = maybeNewState
-                elif maybeNewState == 'integrating':
+                elif maybeNewState in ('integrating', 'bias'):
                     newState = maybeNewState
                     self.exposure.integrationStarted()
                 elif maybeNewState == 'aborted':
@@ -92,7 +92,8 @@ class echelleExposure(Exposure.Exposure):
 
         self.reserveFilenames()
         self.aborting = False
-
+        self.headerStarted = False
+        
     def reserveFilenames(self):
         """ Reserve filenames, and set .basename.
 
@@ -106,6 +107,9 @@ class echelleExposure(Exposure.Exposure):
     def integrationStarted(self):
         """ Called when the integration is _known_ to have started. """
 
+        if self.headerStarted:
+            return
+            
         outfile = self._basename()
         if self.debug > 1:
             CPL.log("echelleExposure", "starting echelle FITS header to %s" % (outfile))
@@ -115,6 +119,8 @@ class echelleExposure(Exposure.Exposure):
             cmdStr += ' comment=%s' % (CPL.qstr(self.comment))
         self.callback('fits', cmdStr)
 
+        self.headerStarted = True
+        
     def finishUp(self):
         """ Clean up and close out the FITS files.
 

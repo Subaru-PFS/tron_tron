@@ -13,7 +13,8 @@ import Guider
 import TCCGcam
 import GuideFrame
 import CameraShim
-                         
+import Parsing
+
 class ecam(Guider.Guider, TCCGcam.TCCGcam):
     def __init__(self, **argv):
         ccdSize = CPL.cfg.get('ecamera', 'ccdSize')
@@ -24,6 +25,7 @@ class ecam(Guider.Guider, TCCGcam.TCCGcam):
 
         # Addition commands for GimCtrl camera
         self.commands.update({'rawCmd':    self.doRawCmd})
+
         
     def _setDefaults(self):
         Guider.Guider._setDefaults(self)
@@ -31,7 +33,7 @@ class ecam(Guider.Guider, TCCGcam.TCCGcam):
         self.GImName = "S300"
         self.GImCamID = 1
 
-    def initCmd(self, cmd):
+    def doTccInit(self, cmd):
         """ Pass on an 'init' command from a TCC to our camera. """
         
         ret = self.rawCmd(cmd, 10)
@@ -49,6 +51,28 @@ class ecam(Guider.Guider, TCCGcam.TCCGcam):
         ret = self.rawCmd(cmd, 10)
         self.echoToTcc(cmd, ret)
     
+    def rawCmd(self, cmd, timeout=30):
+
+        cmdTxt = cmd.raw_cmd
+        #cmd.warn("debug=%r" % (cmdTxt))
+        
+        ret = self.rawTxtCmd(cmdTxt, timeout=timeout)
+        CPL.log('ecamCMDDEBUG', "%r" % (ret))
+        
+        return ret
+    
+    def rawTxtCmd(self, rawCmd, timeout=30):
+        ret = client.call('ecamera', 'raw %s' % (rawCmd),
+                          cid="XX01.me")
+        CPL.log('ecamDEBUG', "ret=%r" % (ret.lines))
+        lines = []
+        for r in ret.lines:
+            if r.KVs.has_key('rawTxt'):
+                t = r.KVs['rawTxt']
+                lines.append(Parsing.dequote(t))
+        CPL.log('ecamDEBUG', "lines=%r" % (lines))
+        return lines
+        
     def doRawCmd(self, cmd):
         """ Pass on a raw command to our camera. """
 
@@ -57,9 +81,11 @@ class ecam(Guider.Guider, TCCGcam.TCCGcam):
         if space >= 0:
             rawCmd = rawCmd[space:]
 
-        ret = client.call('ecamera', 'raw %s' % (rawCmd))
-	for i in range(len(ret.lines)):
-	    cmd.respond(ret.lines[i])
+        ret = self.rawTxtCmd(rawCmd)
+        CPL.log('ecamCMDDEBUG', "%r" % (ret))
+        # cmd.warn("cmddebug=%r" % (ret))
+	for i in range(len(ret)):
+	    cmd.respond(ret[i])
 	cmd.finish()
     
     def doTccDoread(self, cmd):
