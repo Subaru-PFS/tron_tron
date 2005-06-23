@@ -29,6 +29,8 @@ class CommandNub(IO.IOHandler):
         self.inputBuffer = ""
         self.queue = queue
         self.EOL = '\n'
+
+        self.sendResponse(1,1,':','hello')
         
     def shutdown(self, why="cuz"):
         CPL.log("CommandLink.shutdown", "shutdown because %s" % (why))

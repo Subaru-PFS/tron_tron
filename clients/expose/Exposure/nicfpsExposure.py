@@ -84,7 +84,7 @@ class nicfpsExposure(Exposure.Exposure):
                 raise Exception("%s exposures require a time argument" % (expType))
 
         # Where NICFPS puts its image files.
-        self.rawDir = '/export/images/nicfps/forTron'
+        self.rawDir = ('/export/images/forTron', 'nicfps')
 
         self.reserveFilenames()
         self.aborting = False
@@ -127,7 +127,7 @@ class nicfpsExposure(Exposure.Exposure):
         waitTime = 0.5
         
         while 1:
-            newList = os.listdir(self.rawDir)
+            newList = os.listdir(os.path.join(*self.rawDir))
             self.cmd.warn('debug="NICFPS exposure: %d files"' % (len(newList)))
             if len(newList) != len(self.startDirList):
                 break
@@ -141,7 +141,7 @@ class nicfpsExposure(Exposure.Exposure):
 
         # Now find the new file and wait for the readout to complete.
         newList.sort()
-        newFile = os.path.join(self.rawDir, newList[-1])
+        newFile = os.path.join(self.rawDir + (newList[-1],))
         self.cmd.warn('debug="NICFPS exposure: %s"' % (newFile))
 
         finalSize = 2102400L
@@ -206,8 +206,7 @@ class nicfpsExposure(Exposure.Exposure):
            filename  - a filename which is known not to exist now.
         """
 
-        root = '/export/images/nicfps'
-        path = 'forTron'
+        root, path = self.rawDir
 
         n = 1
         timestamp = time.strftime('%Y%m%dT%H%M%SZ', time.gmtime())

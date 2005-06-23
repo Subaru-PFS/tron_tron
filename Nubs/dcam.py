@@ -26,10 +26,10 @@ def start(poller):
                                 'clients/guiders/%s.py' % (name)],
                        name=name, encoder=e, decoder=d,
                        logDir=os.path.join(g.logDir, name),
-                       needsAuth=True,
-                       grabCID='ping',
-                       # initCmds=initCmds,
+                       needsAuth='dis',
+                       initCmds=initCmds,
                        safeCmds=safeCmds,
+                       grabCID=True,
                        debug=1)
     hub.addActor(nub)
     

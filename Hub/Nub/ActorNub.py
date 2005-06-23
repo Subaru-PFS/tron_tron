@@ -89,7 +89,7 @@ class ActorNub(CoreNub):
         CPL.log("ActorNub.connected", "sending initCmds to %s (cid=%s)" % (self.ID, self.cid))
         for c in initCmds:
             CPL.log("ActorNub.connected", "sending initCmd %s" % (c))
-            self.sendCommand(Command(self.name,
+            self.sendCommand(Command('hub.init',
                                      '.hub', g.hubMIDs.gimme(),
                                      self.name, c),
                              doRegister=doRegister)
