@@ -19,7 +19,7 @@ def start(poller):
         existingPyPath = ":" + existingPyPath
         
     d = Hub.ASCIIReplyDecoder(debug=1)
-    e = Hub.ASCIICmdEncoder(debug=1, sendCommanderCID=True)
+    e = Hub.ASCIICmdEncoder(debug=1, sendCommander=True)
     nub = Hub.ShellNub(poller, ['/usr/bin/env',
                                 'PATH=/usr/local/bin:/bin:/usr/bin',
                                 'PYTHONPATH=%s/Client:%s%s' % (g.home, g.home, existingPyPath),
@@ -27,7 +27,8 @@ def start(poller):
                        name=name, encoder=e, decoder=d,
                        logDir=os.path.join(g.logDir, name),
                        needsAuth=False,
-                       # initCmds=initCmds,
+                       grabCID=True,
+                       initCmds=initCmds,
                        safeCmds=safeCmds,
                        debug=1)
     hub.addActor(nub)

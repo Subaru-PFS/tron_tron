@@ -77,6 +77,5 @@ class ShellNub(ActorNub):
             self.setOutputFile(os.fdopen(p1_o, "w"))
             
             CPL.log('Shell.shell', "launched '%s' %r as pid %d" % (cmd[0], cmd[1:], pid))
-
-
+            
 

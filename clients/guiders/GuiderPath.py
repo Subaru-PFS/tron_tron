@@ -41,7 +41,6 @@ class GuiderPath(object):
             cmd.warn('text=%s' % \
                      (CPL.qstr("reserved filename (%s) does not match consumed filename (%s)" % \
                                (self.getReservedPath(), filename))))
-            return False
 
         self._updateLastImageFile()
         self.reservedPath = None, None

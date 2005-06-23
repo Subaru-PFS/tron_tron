@@ -88,7 +88,7 @@ class echelleExposure(Exposure.Exposure):
                 raise Exception("%s exposures require a time argument" % (expType))
 
         # Where the Echelle puts its image files.
-        self.rawDir = ('/export/images/echelle', 'forTron')
+        self.rawDir = ('/export/images/forTron/echelle', '')
 
         self.reserveFilenames()
         self.aborting = False

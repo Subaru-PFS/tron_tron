@@ -27,8 +27,8 @@ def start(poller):
                        name=name, encoder=e, decoder=d,
                        logDir=os.path.join(g.logDir, name),
                        needsAuth=True,
-                       grabCID='ping',
-                       # initCmds=initCmds,
+                       grabCID=True,
+                       initCmds=initCmds,
                        safeCmds=safeCmds,
                        debug=1)
     hub.addActor(nub)
