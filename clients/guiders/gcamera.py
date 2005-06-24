@@ -156,7 +156,9 @@ class AltaActor(GCamera.GCamera, Actor.Actor):
         # Check for format changes:
         bin = frame.frameBinning
         window = list(frame.imgFrameAsWindow())
-
+        CPL.log('gcamera', (CPL.qstr("window = %s" % (window))))
+        window = map(int, window)
+        
         if bin != self.binning:
             self.cam.setBinning(*bin)
             self.binning = bin

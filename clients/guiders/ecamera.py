@@ -61,9 +61,9 @@ class GImCtrlActor(GCamera.GCamera, Actor.Actor):
 
         i = rawCmd.index('raw')
         rawCmd = rawCmd[i+4:]
-        space = rawCmd.find(' ')
-        if space >= 0:
-            rawCmd = rawCmd[space:]
+        #space = rawCmd.find(' ')
+        #if space >= 0:
+        #    rawCmd = rawCmd[space:]
         #cmd.warn('debug=%r' % (rawCmd))
             
         ret = self.sendCmdTxt(rawCmd, 30)
@@ -149,12 +149,15 @@ class GImCtrlActor(GCamera.GCamera, Actor.Actor):
 
         """
 
-        CPL.log('gcamera', (CPL.qstr("gimctrl expose %s %s secs, frame=%s" \
-                                     % (expType, itime, frame))))
+        CPL.log('gcamera', (CPL.qstr("gimctrl expose %s %s secs, frame=%s filename=%s" \
+                                     % (expType, itime, frame, filename))))
         
         actor, cmdStr = self.genExposeCommand(cmd, expType, itime, frame)
         ret = self.conn.sendCmd(cmdStr, itime + 15)
-        
+        for r in ret:
+            if r.find('error') >= 0:
+                raise RuntimeError(r)
+            
         self.copyinNewRawImage(filename)
         
         return filename

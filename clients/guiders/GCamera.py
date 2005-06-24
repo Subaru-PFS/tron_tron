@@ -142,9 +142,13 @@ class GCamera(object):
 
         frame = GuideFrame.ImageFrame(self.ccdSize)
         frame.setImageFromFrame(bin, offset, size)
-        
-        filename = self._expose(cmd, filename, type, time, frame)
-        cmd.finish('camFile=%s' % (filename))
+
+        try:
+            filename = self._expose(cmd, filename, type, time, frame)
+            cmd.finish('camFile=%s' % (filename))
+        except Exception, e: 
+            cmd.fail('text=%s' % (e))
+           
 
     def parseCoord(self, c):
         """ Parse a coordinate pair of the form X,Y.

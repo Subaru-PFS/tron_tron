@@ -4,6 +4,8 @@ import math
 import os
 import time
 
+import pyfits
+
 import client
 import CPL
 import GuideFrame
@@ -27,6 +29,8 @@ class GuideLoop(object):
         # This controls whether the loop continues or stops, and gives the
         # guider keyword value.
         self.state = 'starting'
+        self.action = ''
+        
         self.retries = 0
         
         # The 'reference' PVT that we guiding on or to.
@@ -45,7 +49,7 @@ class GuideLoop(object):
         self.waitingForSlewEnd = False
         self.invalidLoop = False
         
-        # What to add to TCC times to get Unix seconds
+        # What to add to TCC times to get Unix seconds -- get this from the TCC you twit.
         self._startingUTCoffset = -32.0
         self.tccDtime = -3506716800.0 + self._startingUTCoffset
 
@@ -53,7 +57,6 @@ class GuideLoop(object):
         
         # We pay attention to a bunch of keywords.
         self.listeners = []
-        self.listenToThem()
         
         self.loopCnt = 0
         
@@ -112,16 +115,21 @@ class GuideLoop(object):
         self.tweaks.update(newTweaks)
         self.genTweaksKeys(self.cmd)
         
-    def genStateKey(self, cmd=None):
+    def genStateKey(self, cmd=None, state=None, action=None):
         if cmd == None:
             cmd = self.cmd
-        cmd.respond('guideState=%s,""' % (CPL.qstr(self.state)))
+
+        if state != None:
+            self.state = state
+        if action != None:
+            self.action = action
+        cmd.respond('guideState=%s,%s' % (CPL.qstr(self.state),
+                                          CPL.qstr(self.action)))
         
     def cleanup(self):
         """ """
         
-        self.state = 'off'
-        self.genStateKey()
+        self.genStateKey(state='off', action='')
         for i in range(len(self.listeners)):
             CPL.log("GuideLoop.cleanup", "deleting listener %s" % (self.listeners[0]))
             self.listeners[0].stop()
@@ -199,9 +207,12 @@ class GuideLoop(object):
 
         if not rightPort:
             return
-        
+
         self.state = 'starting'
+        self.action = ''
         self.genTweaksKeys(self.cmd)
+        self.listenToThem()
+        
         self._doGuide()
         
     def stop(self, cmd, doFinish=True):
@@ -210,12 +221,17 @@ class GuideLoop(object):
         This merely sets a flag that other parts of the loop examine at appropriate times.
         """
 
+        if self.state == 'stopping':
+            cmd.warn('text="guide loop is already being stopped"')
+            cmd.finish()
+            return
+        
         if doFinish:
             cmd.finish('text="stopping guide loop...."')
         else:
             cmd.respond('text="stopping guide loop...."')
-        self.state = 'stopping'
-        self.genStateKey()
+        
+        self.genStateKey(state='stopping')
 
     def listenToMoveItems(self, reply):
         """ Figure out if the telescope has been moved by examining the TCC's MoveItems key.
@@ -355,20 +371,33 @@ class GuideLoop(object):
         gstar = self.cmd.argDict.get('gstar')
         boresight = self.cmd.argDict.get('boresight', 'nope')
         boresight = boresight != 'nope'
+        manual = self.cmd.argDict.get('manual', 'nope')
+        manual = manual != 'nope'
         
         if (boresight or centerOn) and gstar:
             self.failGuiding('cannot specify both field and boresight guiding.')
             return
 
 
+        if manual:
+            if boresight or centerOn or gstar:
+                self.failGuiding('cannot specify both manual and automatic guiding.')
+                return
+            
+            self.guidingType = 'manual'
+            self.genStateKey(state='starting')
+            self.state = 'on'
+            self.controller.doCmdExpose(self.cmd, self._handleGuiderFrame,
+                                        'expose', tweaks=self.tweaks)
+            return
+            
         if boresight:
             # Simply start nudging the object nearest the boresight to the boresight
             #
             self.guidingType = 'boresight'
             self.refPVT = None
 
-            self.state = 'starting'
-            self.genStateKey()
+            self.genStateKey(state='starting')
             self.state = 'on'
             self.controller.doCmdExpose(self.cmd, self._handleGuiderFrame,
                                         'expose', tweaks=self.tweaks)
@@ -412,8 +441,7 @@ class GuideLoop(object):
             self.guidingType = 'field'
 
         if not self.tweaks.has_key('noGuide'):
-            self.state = 'starting'
-            self.genStateKey()
+            self.genStateKey(state='starting')
         self.controller.doCmdExpose(self.cmd, self._firstExposure, 'expose', self.tweaks)
 
     def centerAndExpose(self, cmd):
@@ -437,6 +465,7 @@ class GuideLoop(object):
                         cid=self.controller.cidForCmd(self.cmd))
             if mustWait:
                 time.sleep(CPL.cfg.get('telescope', 'offsetSettlingTime'))
+            self.genStateKey(action='exposing')
             self.controller.doCmdExpose(self.cmd, self._handleGuiderFrame,
                                         'expose', tweaks=self.tweaks)
 
@@ -449,7 +478,7 @@ class GuideLoop(object):
             self.failGuiding('centering offset failed')
             return
             
-    def _firstExposure(self, cmd, camFile, frame, tweaks=None):
+    def _firstExposure(self, cmd, camFile, frame, tweaks=None, warning=None, failure=None):
         """ Callback called when the first guide loop exposure is available.
 
         Handles the following issues:
@@ -463,6 +492,13 @@ class GuideLoop(object):
              frame      - a GuideFrame describing the image.
              tweaks     - same as self.tweaks, and ignored.
         """
+
+        if warning:
+            cmd.warn('text=%s' % (CPL.qstr(warning)))
+            
+        if failure:
+            self.failGuiding('text=%s' % (CPL.qstr(failure)))
+            return
 
         if self.state == 'off':
             return
@@ -575,8 +611,7 @@ class GuideLoop(object):
 
         #  4) start the guiding loop:
         #
-        self.state = 'on'
-        self.genStateKey()
+        self.genStateKey(state='on')
         self._guideLoopTop()
 
     def _guideLoopTop(self):
@@ -598,19 +633,21 @@ class GuideLoop(object):
             return
 
         if self.waitingForSlewEnd:
+            self.genStateKey(action='deferring')
             self.cmd.warn('text="waiting for offset to finish"')
             return
         
         if self.offsetWillBeDone > 0.0:
+            self.genStateKey(action='deferring')
             diff = self.offsetWillBeDone - time.time()
+
             if diff > 0.0:
                 CPL.log('gcam',
                         'deferring guider frame for %0.2f seconds to allow immediate offset to finish' % (diff))
                 time.sleep(diff)        # Yup. Better be short, hunh?
             self.offsetWillBeDone = 0.0
 
-        self.controller.xxxCmd(self.cmd, '_guideLoopTop')
-
+        self.genStateKey(action='exposing')
         self.controller.doCmdExpose(self.cmd, self._handleGuiderFrame,
                                     'expose', tweaks=self.tweaks)
         
@@ -853,7 +890,7 @@ class GuideLoop(object):
             doScale    - if True, filter the offset according to self.tweaks
         """
 
-        self.controller.xxxCmd(cmd, '_centerUp')
+        # self.controller.xxxCmd(cmd, '_centerUp')
 
         if self.state == 'off':
             return
@@ -864,7 +901,6 @@ class GuideLoop(object):
             self._guideLoopTop()
             return
 
-        self.genStateKey()
         cmdTxt, mustWait = self._genOffsetCmd(cmd, star, frame, refGpos, offsetType, doScale, fname=fname)
         if not cmdTxt:
             self._guideLoopTop()
@@ -884,10 +920,12 @@ class GuideLoop(object):
                 endTime = time.time() + CPL.cfg.get('telescope', 'offsetSettlingTime')
                 if endTime > self.offsetWillBeDone:
                     self.offsetWillBeDone = endTime
+
+            self.genStateKey(action='offsetting')
             cb = client.callback('tcc', cmdTxt, self._doneOffsetting,
                                  cid=self.controller.cidForCmd(self.cmd))
 
-        self.controller.xxxCmd(cmd, '_centerUp_end')
+        # self.controller.xxxCmd(cmd, '_centerUp_end')
 
     def _doneOffsetting(self, ret):
         """ Callback called at the end of the guide offset.
@@ -928,13 +966,96 @@ class GuideLoop(object):
         time.sleep(2.0)
         
         return newname
+
+    def _parseISODate(self, dateStr):
+        """ Parse a full ISO date.
+
+        Args:
+           dateStr   - a string of the form "2005-06-21 01:35:40.198Z" (space might be a 'T')
+
+        Returns:
+           - unix seconds
+        """
+
+        # change ISO 'T' to space
+        parts = dateStr.split('T')
+        if len(parts) > 0:
+            dateStr = ' '.join(parts)
+
+        # Remove trailing 'Z':
+        if dateStr[-1] == 'Z':
+            dateStr = dateStr[:-1]
+            
+        # Peel off fractional seconds
+        parts = dateStr.split('.')
+        dateStr = parts[0]
+        if len(parts) == 1:
+            frac = 0.0
+        else:
+            frac = float(parts[1])
+            
+        secs = time.mktime(time.strptime("%Y-%m-%d %H:%M:%S"))
+        return secs + frac
         
-    def _handleGuiderFrame(self, cmd, camFile, frame, tweaks=None):
+    def _getExpMiddle(self, camFile, tweaks):
+        """ Return our best estimate of the time of the middle of and exposure.
+
+        Ideally, the camera has a UTMIDDLE card
+        Next best is an OBS-DATE card in UTC
+        Finally, we just guess.
+        
+        Args:
+            camFile   - a FITS file from a guide camera.
+
+        Returns:
+            - unix seconds at the middle of the exposure.
+        """
+
+        
+        try:
+            f = pyfits.open(camFile)
+            h = f[0].header
+            f.close()
+        except Exception, e:
+            self.cmd.warn('text=%s' % \
+                          (CPL.qstr("Could not open fits file %s: %s" % (camFile, e))))
+            h = {}
+            
+        if h.has_key('UTMIDDLE'):
+            t = self.parseISODate(h['UTMIDDLE'])
+        elif h.has_key('UTC-OBS'):
+            t0 = self.parseISODate(h['UTC-DATE'])
+            itime = h['EXPTIME']
+            t = t0 + (itime / 2.0)
+        elif h.has_key('DATE-OBS'):
+            t0 = self.parseISODate(h['DATE-OBS'])
+            sys = h['TIMESYS']
+            itime = h['EXPTIME']
+
+            if sys == 'TAI':
+                t0 -= self._startingUTCoffset
+            t = t0 + (itime / 2.0)
+        else:
+            t = time.time() - tweaks['exptime'] / 2.0
+
+        now = time.time()
+        if abs(now - t) > 100:
+            self.cmd.warn("exposure middle was %d seconds from now" % (t - now))
+        return t
+    
+    def _handleGuiderFrame(self, cmd, camFile, frame, tweaks=None, warning=None, failure=None):
         """ Given a new guider frame, calculate and apply the Guide offset and launch
         a new guider frame.
         """
 
-        self.controller.xxxCmd(cmd, '_handleGuiderFrame')
+        if warning:
+            cmd.warn('text=%s' % (CPL.qstr(warning)))
+            
+        if failure:
+            self.failGuiding('text=%s' % (CPL.qstr(failure)))
+            return
+
+        # self.controller.xxxCmd(cmd, '_handleGuiderFrame')
         
         # This is a callback, so we need to catch all exceptions.
         try:
@@ -951,6 +1072,7 @@ class GuideLoop(object):
             #                                     (camFile, frame))))
 
             if self.telHasBeenMoved:
+                self.genStateKey(action='deferring')
                 self.cmd.warn('text=%s' % \
                               (CPL.qstr("guiding deferred: %s" % (self.telHasBeenMoved))))
                 self.telHasBeenMoved = False
@@ -965,7 +1087,7 @@ class GuideLoop(object):
             # Optionally dark-subtract and/or flat-field
             procFile, maskFile, darkFile, flatFile = \
                       self.controller.processCamFile(cmd, camFile, self.tweaks)
-            self.controller.xxxCmd(cmd, '_handleGuiderFrame_2')
+            # self.controller.xxxCmd(cmd, '_handleGuiderFrame_2')
 
             self.controller.genFilesKey(self.cmd, 'g', True,
                                         procFile, maskFile, camFile, darkFile, flatFile)
@@ -975,12 +1097,27 @@ class GuideLoop(object):
                 self.stopGuiding()
                 return
             
+            self.genStateKey(action='analysing')
             frame = GuideFrame.ImageFrame(self.controller.size)
             frame.setImageFromFITSFile(procFile)
 
-            # Still need to interpolate to the middle of the exposure.
-            expMiddle = time.time() - tweaks['exptime'] / 2.0
-            
+            if self.guidingType == 'manual':
+                try:
+                    stars = MyPyGuide.findstars(self.cmd, procFile, maskFile,
+                                            frame, tweaks=self.tweaks)
+                except RuntimeError, e:
+                    stars = []
+
+                if stars:
+                    MyPyGuide.genStarKeys(cmd, stars, caller='f')
+
+                self.genStateKey(action='exposing')
+                self.controller.doCmdExpose(self.cmd, self._handleGuiderFrame,
+                                            'expose', tweaks=self.tweaks)
+                return
+                
+            # Where should the star have been at the middle of the exposure?
+            expMiddle = self._getExpMiddle(camFile, tweaks)
             ccdRefPos = self._getExpectedPos(t=expMiddle)
             refPos = frame.ccdXY2imgXY(ccdRefPos)
             self.cmd.respond("guiderPredPos=%0.2f,%0.2f" % (refPos[0], refPos[1]))
@@ -993,11 +1130,10 @@ class GuideLoop(object):
                 self.failGuiding("guide star moved off frame.")
                 return
             
-            self.controller.xxxCmd(cmd, '_handleGuiderFrame_3')
+            # self.controller.xxxCmd(cmd, '_handleGuiderFrame_3')
             try:
                 star = MyPyGuide.centroid(self.cmd, procFile, maskFile,
-                                          frame, refPos, tweaks=self.tweaks,
-                                          xxx=self.controller.xxxCmd)
+                                          frame, refPos, tweaks=self.tweaks)
                 if not star:
                     raise RuntimeError('no star found')
             except RuntimeError, e:
@@ -1011,39 +1147,13 @@ class GuideLoop(object):
             # We have successfully centroided, so reset the number of retries we have made.
             self.retries = 0
 
-            self.controller.xxxCmd(cmd, '_handleGuiderFrame_4')
+            # self.controller.xxxCmd(cmd, '_handleGuiderFrame_4')
             # Get the other stars in the field
             try:
                 stars = MyPyGuide.findstars(self.cmd, procFile, maskFile,
                                             frame, tweaks=self.tweaks)
             except RuntimeError, e:
                 stars = []
-
-            if CPL.cfg.get(self.controller.name, 'vetoWithFindstars', False):
-                # Veto the centroided star if it is not in the findstars list.
-                #
-                # Get the other stars in the field
-                try:
-                    vetoStars = MyPyGuide.findstars(self.cmd, procFile, maskFile,
-                                                    frame,
-                                                    tweaks=self.tweaks,
-                                                    radius=star.radius)
-                except RuntimeError, e:
-                    vetoStars = []
-
-                confirmed = False
-                withinLimit = CPL.cfg.get(self.controller.name, 'vetoLimit', 3.0)
-                for s in vetoStars:
-                    diff = s.ctr[0] - star.ctr[0], s.ctr[1] - star.ctr[1]
-                    dist = math.sqrt(diff[0] * diff[0] + diff[1] * diff[1])
-                    if dist < withinLimit:
-                        confirmed = True
-                if not confirmed:
-                    if stars:
-                        MyPyGuide.genStarKeys(cmd, stars, caller='f')
-                    cmd.warn('text="guide star not confirmed by findstars"')
-                    self.retryGuiding()
-                    return
 
             MyPyGuide.genStarKey(cmd, star, caller='c')
             if stars:
@@ -1057,7 +1167,7 @@ class GuideLoop(object):
             CPL.tback('guideloop._handleGuideFrame-2', e)
             self.failGuiding(e)
             
-        self.controller.xxxCmd(cmd, '_handleGuiderFrame_end')
+        # self.controller.xxxCmd(cmd, '_handleGuiderFrame_end')
 
     def _extractCnvPos(self, res):
         """ Extract and convert the converted position from a tcc convert.
@@ -1078,14 +1188,14 @@ class GuideLoop(object):
         cvtPos = res.KVs.get('ConvPos', None)
 
         if not res.ok or cvtPos == None:
-            self.failGuiding('no coordinate conversion (ok=%s)' % (res.ok))
-            raise RuntimeError('no coordinate conversion')
+            CPL.log('GuideLoop', 'no coordinate conversion (ok=%s)' % (res.ok))
+            raise RuntimeError('not tracking the sky')
         else:
             try:
                 cvtPos = map(floatOrRaise, cvtPos)
             except Exception, e:
-                self.failGuiding('coordinate conversion failed: %s' % (e))
-                raise RuntimeError('no coordinate conversion')
+                CPL.log('GuideLoop', 'no coordinate conversion (ok=%s)' % (res.ok))
+                raise RuntimeError('not tracking the sky')
 
         return cvtPos
 

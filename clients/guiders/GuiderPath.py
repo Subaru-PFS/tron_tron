@@ -10,7 +10,8 @@ class GuiderPath(object):
         self.reservedPath = None, None
         self.nameChar = nameChar
         self.retries = 0
-
+        self.lastPath = None
+        
     def __str__(self):
         return "GuiderPath(rootDir=%s, reservedPath=%s, nameChar=%s" % \
                (self.rootDir, self.reservedPath, self.nameChar)
@@ -37,7 +38,7 @@ class GuiderPath(object):
     def unlock(self, cmd, filename):
         if not self.getReservedFile():
             cmd.warn('text="no filename has been reserved"')
-        elif self.getReservedPath() != filename:
+        elif self.getReservedPath() != filename and filename != None:
             cmd.warn('text=%s' % \
                      (CPL.qstr("reserved filename (%s) does not match consumed filename (%s)" % \
                                (self.getReservedPath(), filename))))
@@ -50,7 +51,20 @@ class GuiderPath(object):
         f.seek(0,0)
         f.write('%s\n' % (self.getReservedFile()))
         f.close()
+
+        self.lastPath = self.getReservedPath()
         
+    def getLastPath(self):
+        """ Return the full path of the last file written """
+
+        f = open(os.path.join(self.reservedPath[0], "last.image"), "r")
+        lastFile = f.read()
+        f.close()
+
+        lastPath = os.path.join(self.reservedPath[0], lastFile)
+
+        return lastPath
+    
     def _reserveFilename(self):
         """ Return the next available filename.
 

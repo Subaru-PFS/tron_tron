@@ -53,7 +53,6 @@ class Guider(Actor.Actor):
                               'setMask':    self.setMaskCmd,
                               'guide':      self.guideCmd,
                               'zap':        self.zapCmd,
-                              'xxx':        self.realXxxCmd
                               })
 
         self.camera = camera
@@ -75,41 +74,14 @@ class Guider(Actor.Actor):
         
     def xxxCmd(self, cmd, place=None, doFinish=False):
         
-        bufs = self.xxx(cmd)
-        cmd.warn('ubufsCnt=%d; place=%s' % (len(bufs), place))
         gc.collect()
+        bufs = self.xxx(cmd)
         cmd.warn('ubufsCnt=%d; place=%s' % (len(bufs), place))
         if doFinish:
             cmd.finish()
         
     def xxx(self, cmd):
         ubufs = gc.get_referrers(numarray.numarraycore._UBuffer)
-
-        for u in ubufs:
-            if isinstance(u, numarray.numarraycore._UBuffer):
-                if not self.ubufIDs.has_key(id(u)):
-                    self.ubufIDs[id(u)] = True
-                else:
-                    urefs = gc.get_referrers(u)
-                    #for ur in urefs:
-                    #    if type(ur) == type([]):
-                    #        urefrefs = gc.get_referrers(ur)
-                    #        for urr in urefrefs:
-                    #            cmd.warn('ref=%0.8x,%s' % (id(u),
-                    #                                       type(urr)))
-                            
-                    #    if inspect.isframe(ur):
-                    #        pass
-                            #c = ur.f_code
-                            #if c.co_name != 'xxx':
-                            #    cmd.warn('ubufRefs=%d,%08x,%s,%s' % (len(urefs), id(u),
-                            #                                         c.co_filename, c.co_name))
-
-                #for i in range(len(urefs)):
-                #    CPL.log("refs", "ubuf %08x ref %d: %s" % (id(u), i,
-                #                                              pprint.pformat(urefs[i])))
-                
-            
         return ubufs
     
         #refs = gc.get_referents(self)
@@ -171,7 +143,11 @@ class Guider(Actor.Actor):
         
         tweaks = self.parseCmdTweaks(cmd, self.config)
 
-        def cb(cmd, fname, frame, tweaks=None):
+        def cb(cmd, fname, frame, tweaks=None, warning=None, failure=None):
+            if warning:
+                cmd.warn('text=%s' % (CPL.qstr(warning)))
+            if failure:
+                cmd.fail('text=%s' % (CPL.qstr(failure)))
             cmd.finish()
             
         self.doCmdExpose(cmd, cb, 'expose', tweaks)
@@ -198,7 +174,7 @@ class Guider(Actor.Actor):
         """ Clean up/stop/initialize ourselves. """
 
         if self.guideLoop:
-            self.guideLoop.stop()
+            self.guideLoop.stop(cmd)
             
         self.config = self.defaults.copy()
         
@@ -224,10 +200,17 @@ class Guider(Actor.Actor):
         # Get the image and call the real findstars routine.
         self.doCmdExpose(cmd, self._findstarsCB, 'expose', tweaks=tweaks)
 
-    def _findstarsCB(self, cmd, camFile, frame, tweaks=None):
+    def _findstarsCB(self, cmd, camFile, frame, tweaks=None, warning=None, failure=None):
         """ Callback called when an exposure is done.
         """
-        
+
+        if warning:
+            cmd.warn('text=%s' % (CPL.qstr(warning)))
+            
+        if failure:
+            cmd.fail('text=%s' % (CPL.qstr(failure)))
+            return
+            
         #cmd.warn('debug=%s' % \
         #         (CPL.qstr('findstars checking filename=%s with frame=%s' % (camFile, frame))))
 
@@ -267,10 +250,17 @@ class Guider(Actor.Actor):
         # Get the image
         self.doCmdExpose(cmd, self._centroidCB, 'expose', tweaks=tweaks)
 
-    def _centroidCB(self, cmd, camFile, frame, tweaks=None):
+    def _centroidCB(self, cmd, camFile, frame, tweaks=None, warning=None, failure=None):
         """ Callback called when an exposure is done.
         """
         
+        if warning:
+            cmd.warn('text=%s' % (CPL.qstr(warning)))
+            
+        if failure:
+            cmd.fail('text=%s' % (CPL.qstr(failure)))
+            return
+            
         cmd.respond('debug=%s' % (CPL.qstr('checking filename=%s' % (camFile))))
 
         procFile, maskFile, darkFile, flatFile = self.processCamFile(cmd, camFile,
@@ -298,33 +288,6 @@ class Guider(Actor.Actor):
         if not star:
             cmd.fail('text="no star found"')
             return
-
-        if CPL.cfg.get(self.name, 'vetoWithFindstars', False):
-            # Veto the centroided star if it is not in the findstars list.
-            #
-            # Get the other stars in the field
-            try:
-                vetoStars = MyPyGuide.findstars(cmd, procFile, maskFile,
-                                                frame,
-                                                tweaks,
-                                                radius=star.radius)
-            except RuntimeError, e:
-                vetoStars = []
-
-            confirmed = False
-            withinLimit = CPL.cfg.get(self.name, 'vetoLimit', 3.0)
-            for s in vetoStars:
-                diff = s.ctr[0] - star.ctr[0], s.ctr[1] - star.ctr[1]
-                dist = math.sqrt(diff[0] * diff[0] + diff[1] * diff[1])
-                CPL.log('guider', 'ctr=%0.2f,%0.2f, diff=%0.2f,%0.2f, dist=%0.2f' % \
-                        (s.ctr[0], s.ctr[1],
-                         diff[0], diff[1],
-                         dist))
-                if dist < withinLimit:
-                    confirmed = True
-            if not confirmed:
-                cmd.finish('text="centroid not confirmed by findstars"')
-                return
 
         MyPyGuide.genStarKey(cmd, star, caller='c')
         cmd.finish()
@@ -362,7 +325,7 @@ class Guider(Actor.Actor):
         elif cmd.argDict.has_key('zap'):
             if self.guideLoop:
                 self.guideLoop.stop(cmd)
-                cmd.finish('text="Turning guiding off."')
+                cmd.finish('text="Forcing guiding off."')
                 self.guideLoop.stopGuiding()
             else:
                 cmd.fail('text="Guiding is already off."')
@@ -503,12 +466,12 @@ class Guider(Actor.Actor):
             frame = GuideFrame.ImageFrame(self.size)
             frame.setImageFromFITSFile(imgFile)
 
-            def _cb(cmd, filename, frame):
+            def _cb(cmd, filename, frame, warning=None, failure=None):
                 if type == 'expose':
                     cmd.respond('camFile=%s'% (CPL.qstr(filename)))
                 else:
                     cmd.respond('darkFile=%s'% (CPL.qstr(filename)))
-                cb(cmd, filename, frame, tweaks=tweaks)
+                cb(cmd, filename, frame, tweaks=tweaks, warning=warning, failure=failure)
                 
             self.camera.cbFakefile(cmd, _cb, imgFile)
             return
@@ -550,13 +513,13 @@ o            cb          - the callback function
 
         """
 
-        def _cb(filename, frame):
+        def _cb(cmd, filename, frame, warning=None, failure=None):
             self.pathControl.unlock(cmd, filename)
             if type == 'expose':
                 cmd.respond('camFile=%s'% (CPL.qstr(filename)))
             else:
                 cmd.respond('darkFile=%s'% (CPL.qstr(filename)))
-            cb(cmd, filename, frame, **cbArgs)
+            cb(cmd, filename, frame, warning=warning, failure=failure, **cbArgs)
             
         CPL.log('Guider', 'exposing %s(%s) frame=%s' % (type, itime, frame))
 
@@ -857,8 +820,8 @@ o            cb          - the callback function
                                                    ('cnt', int),
                                                    ('ds9', cmd.qstr)])
 
-        #if unmatched:
-        #    cmd.warn('text="unknown arguments: %s"' % (unmatched))
+        #if leftovers:
+        #    cmd.warn('text="unknown arguments: %s"' % (leftovers))
             
         if matched.has_key('exptime'):
             matched['time'] = matched['exptime']

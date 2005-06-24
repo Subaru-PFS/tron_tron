@@ -21,7 +21,6 @@ class gcam(Guider.Guider, TCCGcam.TCCGcam):
         sys.stderr.write("in gcam.__init__\n")
         ccdSize = CPL.cfg.get('gcam', 'ccdSize')
 
-        path = os.path.join(CPL.cfg.get('gcam', 'imageRoot'), CPL.cfg.get('gcam', 'imageDir'))
         cameraShim = CameraShim.CameraShim('gcamera', ccdSize, self)
         Guider.Guider.__init__(self, cameraShim, 'gcam', **argv)
         TCCGcam.TCCGcam.__init__(self, **argv)
