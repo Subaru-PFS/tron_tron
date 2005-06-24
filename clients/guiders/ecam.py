@@ -18,7 +18,6 @@ import Parsing
 class ecam(Guider.Guider, TCCGcam.TCCGcam):
     def __init__(self, **argv):
         ccdSize = CPL.cfg.get('ecamera', 'ccdSize')
-        path = os.path.join(CPL.cfg.get('ecam', 'imageRoot'), CPL.cfg.get('ecam', 'imageDir'))
         cameraShim = CameraShim.CameraShim('ecamera', ccdSize, self)
         Guider.Guider.__init__(self, cameraShim, 'ecam', **argv)
         TCCGcam.TCCGcam.__init__(self, **argv)
@@ -26,6 +25,7 @@ class ecam(Guider.Guider, TCCGcam.TCCGcam):
         # Addition commands for GimCtrl camera
         self.commands.update({'rawCmd':    self.doRawCmd})
 
+        self.rawPath = CPL.cfg.get(self.name, 'rawPath')
         
     def _setDefaults(self):
         Guider.Guider._setDefaults(self)
@@ -87,6 +87,17 @@ class ecam(Guider.Guider, TCCGcam.TCCGcam):
 	for i in range(len(ret)):
 	    cmd.respond(ret[i])
 	cmd.finish()
+
+    def getLastPath(self):
+        """ Return the full path of the last file written """
+
+        f = open(os.path.join(self.rawPath, "last.image"), "r")
+        lastFile = f.read()
+        f.close()
+
+        lastPath = os.path.join(self.rawPath, lastFile)
+
+        return lastPath
     
     def doTccDoread(self, cmd):
         """ Pass on a 'doread' command from a TCC to our camera. """
@@ -99,16 +110,14 @@ class ecam(Guider.Guider, TCCGcam.TCCGcam):
             cmd.fail('txtForTcc=%s' % (CPL.qstr("Could not parse command %s" % (cmd.raw_cmd))))
             return
 
-        ret = self.rawCmd(cmd, 120)
-        fname = self.camera.copyinNewRawImage()
+        ret = self.rawCmd(cmd, float(iTime) + 20)
+        fname = self.getLastPath()
+        cmd.respond('camFile="%s"' % (fname))
         frame = GuideFrame.ImageFrame(self.size)
         frame.setImageFromFITSFile(fname)
 
-        self.imgForTcc = fname
         self.frameForTcc = frame
         self.fileForTcc = fname
-        
-        cmd.respond('camFile="%s"' % (fname))
         
         self.echoToTcc(cmd, ret)
     

@@ -1,3 +1,4 @@
+import random
 
 import CPL
 import client
@@ -22,6 +23,11 @@ class CameraShim(object):
 
         def _cb(ret):
             CPL.log('cbExpose', '_cb got %s' % (ret))
+
+            if not ret.ok:
+                reason = ret.KVs.get('text', 'exposure failed')
+                cb(cmd, None, None, failure=reason)
+                
             camFilename = ret.KVs.get('camFile', None)
             if not camFilename:
                 cb(None, None)
@@ -31,7 +37,7 @@ class CameraShim(object):
             frame = GuideFrame.ImageFrame(self.size)
             frame.setImageFromFITSFile(camFilename)
 
-            cb(camFilename, frame)
+            cb(cmd, camFilename, frame)
 
         client.callback(self.name,
                         '%s exptime=%0.1f bin=%d,%d offset=%d,%d size=%d,%d filename=%s' % \
@@ -53,9 +59,13 @@ class CameraShim(object):
             CPL.log('cbFakefile', '_cb got %s' % (ret))
             filename = ret.KVs.get('camFile', None)
             if not filename:
-                cb(None, None)
+                cb(None, None, failure='no such file')
                 return
 
+            if not ret.ok:
+                reason = ret.KVs.get('text', 'exposure failed')
+                cb(cmd, None, None, failure=reason)
+                
             frame = GuideFrame.ImageFrame(self.size)
             frame.setImageFromFITSFile(filename)
 

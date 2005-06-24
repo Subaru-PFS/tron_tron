@@ -38,7 +38,7 @@ doread       8.00     3     3      171.0      171.0     1024.0     1024.0
                               'showstatus': self.doTccShowstatus})
 
         # the tcc sends 'findstars' after requesting an image. Keep the image name around.
-        self.imgForTcc = None
+        self.fileForTcc = None
 
     def echoToTcc(self, cmd, ret):
         """ If cmd comes from the TCC, pass the ret lines back to it. """
@@ -183,7 +183,6 @@ showstatus
     def _doTccDoreadCB(self, cmd, filename, frame, itime=0):
         # Keep some info around for findstars
         #
-        self.imgForTcc = filename
         self.frameForTcc = frame
         self.fileForTcc = filename
         
@@ -208,9 +207,9 @@ showstatus
         '''
 
         cmd.respond('txtForTcc=%s' % (CPL.qstr(cmd.raw_cmd)))
-        cmd.respond('%sDebug=%s' % (self.name, CPL.qstr('checking filename=%s' % (self.imgForTcc))))
+        cmd.respond('%sDebug=%s' % (self.name, CPL.qstr('checking filename=%s' % (self.fileForTcc))))
 
-        if not self.imgForTcc or not self.frameForTcc:
+        if not self.fileForTcc or not self.frameForTcc:
             cmd.warn('error="No doread image available for TCC findstars!"')
             cmd.finish('txtForTcc=" OK"')
             return
@@ -249,10 +248,11 @@ showstatus
         #cmd.warn('debug="tccFindstars frame = %s"' % (findstarsFrame))
         
         maskFile, maskbits = self.mask.getMaskForFrame(cmd, self.fileForTcc, self.frameForTcc)
-
+        CPL.log('TCCGcam', 'note maskFile = %s' % (maskFile))
+        
         tweaks = self.config
         try:
-            stars = MyPyGuide.findstars(cmd, self.imgForTcc, maskFile,
+            stars = MyPyGuide.findstars(cmd, self.fileForTcc, maskFile,
                                         self.frameForTcc, tweaks)
         except Exception, e:
             stars = []
