@@ -39,6 +39,9 @@ class Guider(Actor.Actor):
         """
         """
         
+        os.environ['TZ'] = 'UTC'
+        time.tzset()
+        
         Actor.Actor.__init__(self, guiderName, **argv)
 
         self.commands.update({'status':     self.statusCmd,
@@ -101,7 +104,8 @@ class Guider(Actor.Actor):
                      'maskFile', 'biasFile',
                      'imageHost', 'imageRoot', 'imageDir',
                      'fitErrorScale', 'doFlatfield',
-                     'requiredInst', 'requiredPort'):
+                     'requiredInst', 'requiredPort',
+                     'imCtrName', 'imScaleName'):
             self.defaults[name] = CPL.cfg.get(self.name, name)
         self.size = self.defaults['ccdSize']
         self.defaults['minOffset'] = CPL.cfg.get('telescope', 'minOffset')
@@ -182,7 +186,8 @@ class Guider(Actor.Actor):
         if cmd.program() == 'TC01':
             self.doTccInit(cmd)
             return
-            
+
+        self.camera.initCmd(cmd, doFinish=False)
 	cmd.finish('')
     initCmd.helpText = ('init', 're-initialize camera')
         
@@ -340,7 +345,14 @@ class Guider(Actor.Actor):
             cmd.finish('')
         elif cmd.argDict.has_key('on'):
             if self.guideLoop:
-                cmd.fail('text="cannot start guiding while guiding"')
+                # Hack, hack, double evil nasty hack: this is
+                # here 'cuz I stupidly implemented centering offsets as
+                # mini guide loops.
+                if cmd.argDict.has_key('centerOn') and self.guideLoop.guidingType == 'manual':
+                    newTweaks = self.parseCmdTweaks(cmd, None)
+                    self.guideLoop.centerUp(cmd, newTweaks)
+                else:
+                    cmd.fail('text="cannot start guiding while guiding"')
                 return
 
             tweaks = self.parseCmdTweaks(cmd, self.config)
@@ -443,7 +455,7 @@ class Guider(Actor.Actor):
 
         if matched.get('itime'):
             tweaks['itime'] = matched['time']
-        
+
         # Extra double hack: have a configuration override to the filenames. And
         # if that does not work, look for a command option override.
         tweaks['newFile'] = True
@@ -489,6 +501,9 @@ class Guider(Actor.Actor):
             if matched.has_key('window'):
                 window = self.parseWindow(matched['window'])
 
+            bin = tweaks.get('bin', window)
+            window = tweaks.get('window', window)
+            
             frame = GuideFrame.ImageFrame(self.size)
             frame.setImageFromWindow(bin, window)
             self.doCBExpose(cmd, cb, type, time, frame, cbArgs={'tweaks':tweaks}) 
@@ -770,6 +785,18 @@ o            cb          - the callback function
 
         return coords
 
+    def parseSize(self, s):
+        try:
+            parts = s.split(',')
+            if len(parts) != 2:
+                raise Exception
+            coords = map(int, parts)
+        except:
+            raise Exception("size must be specified as X,Y with both coordinates being integers.")
+
+        return coords
+        
+        
     def parseBin(self, s):
         """ Parse a binning specification of the form X,Y or N
 
@@ -818,6 +845,9 @@ o            cb          - the callback function
                                                    ('restart', cmd.qstr),
                                                    ('forceFile', cmd.qstr),
                                                    ('cnt', int),
+                                                   ('autoSubframe', self.parseSize),
+                                                   ('centerOn', self.parseCoord),
+                                                   ('manDelay', float),
                                                    ('ds9', cmd.qstr)])
 
         #if leftovers:

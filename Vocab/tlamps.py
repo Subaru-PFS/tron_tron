@@ -35,7 +35,8 @@ class tlamps(InternalCmd.InternalCmd):
         
         # How to control the lamp controller
         self.lampsCmd  = "ssh -1 -i /home/apotop/.ssh/mc arc@holecard bin/lamps"
-
+        self.lampsCmd = "lamps"
+        
     def _returnKeys(self, cmd, names=None, states=None):
         
         KVs = []

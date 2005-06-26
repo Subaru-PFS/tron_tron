@@ -180,7 +180,19 @@ showstatus
                         cbArgs={'itime':itime})
 
 
-    def _doTccDoreadCB(self, cmd, filename, frame, itime=0):
+    def _doTccDoreadCB(self, cmd, filename, frame, itime=0,
+                       warning=None, failure=None):
+
+
+        if warning:
+            cmd.warn('text=%s' % (CPL.qstr(warning)))
+            
+        if failure:
+            cmd.warn('text=%s' % (CPL.qstr(failure)))
+            cmd.warn('txtForTcc=%s' % (CPL.qstr(failure)))
+            cmd.finish('txtForTcc=" OK"')
+            return
+
         # Keep some info around for findstars
         #
         self.frameForTcc = frame

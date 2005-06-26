@@ -26,6 +26,13 @@ class GuideLoop(object):
         self.cmd = cmd
         self.tweaks = tweaks
 
+        self.imCtrName = self.tweaks['imCtrName']
+        self.imScaleName = self.tweaks['imScaleName']
+        if self.imCtrName[0] == 'G':
+            self.frameName = 'gimage'
+        else:
+            self.frameName = 'inst'
+            
         # This controls whether the loop continues or stops, and gives the
         # guider keyword value.
         self.state = 'starting'
@@ -68,8 +75,10 @@ class GuideLoop(object):
                                                self.listenToMoveItems))
         self.listeners.append(client.listenFor('tcc', ['TCCStatus'], self.listenToTCCStatus))
         self.listeners.append(client.listenFor('tcc', ['Boresight'], self.listenToTCCBoresight))
-        self.listeners.append(client.listenFor('tcc', ['GImCtr'], self.listenToTCCImCtr))
-        self.listeners.append(client.listenFor('tcc', ['GImScale'], self.listenToTCCImScale))
+        self.listeners.append(client.listenFor('tcc', [self.imCtrName], self.listenToTCCImCtr))
+        self.listeners.append(client.listenFor('tcc', [self.imScaleName], self.listenToTCCImScale))
+
+            
         self.listeners.append(client.listenFor('tcc', ['SlewEnd'], self.listenToTCCSlewEnd))
 
         # Force updates of the above keywords:
@@ -128,7 +137,12 @@ class GuideLoop(object):
         
     def cleanup(self):
         """ """
-        
+
+        # TUI generates the slewing ending sound when it sees the "stopping" state.
+        # Force that now.
+        if self.state != 'stopping':
+            self.genStateKey(state='stopping', action='')
+            
         self.genStateKey(state='off', action='')
         for i in range(len(self.listeners)):
             CPL.log("GuideLoop.cleanup", "deleting listener %s" % (self.listeners[0]))
@@ -333,7 +347,7 @@ class GuideLoop(object):
         """ Set the guider/instrument center pixel.
         """
 
-        k = reply.KVs['GImCtr']
+        k = reply.KVs[self.imCtrName]
         self.boresight = map(float, k)
         self.cmd.warn('debug="set boresight pos to (%0.2f, %0.2f)"' % \
                       (self.boresight[0], self.boresight[1]))
@@ -342,10 +356,19 @@ class GuideLoop(object):
         """ Set the guider/instrument scales.
         """
 
-        k = reply.KVs['GImScale']
+        k = reply.KVs[self.imScaleName]
         self.imScale = map(float, k)
         self.cmd.warn('debug="set imscale to (%0.2f, %0.2f)"' % \
                       (self.imScale[0], self.imScale[1]))
+        
+    def checkSubframe(self):
+        """ Optionally window around the boresight. """
+        
+        if self.tweaks.has_key('autoSubframe'):
+            size = self.tweaks['autoSubframe']
+            ctr = self.boresight
+            self.tweaks['window'] = (ctr[0]-size[0], ctr[1]-size[1],
+                                     ctr[0]+size[0], ctr[1]+size[1])
         
     def _doGuide(self):
         """ Actually start guiding.
@@ -378,12 +401,13 @@ class GuideLoop(object):
             self.failGuiding('cannot specify both field and boresight guiding.')
             return
 
-
         if manual:
             if boresight or centerOn or gstar:
                 self.failGuiding('cannot specify both manual and automatic guiding.')
                 return
             
+            self.checkSubframe()
+
             self.guidingType = 'manual'
             self.genStateKey(state='starting')
             self.state = 'on'
@@ -397,6 +421,8 @@ class GuideLoop(object):
             self.guidingType = 'boresight'
             self.refPVT = None
 
+            self.checkSubframe()
+            
             self.genStateKey(state='starting')
             self.state = 'on'
             self.controller.doCmdExpose(self.cmd, self._handleGuiderFrame,
@@ -444,6 +470,37 @@ class GuideLoop(object):
             self.genStateKey(state='starting')
         self.controller.doCmdExpose(self.cmd, self._firstExposure, 'expose', self.tweaks)
 
+    def centerUp(self, cmd, tweaks):
+
+        # if "centerOn" is specified, offset the given position to the boresight,
+        # then continue nudging it there.
+        seedPos = tweaks['centerOn']
+
+        self.cmd.respond('text="offsetting object at (%0.1f, %0.1f) to the boresight...."' % \
+                         (seedPos[0], seedPos[1]))
+        try:
+            refpos = self.getBoresight()
+            frame = GuideFrame.ImageFrame(self.controller.size)
+            CCDstar = MyPyGuide.imgPos2CCDXY(seedPos, frame)
+            cmdTxt, mustWait = self._genOffsetCmd(cmd, CCDstar,
+                                                  frame, refpos,
+                                                  offsetType='guide',
+                                                  doScale=False)
+            self.genStateKey(action='centering')
+            ret = client.call('tcc', cmdTxt,
+                        cid=self.controller.cidForCmd(self.cmd))
+                
+        except Exception, e:
+            CPL.tback('centerUp.1', e)
+            cmd.fail('text=%s' % (CPL.qstr(e)))
+            return
+        
+        if not ret.ok:
+            cmd.fail('text="centering offset failed"')
+        else:
+            cmd.finish()
+            
+            
     def centerAndExpose(self, cmd):
 
         # if "centerOn" is specified, offset the given position to the boresight,
@@ -460,7 +517,7 @@ class GuideLoop(object):
                                                   frame, refpos,
                                                   offsetType='guide',
                                                   doScale=False)
-            self.state = 'offsetting'
+            self.genStateKey(action='offsetting')
             ret = client.call('tcc', cmdTxt,
                         cid=self.controller.cidForCmd(self.cmd))
             if mustWait:
@@ -494,10 +551,10 @@ class GuideLoop(object):
         """
 
         if warning:
-            cmd.warn('text=%s' % (CPL.qstr(warning)))
+            cmd.warn('text=%s' % (warning))
             
         if failure:
-            self.failGuiding('text=%s' % (CPL.qstr(failure)))
+            self.failGuiding('text=%s' % (failure))
             return
 
         if self.state == 'off':
@@ -578,7 +635,7 @@ class GuideLoop(object):
 
             try:
                 CCDstar = MyPyGuide.star2CCDXY(star, frame)
-                self.refPVT = self._GPos2ICRS(CCDstar.ctr)
+                self.refPVT = self._Frame2ICRS(CCDstar.ctr)
 
                 # Per Russell: make sure to zero out the velocities on the ICRS reference
                 # position.
@@ -599,7 +656,7 @@ class GuideLoop(object):
                     return
 
                 CCDstar = MyPyGuide.star2CCDXY(stars[0], frame)
-                self.refPVT = self._GPos2ICRS(CCDstar.ctr)
+                self.refPVT = self._Frame2ICRS(CCDstar.ctr)
 
                 # Per Russell: make sure to zero out the velocities on the ICRS reference
                 # position.
@@ -789,7 +846,7 @@ class GuideLoop(object):
         """ Return the expected position of the guide star in GPos coordinates. """
 
         if self.guidingType == 'field':
-            pvt = self._ICRS2GPos(self.PVT2pos(self.refPVT, t=t))
+            pvt = self._ICRS2Frame(self.PVT2pos(self.refPVT, t=t))
             return self.PVT2pos(pvt, t=t)
         else:
             return self.getBoresight(t)
@@ -814,8 +871,8 @@ class GuideLoop(object):
         #  - Convert each to Observed positions
         #
         now = time.time()
-        refPVT = self._GPos2Obs(refGpos)
-        starPVT = self._GPos2Obs(star.ctr)
+        refPVT = self._Frame2Obs(refGpos)
+        starPVT = self._Frame2Obs(star.ctr)
         
         if not refPVT \
            or not starPVT \
@@ -993,8 +1050,11 @@ class GuideLoop(object):
             frac = 0.0
         else:
             frac = float(parts[1])
-            
-        secs = time.mktime(time.strptime("%Y-%m-%d %H:%M:%S"))
+            frac /= 10 ** len(parts[1])
+
+        tlist = time.strptime(dateStr, "%Y-%m-%d %H:%M:%S")
+        self.cmd.warn('debug="exp. middle: %s"' % (tlist))
+        secs = time.mktime(tlist)
         return secs + frac
         
     def _getExpMiddle(self, camFile, tweaks):
@@ -1022,13 +1082,23 @@ class GuideLoop(object):
             h = {}
             
         if h.has_key('UTMIDDLE'):
-            t = self.parseISODate(h['UTMIDDLE'])
+            t = self._parseISODate(h['UTMIDDLE'])
         elif h.has_key('UTC-OBS'):
-            t0 = self.parseISODate(h['UTC-DATE'])
+            t0 = self._parseISODate(h['UTC-OBS'])
+            itime = h['EXPTIME']
+            t = t0 + (itime / 2.0)
+        elif h.has_key('UTTIME') and h.has_key('UTDATE'):
+            # GimCtrl Echelle slitviewer
+            dateStr = "%s %s" % (h['UTDATE'], h['UTTIME'])
+            
+            tlist = time.strptime(dateStr, "%Y/%m/%d %H:%M:%S")
+            self.cmd.warn('debug="exp. middle: %s"' % (tlist))
+            t0 = time.mktime(tlist)
+            
             itime = h['EXPTIME']
             t = t0 + (itime / 2.0)
         elif h.has_key('DATE-OBS'):
-            t0 = self.parseISODate(h['DATE-OBS'])
+            t0 = self._parseISODate(h['DATE-OBS'])
             sys = h['TIMESYS']
             itime = h['EXPTIME']
 
@@ -1049,10 +1119,10 @@ class GuideLoop(object):
         """
 
         if warning:
-            cmd.warn('text=%s' % (CPL.qstr(warning)))
+            cmd.warn('text=%s' % (warning))
             
         if failure:
-            self.failGuiding('text=%s' % (CPL.qstr(failure)))
+            self.failGuiding('text=%s' % (failure))
             return
 
         # self.controller.xxxCmd(cmd, '_handleGuiderFrame')
@@ -1111,6 +1181,11 @@ class GuideLoop(object):
                 if stars:
                     MyPyGuide.genStarKeys(cmd, stars, caller='f')
 
+                delay = self.tweaks.get('manDelay', 0.0)
+                if delay > 0.0:
+                    self.genStateKey(action='pausing')
+                    time.sleep(delay)
+                
                 self.genStateKey(action='exposing')
                 self.controller.doCmdExpose(self.cmd, self._handleGuiderFrame,
                                             'expose', tweaks=self.tweaks)
@@ -1205,17 +1280,36 @@ class GuideLoop(object):
         if "%s" % pos[0] == 'nan' or "%s" % pos[1] == 'nan':
             self.failGuiding('cannot convert undefined coordinates')
             
-    def _GPos2ICRS(self, pos):
+    def _pixels2inst(self, pos):
+        # (pos - centPix) / pix/deg
+
+        instPos = ((pos[0] - self.boresight[0]) / self.imScale[0], \
+                   (pos[1] - self.boresight[1]) / self.imScale[1])
+
+        return instPos
+    
+    def _inst2pixels(self, pos):
+        # (pos * pix/deg) + ctrPix
+
+        pixel = ((pos[0] * self.imScale[0]) + self.boresight[0],
+                 (pos[1] * self.imScale[1]) + self.boresight[1])
+
+        return pixel
+    
+    def _Frame2ICRS(self, pos):
         """ Convert a Guide frame coordinate to an ICRS coordinate. """        
 
+        if self.frameName == 'inst':
+            pos = self._pixels2inst(pos)
+            
         # self.cmd.respond('debug=%s' % (CPL.qstr("gpos2ICRS pos=%r" % (pos,))))
 
         self._checkCoordinates(pos)
-        ret = client.call("tcc", "convert %0.5f,%0.5f gimage icrs" % (pos[0], pos[1]),
+        ret = client.call("tcc", "convert %0.5f,%0.5f %s icrs" % (pos[0], pos[1], self.frameName),
                           cid=self.controller.cidForCmd(self.cmd))
         return self._extractCnvPos(ret)
     
-    def _GPos2Obs(self, pos):
+    def _Frame2Obs(self, pos):
         """ Convert a Guide frame coordinate pair to an Observed coordinate pair.
 
         Args:
@@ -1225,10 +1319,13 @@ class GuideLoop(object):
             cvtpos1, cvtpos2
         """
 
+        if self.frameName == 'inst':
+            pos = self._pixels2inst(pos)
+            
         # self.cmd.respond('debug=%s' % (CPL.qstr("gpos2Obs pos=%r" % (pos,))))        
         self._checkCoordinates(pos)
 
-        ret = client.call("tcc", "convert %0.5f,%0.5f gimage obs" % (pos[0], pos[1]),
+        ret = client.call("tcc", "convert %0.5f,%0.5f %s obs" % (pos[0], pos[1], self.frameName),
                           cid=self.controller.cidForCmd(self.cmd))
         return self._extractCnvPos(ret)
     
@@ -1242,13 +1339,17 @@ class GuideLoop(object):
                           cid=self.controller.cidForCmd(self.cmd))
         return self._extractCnvPos(ret)
 
-    def _ICRS2GPos(self, pos):
+    def _ICRS2Frame(self, pos):
         """ Convert an ICRS coordinate to a guider frame coordinate. """
 
-        # self.cmd.respond('debug=%s' % (CPL.qstr("ICRS2GPos pos=%r" % (pos,))))        
+        # self.cmd.respond('debug=%s' % (CPL.qstr("ICRS2Frame pos=%r" % (pos,))))        
         self._checkCoordinates(pos)
 
-        ret = client.call("tcc", "convert %0.5f,%0.5f icrs gimage" % (pos[0], pos[1]),
+        ret = client.call("tcc", "convert %0.5f,%0.5f icrs %s" % (pos[0], pos[1], self.frameName),
                           cid=self.controller.cidForCmd(self.cmd))
-        return self._extractCnvPos(ret)
+        pos = self._extractCnvPos(ret)
     
+        if self.frameName == 'inst':
+            pos = self._inst2pixels(pos)
+
+        return pos

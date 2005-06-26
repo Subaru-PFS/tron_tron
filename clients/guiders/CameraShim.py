@@ -15,6 +15,16 @@ class CameraShim(object):
         if doFinish:
             cmd.finish()
             
+    def initCmd(self, cmd, doFinish=True):
+        ret = client.call(self.name, 'init')
+        if ret.ok:
+            cmd.respond('camera="connected"')
+        else:
+            cmd.warn('camera="not connected"')
+            
+        if doFinish:
+            cmd.finish()
+            
     def cbExpose(self, cmd, cb, type, itime, frame, filename=None):
         """
         Args:
@@ -27,10 +37,11 @@ class CameraShim(object):
             if not ret.ok:
                 reason = ret.KVs.get('text', 'exposure failed')
                 cb(cmd, None, None, failure=reason)
-                
+                return
+            
             camFilename = ret.KVs.get('camFile', None)
             if not camFilename:
-                cb(None, None)
+                cb(cmd, None, None, failure='exposure failed')
                 return
             camFilename = cmd.qstr(camFilename)
             

@@ -147,7 +147,7 @@ class GCamera(object):
             filename = self._expose(cmd, filename, type, time, frame)
             cmd.finish('camFile=%s' % (filename))
         except Exception, e: 
-            cmd.fail('text=%s' % (e))
+            cmd.fail('text=%s' % (CPL.qstr(e)))
            
 
     def parseCoord(self, c):
