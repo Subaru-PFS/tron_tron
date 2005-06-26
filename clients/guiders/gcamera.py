@@ -218,6 +218,7 @@ class AltaActor(GCamera.GCamera, Actor.Actor):
                  'EXPTIME = %0.2f' % (d['iTime']),
                  "TIMESYS = 'UTC'",
                  "DATE-OBS= '%s'" % (CPL.isoTS(d['startTime'])),
+                 "UTMIDDLE= '%s'" % (CPL.isoTS(d['startTime'] + d['iTime']/2.0)),
                  'CCDTEMP = %0.1f' % (self.getCCDTemp()),
                  "FILENAME= '%s'" % (basename),
                  "FULLX   = %d" % (self.ccdSize[0]),

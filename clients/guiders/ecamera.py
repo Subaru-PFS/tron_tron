@@ -4,6 +4,7 @@ __all__ = ['GImCtrlActor']
 
 import os.path
 import pyfits
+import re
 
 import client
 import Actor
@@ -154,9 +155,22 @@ class GImCtrlActor(GCamera.GCamera, Actor.Actor):
         
         actor, cmdStr = self.genExposeCommand(cmd, expType, itime, frame)
         ret = self.conn.sendCmd(cmdStr, itime + 15)
-        for r in ret:
-            if r.find('error') >= 0:
-                raise RuntimeError(r)
+
+        CPL.log('gcamera', 'ret = %s' % (CPL.qstr(ret)))
+
+        if len(ret) != 3:
+            raise RuntimeError("unexpected response (not 3 lines): %s" % ret)
+        if ret[0] != cmdStr:
+            raise RuntimeError("unexpected command echo: %s" % ret[0])
+        if ret[2] != ' OK':
+            raise RuntimeError("unexpected response (3rd line not OK): %s" % ret[2])
+        if not re.match('^\d+ \d+ \d+ \d+ \d+ \d+ \d+\.\d+ \d+ (nan|-?\d+\.\d+) ', ret[1]):
+            errorDetail = 'unexpected input: %s' % ret[1]
+            for r in ret:
+                if r.find('ppk') >= 0:
+                    errorDetail = r
+
+            raise RuntimeError(errorDetail)
             
         self.copyinNewRawImage(filename)
         
@@ -184,11 +198,14 @@ class GImCtrlActor(GCamera.GCamera, Actor.Actor):
         oldPath = self._getLastImageName()
 
         CPL.log("copyinNewRawImage", "old=%s; new=%s" % (oldPath, newPath))
-        inFITS = pyfits.open(oldPath)
-        hdr = inFITS[0].header
-        inFITS.writeto(newPath)
-        inFITS.close()
-        os.chmod(newPath, 0644)
+        try:
+            inFITS = pyfits.open(oldPath)
+            hdr = inFITS[0].header
+            inFITS.writeto(newPath)
+            inFITS.close()
+            os.chmod(newPath, 0644)
+        except Exception, e:
+            raise RuntimeError("could not read new image file: %s" % (e))
         
         return newPath
 

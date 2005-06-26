@@ -1,6 +1,7 @@
 __all__ = ['GuiderMask']
 
 import os
+import popen2
 import sys
 
 import CPL
@@ -53,6 +54,30 @@ class GuiderMask(object):
 
         return list(size)
 
+    def runIDLcmd(self, cmd, IDLcmd):
+        CPL.log('IDLcmd', IDLcmd)
+        
+        o = popen2.Popen3(IDLcmd, True)
+        ret = o.wait()
+        if ret != 0:
+            cmd.warn('text="failed to rehape the mask file"')
+            
+        for l in o.childerr:
+            if l.find('IDL Version') == 0:
+                continue
+            if l.find('Installation number') == 0:
+                continue
+            if l.find('Licensed for') == 0:
+                continue
+            if l.find('% Compiled') == 0:
+                continue
+            if l.strip() == '':
+                continue
+            
+            cmd.warn('IDLdebug=%s' % (CPL.qstr(l)))
+        del o
+            
+        
     def getMaskForFrame(self, cmd, basename, frame):
         """ Return the mask adjusted for a given subframe and binning.
         Caches the current mask.
@@ -102,17 +127,14 @@ class GuiderMask(object):
         # which this papers over is that Numeric stinks.
         #
         thresh = CPL.cfg.get(self.name, 'maskThresh')
-        IDLcmd = "echo \"fsubmask, '%s', '%s', %s, %s, %s, %0.2f\" | idl" % (self.baseFile, newFile,
-                                                                              list(offset),
-                                                                              list(size),
-                                                                              list(binning),
-                                                                              thresh)
-        CPL.log('IDLcmd', IDLcmd)
-        
-        # MUST run this so that errors get to us! FIXME!
-        ret = os.system(IDLcmd)
-        if ret != 0:
-            raise RuntimeError("could not reshape the mask file by running '%s'" % (IDLcmd))
+        IDLcmd = "echo \"fsubmask, '%s', '%s', %s, %s, %s, %0.2f\" | idl" % \
+                 (self.baseFile, newFile,
+                  list(offset),
+                  list(size),
+                  list(binning),
+                  thresh)
+
+        self.runIDLcmd(cmd, IDLcmd)
         
         try:
             f = pyfits.open(newFile)
