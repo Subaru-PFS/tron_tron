@@ -366,6 +366,14 @@ class GuideLoop(object):
         
         if self.tweaks.has_key('autoSubframe'):
             size = self.tweaks['autoSubframe']
+            if size[0] == 0.0 and size[1] == 0.0:
+                try:
+                    del self.tweaks['window']
+                except:
+                    pass
+                del self.tweaks['autoSubframe']
+                return
+            
             ctr = self.boresight
             self.tweaks['window'] = (ctr[0]-size[0], ctr[1]-size[1],
                                      ctr[0]+size[0], ctr[1]+size[1])
@@ -1092,7 +1100,6 @@ class GuideLoop(object):
             dateStr = "%s %s" % (h['UTDATE'], h['UTTIME'])
             
             tlist = time.strptime(dateStr, "%Y/%m/%d %H:%M:%S")
-            self.cmd.warn('debug="exp. middle: %s"' % (tlist))
             t0 = time.mktime(tlist)
             
             itime = h['EXPTIME']
@@ -1106,7 +1113,8 @@ class GuideLoop(object):
                 t0 -= self._startingUTCoffset
             t = t0 + (itime / 2.0)
         else:
-            t = time.time() - tweaks['exptime'] / 2.0
+            # Total guess. Could keep per-inst readout times, but this'll probably do.
+            t = time.time() - tweaks['exptime'] / 2.0 - 2.0
 
         now = time.time()
         if abs(now - t) > 100:
@@ -1172,6 +1180,9 @@ class GuideLoop(object):
             frame.setImageFromFITSFile(procFile)
 
             if self.guidingType == 'manual':
+                expMiddle = self._getExpMiddle(camFile, tweaks)
+                now = time.time()
+                cmd.warn('debug="exposure middle was %0.1f sec ago."' % (now - expMiddle))
                 try:
                     stars = MyPyGuide.findstars(self.cmd, procFile, maskFile,
                                             frame, tweaks=self.tweaks)

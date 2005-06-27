@@ -121,6 +121,8 @@ class Guider(Actor.Actor):
         cmd.respond("centActRadius=%0.1f" % (self.config['cradius']))
         cmd.respond('imageRoot=%s,%s' % (CPL.qstr(self.config['imageHost']),
                                          CPL.qstr(self.config['imageRoot'])))
+        binning = self.config['binning']
+        cmd.respond('defBinning=%d,%d' % (binning[0], binning[1]))
         
     def statusCmd(self, cmd, doFinish=True):
         """ Returns camera and guide loop status keywords. """
