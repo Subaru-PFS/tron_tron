@@ -1061,7 +1061,7 @@ class GuideLoop(object):
             frac /= 10 ** len(parts[1])
 
         tlist = time.strptime(dateStr, "%Y-%m-%d %H:%M:%S")
-        self.cmd.warn('debug="exp. middle: %s"' % (tlist))
+        # self.cmd.warn('debug="exp. middle: %s"' % (tlist))
         secs = time.mktime(tlist)
         return secs + frac
         
@@ -1182,7 +1182,7 @@ class GuideLoop(object):
             if self.guidingType == 'manual':
                 expMiddle = self._getExpMiddle(camFile, tweaks)
                 now = time.time()
-                cmd.warn('debug="exposure middle was %0.1f sec ago."' % (now - expMiddle))
+                #cmd.warn('debug="exposure middle was %0.1f sec ago."' % (now - expMiddle))
                 try:
                     stars = MyPyGuide.findstars(self.cmd, procFile, maskFile,
                                             frame, tweaks=self.tweaks)

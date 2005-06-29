@@ -23,13 +23,7 @@ class GuiderPath(object):
 
     def lockNextFilename(self, cmd):
         if self.getReservedFile():
-            if self.retries == 0:
-                cmd.warn('text="a filename has been already been reserved. Try again to overwrite it."')
-                self.retries += 1
-                return False
-            else:
-                self.retries = 0
-                cmd.warn('text="overwriting reserved filename."')
+            cmd.warn('text="overwriting reserved filename."')
 
         self._reserveFilename()
 
