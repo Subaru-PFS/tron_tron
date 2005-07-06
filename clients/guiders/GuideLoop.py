@@ -627,9 +627,11 @@ class GuideLoop(object):
         elif self.tweaks.has_key('gstars'):
             # if "gstar" is specified, use that as the guide star.
             #
-
             seeds = self.tweaks['gstars']
             seedPos = seeds[0]
+
+            CPL.log('GuideLoop', '1st exp gstar=%s' % (seedPos))
+            
             try:
                 star = MyPyGuide.centroid(self.cmd, camFile, maskFile,
                                           frame, seedPos, self.tweaks)
@@ -641,9 +643,12 @@ class GuideLoop(object):
                 self.failGuiding(e)
                 return
 
+            CPL.log('GuideLoop', '1st exp star=%s' % (star))
             try:
                 CCDstar = MyPyGuide.star2CCDXY(star, frame)
+                CPL.log('GuideLoop', '1st exp ccdstar=%s' % (CCDstar))
                 self.refPVT = self._Frame2ICRS(CCDstar.ctr)
+                CPL.log('GuideLoop', '1st exp refPVT=%s' % (self.refPVT))
 
                 # Per Russell: make sure to zero out the velocities on the ICRS reference
                 # position.
@@ -1118,7 +1123,7 @@ class GuideLoop(object):
 
         now = time.time()
         if abs(now - t) > 100:
-            self.cmd.warn("exposure middle was %d seconds from now" % (t - now))
+            self.cmd.warn('text="exposure middle was %d seconds ago"' % (now - t))
         return t
     
     def _handleGuiderFrame(self, cmd, camFile, frame, tweaks=None, warning=None, failure=None):

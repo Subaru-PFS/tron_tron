@@ -23,7 +23,8 @@ class ecam(Guider.Guider, TCCGcam.TCCGcam):
         TCCGcam.TCCGcam.__init__(self, **argv)
 
         # Addition commands for GimCtrl camera
-        self.commands.update({'rawCmd':    self.doRawCmd})
+        self.commands.update({'rawCmd':    self.doRawCmd,
+                              'doMakeMask': self.doMakeMask})
 
         self.rawPath = CPL.cfg.get(self.name, 'rawPath')
         
@@ -120,6 +121,19 @@ class ecam(Guider.Guider, TCCGcam.TCCGcam):
         self.fileForTcc = fname
         
         self.echoToTcc(cmd, ret)
+    
+    def doMakeMask(self, cmd):
+        """ Build and install a new mask file.
+
+        Assume the following:
+          - na1 eyelid open
+          - Bright Quartz truss lamp on
+
+        Take 3 flats, then call an external .pro file to mangle it.
+
+        """
+
+        pass
     
 
 # Start it all up.

@@ -162,7 +162,7 @@ class nicfpsExposure(Exposure.Exposure):
         CPL.log("nicfps.finishUp", "state=%s" % (self.state))
 
         rawFile = os.path.join(*self.rawpath)
-        self.cmd.warn('debug="finishing from rawfile=%s"' % (rawFile))
+        CPL.log('nicfpsExposure', "finishing from rawfile=%s" % (rawFile))
         
         if self.state != "aborted":
             self.callback('fits', 'finish nicfps infile=%s' % (rawFile))
