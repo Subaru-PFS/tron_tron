@@ -41,7 +41,12 @@ class GuiderPath(object):
         self.reservedPath = None, None
 
     def _updateLastImageFile(self):
-        f = open(os.path.join(self.reservedPath[0], "last.image"), "w+")
+        fname = self.getReservedFile()
+        CPL.log("guiderPath", "saving %s" % (fname))
+        if not fname:
+            return
+
+        f = open(os.path.join(self.baseDir, "last.image"), "w+")
         f.seek(0,0)
         f.write('%s\n' % (self.getReservedFile()))
         f.close()
@@ -82,7 +87,8 @@ class GuiderPath(object):
             # Update the last.image file
             #
             f = open(os.path.join(dirName, "last.image"), "r+")
-            lastFileName = f.readline()
+            lastFileName = f.read()
+            f.close()
             lastID = int(lastFileName[1:5], 10)
             id = lastID + 1
             
@@ -91,4 +97,7 @@ class GuiderPath(object):
 
         fileName = "%s%04d.fits" % (self.nameChar, id)
         self.reservedPath = dirName, fileName
+        self.baseDir = dirName
 
+        CPL.log("guiderPath", "reserved %s, %s" % (dirName, fileName))
+        

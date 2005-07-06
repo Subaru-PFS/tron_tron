@@ -131,7 +131,7 @@ class echelleExposure(Exposure.Exposure):
         CPL.log("echelle.finishUp", "state=%s" % (self.state))
 
         rawFile = os.path.join(*self.rawpath)
-        self.cmd.warn('debug="finishing from rawfile=%s"' % (rawFile))
+        CPL.log('echelleExpose', "finishing from rawfile=%s" % (rawFile))
         
         if self.state != "aborted":
             self.callback('fits', 'finish echelle infile=%s' % (rawFile))

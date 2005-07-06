@@ -60,6 +60,7 @@ class Guider(Actor.Actor):
 
         self.camera = camera
         self.guideLoop = None
+        self.exposing = False
         self.mask = None
         self.exposureInfo = None
         self.darks = {}
@@ -530,7 +531,12 @@ o            cb          - the callback function
 
         """
 
+        if self.exposing:
+            cmd.fail('text="exposure in progress"')
+            return
+        
         def _cb(cmd, filename, frame, warning=None, failure=None):
+            self.exposing = False
             self.pathControl.unlock(cmd, filename)
             if type == 'expose':
                 cmd.respond('camFile=%s'% (CPL.qstr(filename)))
@@ -541,6 +547,7 @@ o            cb          - the callback function
         CPL.log('Guider', 'exposing %s(%s) frame=%s' % (type, itime, frame))
 
         filename = self.pathControl.lockNextFilename(cmd)
+        self.exposing = True
         mycb = self.camera.cbExpose(cmd, _cb, type, itime, frame, filename)
         return mycb
 
@@ -585,7 +592,7 @@ o            cb          - the callback function
             
             if darkFile:
                 darkFITS = pyfits.open(darkFile)
-                darkBits = darkFITS[0].data * 1.0
+                darkBits = darkFITS[0].data
                 darkFITS.close()
 
                 x0, y0, x1, y1 = frame.imgFrameAsWindow(inclusive=False)
@@ -601,22 +608,32 @@ o            cb          - the callback function
                 camBits *= maskBits
 
                 # Shove bias-level pixels into the mask so that displays look OK.
-                maskBits = maskBits > 0.01
+                # maskBits = maskBits > 0.01
                 
+                # Add a pedestal back in.
+                # We could tell the PyGuide routines that the bias is 0, too.
+                bias = tweaks['bias'] + math.sqrt(tweaks['readNoise'])
+                camBits += bias
+
                 # If necessary, squeeze pixels back into 16-bit unsigned values.
                 min = camBits.min()
                 max = camBits.max()
-                bias = tweaks['bias'] + math.sqrt(tweaks['readNoise'])
 
-                if min < 0 or (max - min) > (65536 - bias):
+                CPL.log('processCamFile', "min=%01.f max=%0.1f step=%0.1f" % (min, max, bias))
+                if min < 0:
+                    camBits += -min
+                    max += -min
+                    min = 0
+
+                if max > 65536:
                     camBits -= min
-                    camBits *= ((65536 - bias) / max)
+                    camBits *= ((65535 - min) / max)
+                    camBits += min
+                    
+                    cmd.warn('debug="limits=%0.1f,%0.1f; newLimits=%01.f,%0.1f"' % \
+                             (min, max,
+                              camBits.min(), camBits.max()))
 
-                camBits *= maskBits
-
-                # Add a pedestal back in.
-                # We could tell the PyGuide routines that the bias is 0, too.
-                camBits += bias
                 #camBits = camBits.astype('u2')
                 procFile = self.changeFileBase(camFile, "proc")
             except Exception, e:
@@ -847,6 +864,7 @@ o            cb          - the callback function
                                                    ('restart', cmd.qstr),
                                                    ('forceFile', cmd.qstr),
                                                    ('cnt', int),
+                                                   ('doFlatfield', int),
                                                    ('autoSubframe', self.parseSize),
                                                    ('centerOn', self.parseCoord),
                                                    ('manDelay', float),
