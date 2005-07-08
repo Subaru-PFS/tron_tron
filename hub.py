@@ -119,6 +119,13 @@ def handleSIGHUP(signal, frame):
 def handleSIGTERM(signal, frame):
     shutdown()
     
+def loadKeys():
+    for k in ('httpRoot',):
+        val = CPL.cfg.get(k, None)
+        if val:
+            self.KVs.setKV('hub', k, val, None)
+
+
 def loadWords(words=None):
     if words == None:
         words = CPL.cfg.get('hub', 'vocabulary')

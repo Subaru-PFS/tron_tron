@@ -269,7 +269,7 @@ class Guider(Actor.Actor):
             cmd.fail('text=%s' % (CPL.qstr(failure)))
             return
             
-        cmd.respond('debug=%s' % (CPL.qstr('checking filename=%s' % (camFile))))
+        # cmd.respond('debug=%s' % (CPL.qstr('checking filename=%s' % (camFile))))
 
         procFile, maskFile, darkFile, flatFile = self.processCamFile(cmd, camFile,
                                                                      tweaks)
@@ -877,6 +877,9 @@ o            cb          - the callback function
             matched['time'] = matched['exptime']
 
         tweaks.update(matched)
+
+        if matched.has_key('forceFile') and not matched['forceFile']:
+            del tweaks['forceFile']
 
         # Punch a hole through to the given X display.
         ds9 = tweaks.get('ds9', False)

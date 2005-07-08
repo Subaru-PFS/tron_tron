@@ -1,5 +1,6 @@
 __all__ = ['InstExposure']
 
+import CPL
 import Actor
 import ExpPath
 
