@@ -26,6 +26,8 @@ class GuideLoop(object):
         self.cmd = cmd
         self.tweaks = tweaks
 
+        self.exposing = False
+        
         self.imCtrName = self.tweaks['imCtrName']
         self.imScaleName = self.tweaks['imScaleName']
         if self.imCtrName[0] == 'G':
@@ -38,6 +40,7 @@ class GuideLoop(object):
         self.state = 'starting'
         self.action = ''
         
+        # How many times we have failed to find a star.
         self.retries = 0
         
         # The 'reference' PVT that we guiding on or to.
@@ -192,6 +195,8 @@ class GuideLoop(object):
         self.stopGuiding()
 
     def isRightPort(self):
+        """ Decide whether we can see the sky. """
+        
         # First, check whether we are in the right place:
         ret = client.call('tcc', 'show inst')
         instName = ret.KVs.get('Inst', 'unknown')
@@ -217,9 +222,7 @@ class GuideLoop(object):
     def run(self):
         """ Actually start the guide loop. """
 
-        rightPort = self.isRightPort()
-
-        if not rightPort:
+        if not self.isRightPort():
             return
 
         self.state = 'starting'
@@ -340,8 +343,7 @@ class GuideLoop(object):
         k = reply.KVs['Boresight']
         pvt = list(map(float, k))
         self.boresightOffset = pvt
-        self.cmd.warn('debug="set boresight offset to (%s)"' % \
-                      (self.boresightOffset))
+        CPL.log('GuideLoop', "set boresight offset to (%s)" % (self.boresightOffset))
     
     def listenToTCCImCtr(self, reply):
         """ Set the guider/instrument center pixel.
@@ -349,8 +351,8 @@ class GuideLoop(object):
 
         k = reply.KVs[self.imCtrName]
         self.boresight = map(float, k)
-        self.cmd.warn('debug="set boresight pos to (%0.2f, %0.2f)"' % \
-                      (self.boresight[0], self.boresight[1]))
+        CPL.log('GuideLoop', "set boresight pos to (%0.2f, %0.2f)" % \
+                (self.boresight[0], self.boresight[1]))
         
     def listenToTCCImScale(self, reply):
         """ Set the guider/instrument scales.
@@ -358,8 +360,8 @@ class GuideLoop(object):
 
         k = reply.KVs[self.imScaleName]
         self.imScale = map(float, k)
-        self.cmd.warn('debug="set imscale to (%0.2f, %0.2f)"' % \
-                      (self.imScale[0], self.imScale[1]))
+        CPL.log('GuideLoop', "set imscale to (%0.2f, %0.2f)" % \
+                (self.imScale[0], self.imScale[1]))
         
     def checkSubframe(self):
         """ Optionally window around the boresight. """
@@ -419,8 +421,7 @@ class GuideLoop(object):
             self.guidingType = 'manual'
             self.genStateKey(state='starting')
             self.state = 'on'
-            self.controller.doCmdExpose(self.cmd, self._handleGuiderFrame,
-                                        'expose', tweaks=self.tweaks)
+            self._doExpose(self._handleGuiderFrame)
             return
             
         if boresight:
@@ -433,8 +434,7 @@ class GuideLoop(object):
             
             self.genStateKey(state='starting')
             self.state = 'on'
-            self.controller.doCmdExpose(self.cmd, self._handleGuiderFrame,
-                                        'expose', tweaks=self.tweaks)
+            self._doExpose(self._handleGuiderFrame)
             return
         
         if centerOn:
@@ -476,8 +476,14 @@ class GuideLoop(object):
 
         if not self.tweaks.has_key('noGuide'):
             self.genStateKey(state='starting')
-        self.controller.doCmdExpose(self.cmd, self._firstExposure, 'expose', self.tweaks)
+        self._doExpose(self._firstExposure)
 
+    def _doExpose(self, callback):
+        """ Arrange for an exposure, finished by a given callback. """
+
+        self.exposing = True
+        self.controller.doCmdExpose(self.cmd, callback, 'expose', self.tweaks)
+        
     def centerUp(self, cmd, tweaks):
 
         # if "centerOn" is specified, offset the given position to the boresight,
@@ -531,8 +537,7 @@ class GuideLoop(object):
             if mustWait:
                 time.sleep(CPL.cfg.get('telescope', 'offsetSettlingTime'))
             self.genStateKey(action='exposing')
-            self.controller.doCmdExpose(self.cmd, self._handleGuiderFrame,
-                                        'expose', tweaks=self.tweaks)
+            self._doExpose(self._handleGuiderFrame)
 
         except Exception, e:
             CPL.tback('guideloop._firstExposure-2', e)
@@ -553,11 +558,13 @@ class GuideLoop(object):
           
         Args:
              cmd        - same as self.cmd, and ignored.
-             camFile   - an absolute pathname for the guider image.
+             camFile    - an absolute pathname for the guider image.
              frame      - a GuideFrame describing the image.
              tweaks     - same as self.tweaks, and ignored.
         """
 
+        self.exposing = False
+        
         if warning:
             cmd.warn('text=%s' % (warning))
             
@@ -694,14 +701,19 @@ class GuideLoop(object):
 
         """
 
-        self.invalidLoop = False
-        
         if self.state == 'off':
             return
         if self.state == 'stopping':
             self.stopGuiding()
             return
 
+        if self.exposing:
+            self.genStateKey(action='deferring')
+            self.cmd.warn('text="waiting for old exposure to finish"')
+            return
+        
+        self.invalidLoop = False
+        
         if self.waitingForSlewEnd:
             self.genStateKey(action='deferring')
             self.cmd.warn('text="waiting for offset to finish"')
@@ -718,8 +730,7 @@ class GuideLoop(object):
             self.offsetWillBeDone = 0.0
 
         self.genStateKey(action='exposing')
-        self.controller.doCmdExpose(self.cmd, self._handleGuiderFrame,
-                                    'expose', tweaks=self.tweaks)
+        self._doExpose(self._handleGuiderFrame)
         
     def scaleOffset(self, star, diffPos):
         """ Scale the effective offset.
@@ -860,7 +871,11 @@ class GuideLoop(object):
 
         if self.guidingType == 'field':
             pvt = self._ICRS2Frame(self.PVT2pos(self.refPVT, t=t))
-            return self.PVT2pos(pvt, t=t)
+            pos = self.PVT2pos(pvt, t=t)
+            if self.frameName == 'inst':
+                pos = self._inst2pixels(pos)
+
+            return pos
         else:
             return self.getBoresight(t)
 
@@ -1122,14 +1137,17 @@ class GuideLoop(object):
             t = time.time() - tweaks['exptime'] / 2.0 - 2.0
 
         now = time.time()
-        if abs(now - t) > 100:
-            self.cmd.warn('text="exposure middle was %d seconds ago"' % (now - t))
+        if abs(now - t) > 300:
+            self.cmd.warn('text="exposure middle was %d seconds ago; setting to now"' % (now - t))
+            t = now
         return t
     
     def _handleGuiderFrame(self, cmd, camFile, frame, tweaks=None, warning=None, failure=None):
         """ Given a new guider frame, calculate and apply the Guide offset and launch
         a new guider frame.
         """
+
+        self.exposing = False
 
         if warning:
             cmd.warn('text=%s' % (warning))
@@ -1184,16 +1202,28 @@ class GuideLoop(object):
             frame = GuideFrame.ImageFrame(self.controller.size)
             frame.setImageFromFITSFile(procFile)
 
+            # Where should the star have been at the middle of the exposure?
+            expMiddle = self._getExpMiddle(camFile, tweaks)
+            ccdRefPos = self._getExpectedPos(t=expMiddle)
+            refPos = frame.ccdXY2imgXY(ccdRefPos)
+
+            self.cmd.respond("guiderPredPos=%0.2f,%0.2f" % (refPos[0], refPos[1]))
+
             if self.guidingType == 'manual':
-                expMiddle = self._getExpMiddle(camFile, tweaks)
-                now = time.time()
-                #cmd.warn('debug="exposure middle was %0.1f sec ago."' % (now - expMiddle))
+                try:
+                    star = MyPyGuide.centroid(self.cmd, procFile, maskFile,
+                                              frame, refPos, tweaks=self.tweaks)
+                except Exception, e:
+                    star = None
+                if star:
+                    MyPyGuide.genStarKey(cmd, star, caller='c')
+
+
                 try:
                     stars = MyPyGuide.findstars(self.cmd, procFile, maskFile,
                                             frame, tweaks=self.tweaks)
                 except RuntimeError, e:
                     stars = []
-
                 if stars:
                     MyPyGuide.genStarKeys(cmd, stars, caller='f')
 
@@ -1203,15 +1233,9 @@ class GuideLoop(object):
                     time.sleep(delay)
                 
                 self.genStateKey(action='exposing')
-                self.controller.doCmdExpose(self.cmd, self._handleGuiderFrame,
-                                            'expose', tweaks=self.tweaks)
+                self._doExpose(self._handleGuiderFrame)
                 return
                 
-            # Where should the star have been at the middle of the exposure?
-            expMiddle = self._getExpMiddle(camFile, tweaks)
-            ccdRefPos = self._getExpectedPos(t=expMiddle)
-            refPos = frame.ccdXY2imgXY(ccdRefPos)
-            self.cmd.respond("guiderPredPos=%0.2f,%0.2f" % (refPos[0], refPos[1]))
 
             if not frame.imgXYinFrame(refPos):
                 CPL.log("GuideLoop", "left frame. ccdRefPos=%0.1f,%0.1f, refPos=%0.1f,%0.1f, frame=%s" % \
@@ -1365,7 +1389,4 @@ class GuideLoop(object):
                           cid=self.controller.cidForCmd(self.cmd))
         pos = self._extractCnvPos(ret)
     
-        if self.frameName == 'inst':
-            pos = self._inst2pixels(pos)
-
         return pos

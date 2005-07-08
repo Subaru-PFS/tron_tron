@@ -54,6 +54,15 @@ class hubCommands(InternalCmd.InternalCmd):
             cmd.finish('')
         
     def status(self, cmd, finish=True):
+        CPL.cfg.flush()
+
+        rootDir = CPL.cfg.get('hub', 'httpRoot')
+        host = CPL.cfg.get('hub', 'httpHost')
+
+        g.KVs.setKV('hub', 'httpRoot', (host, rootDir), None)
+        cmd.inform('httpRoot=%s,%s' % (CPL.qstr(host),
+                                       CPL.qstr(rootDir)))
+        
         self.actors(cmd, finish=False)
         self.commanders(cmd, finish=False)
         if finish:
