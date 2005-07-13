@@ -7,6 +7,7 @@ import sys
 
 import client
 import CPL
+import Parsing
 import Guider
 import TCCGcam
 import GuideFrame
@@ -28,6 +29,30 @@ class dcam(Guider.Guider, TCCGcam.TCCGcam):
         self.commands.update({'setTemp':    self.setTempCmd,
                               'setFan':     self.setFanCmd})
 
+    def run(self):
+        client.listenFor('dis', ['maskName'], self.listenToMaskName)
+        client.call('dis', 'status')
+
+        Guider.Guider.run(self)
+        
+    def listenToMaskName(self, reply):
+        """
+        """
+
+        CPL.log('dcam', 'in listenToMaskName=%s' % (reply))
+
+        slitmaskName = reply.KVs.get('maskName', '')
+        slitmaskName = Parsing.dequote(slitmaskName)
+
+        slitmaskName = slitmaskName.replace(' ', '')
+        maskdir, dummy = os.path.split(self.config['maskFile'])
+        maskfileName = os.path.join(maskdir, slitmaskName) + ".fits"
+        
+        CPL.log('dcam', 'slit=%s maskfile=%s' % (slitmaskName, maskfileName))
+
+        self._setMask(None, maskfileName)
+        
+        
     def genFilename(self):
         return self._getFilename()
     
@@ -85,8 +110,9 @@ class dcam(Guider.Guider, TCCGcam.TCCGcam):
 #
 def main(name, eHandler=None, debug=0, test=False):
     camActor = dcam(tccGuider=True, debug=debug)
-    camActor.start()
+    client.init(name=name, cmdQueue=camActor.queue, background=False, debug=debug, cmdTesting=test)
 
+    camActor.start()
     client.run(name=name, cmdQueue=camActor.queue, background=False, debug=debug, cmdTesting=test)
     CPL.log('dcam.main', 'DONE')
 

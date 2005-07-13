@@ -82,8 +82,41 @@ class CmdQueueReader(threading.Thread):
                 CPL.log("cmdQueue", "read queue item")
                 
             self.handler(cmd)
-            
+
+def init(**argv):
+    global printStyle
+
+    printStyle = 'full'
+    
+    name = argv.get('name', 'client')
+    CPL.setID(name)
+
+    signal.signal(signal.SIGINT, keyboard)
+    
+    hubLink = HubLink.HubLink(**argv)
+    __builtins__['hubLink'] = hubLink
+
+    CPL.log('client.init', 'hubLink=%s' % (hubLink,))
+
 def run(**argv):
+    if not __builtins__.has_key('hubLink'):
+        init(**argv)
+        
+    hubThread = threading.Thread(name="poller", target=hubLink.run)
+    background = argv.get('background', True)
+    
+    if background:
+        hubThread.setDaemon(True)
+    try:
+        hubThread.start()
+    except SystemExit, e:
+        CPL.log('client.run', 'got SystemExit')
+        raise
+    except:
+        raise
+    
+    
+def _run(**argv):
     """ Start the connection to the hub and set up all the plumbing for later calls.
 
         Defines the 'hubLink' global.

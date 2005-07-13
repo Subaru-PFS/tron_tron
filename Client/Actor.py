@@ -54,6 +54,7 @@ class Actor(Thread):
                                             'ping': self.pingCmd,
                                             'dbg' : self.debugCmd,
                                             'gc'  : self.gcCmd,
+                                            'wing': self.doWing,
                                             'refs' : self.memRefsCmd})
 
         # Generic help template.
@@ -114,6 +115,9 @@ class Actor(Thread):
             CPL.log('memrefs', '%10d %s' % (n, c.__name__))
 
 
+    def doWing(self, cmd):
+        import wingdbstub
+        
     def debugCmd(self, cmd):
         """ Execute a command
         """

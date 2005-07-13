@@ -223,6 +223,8 @@ class ImageFrame(object):
            - (imgX, imgY)  - binned, image-frame pixels
         """
 
+        CPL.log('ccdXY2imgXY', 'ccdXY=%s; self=%s' % (ccdXY, self))
+
         imgX = (ccdXY[0] / self.frameBinning[0]) - self.frameOffset[0] 
         imgY = (ccdXY[1] / self.frameBinning[1]) - self.frameOffset[1] 
 
