@@ -3,21 +3,22 @@ __all__ = ['getDayDirName',
 
 import time
 
+localTZ = 6 * 3600
+
 def getDayDirName(t=None):
     """ Return a per-day directory name.
 
     Returns:
          - a string of the form "UT041219"
+
+    The rule is a bit odd:
+       - the night starts at local noon
+       - 
     """
 
     if t == None:
         t = time.time()
-    localNow = t - time.timezone
-
-    # Uck. We do _not_ want the last night in the quarter to be assigned to the next quarter.
-    # So use _today_'s date to determine the quarter.
-    localNowMinus12H = localNow - (12 * 3600)
-    monthForQuarter = time.strftime("%m", time.gmtime(localNowMinus12H))
+    localNow = t - localTZ
 
     localNowPlus12H = localNow + (12 * 3600)
     dateString = time.strftime("UT%y%m%d", time.gmtime(localNowPlus12H))
@@ -33,7 +34,7 @@ def getQuarterName(t=None):
 
     if t == None:
         t = time.time()
-    localNow = t - time.timezone
+    localNow = t - localTZ
 
     # Uck. We do _not_ want the last night in the quarter to be assigned to the next quarter.
     # So use _today_'s date to determine the quarter.
@@ -42,4 +43,12 @@ def getQuarterName(t=None):
 
     return "Q%d" % ((month + 2) / 3)
 
+def _test():
+    now = time.time()
+    for h in range(24):
+        testNow = now + h * 3600
+        print getDayDirName(t=testNow)
+
+if __name__ == "__main__":
+    _test()
     

@@ -81,7 +81,6 @@ class GuideLoop(object):
         self.listeners.append(client.listenFor('tcc', [self.imCtrName], self.listenToTCCImCtr))
         self.listeners.append(client.listenFor('tcc', [self.imScaleName], self.listenToTCCImScale))
 
-            
         self.listeners.append(client.listenFor('tcc', ['SlewEnd'], self.listenToTCCSlewEnd))
 
         # Force updates of the above keywords:
@@ -189,8 +188,7 @@ class GuideLoop(object):
         self.invalidLoop = True
         
     def restartGuiding(self):
-        """ Called when we have moved to a new field.
-        """
+        """ Called when we have moved to a new field. """
 
         self.stopGuiding()
 
@@ -265,18 +263,18 @@ class GuideLoop(object):
         if self.dontCareAboutSlews:
             return
         
-        mi = reply.KVs.get('MoveItems', 'XXXXXXXX')
+        mi = reply.KVs.get('MoveItems', 'XXXXXXXXX')
+        mi = self.cmd.qstr(mi)
         
         # Has an uncomputed offset just been issued?
         if reply.KVs.has_key('Moved'):
             self.invalidateLoop()
-            # self.telHasBeenMoved = 'Telescope has been offset'
             endTime = time.time() + CPL.cfg.get('telescope', 'offsetSettlingTime')
             if endTime > self.offsetWillBeDone:
                 self.offsetWillBeDone = endTime
             return
         
-        # Has a slew/computed offset just been issued? Put this after the MoveItems logic.
+        # Has a slew/computed offset just been issued? Put this before the MoveItems logic.
         if reply.KVs.has_key('SlewBeg'):
             self.invalidateLoop()
             if mi[1] == 'Y':

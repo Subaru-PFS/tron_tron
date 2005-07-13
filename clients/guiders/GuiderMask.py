@@ -21,7 +21,12 @@ class GuiderMask(object):
         self.name = name
         self.baseFile = baseFile
 
-        self.fullSize = self.getImgSize(self.baseFile)
+        try:
+            self.fullSize = self.getImgSize(self.baseFile)
+        except Exception, e:
+            if cmd:
+                cmd.warn('text="Cannot load mask file %s"' % (baseFile))
+            raise
 
         # We could cache all recent subframes, or we could just cache the last one.
         # I'll wager that the last one is good enough,
