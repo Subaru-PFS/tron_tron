@@ -49,6 +49,8 @@ class Actor(Thread):
         self.debug = argv.get('debug', 0)
         self.queue = FilterQueue.ActorFilter(name=self.name, debug=self.debug)
 
+        self.nullCmd = Command.Command(self.name, 0, 0, self.name, '')
+        
         self.mid = 1
         self.commands = RO.Alg.OrderedDict({'help': self.helpCmd,
                                             'ping': self.pingCmd,

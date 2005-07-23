@@ -1,3 +1,5 @@
+import time
+
 import Hub
 import g
 import hub
@@ -25,6 +27,9 @@ def acceptStdin(in_f, out_f, addr=None):
 
     c.taster.addToFilter(('tcc', 'dis', 'hub', 'msg'), (), ('hub'))
     hub.addCommander(c)
+
+    time.sleep(1)
+
     
 def start(poller):
     stop()
@@ -32,6 +37,8 @@ def start(poller):
     l = Hub.SocketListener(poller, listenPort, name, acceptStdin)
     hub.addAcceptor(l)
     
+    time.sleep(1)
+
 def stop():
     l = hub.findAcceptor(name)
     if l:

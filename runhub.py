@@ -16,7 +16,7 @@ startAllConnections(['client',
                      'ecamera','ecam',
                      'tcc2gcam','tcc2ecam',
                      'disExpose', 'dis',
-                     'nicfpsExpose', 'nicfps',
+                     # 'nicfpsExpose', 'nicfps',
                      'echelleExpose', 'echelle',
                      ])
 hub.run()

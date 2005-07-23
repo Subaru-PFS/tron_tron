@@ -39,6 +39,9 @@ class CoreNub(IO.IOHandler):
         self.nubType = argv.get('type', 'unknown')
         self.needsAuth = argv.get('needsAuth', False)
 
+    def __str__(self):
+        return "CoreNub(id=%s, name=%s, type=%s)" % (self.ID, self.name, self.nubType)
+    
     def setName(self, newName):
         """ Change our username(s). """
 

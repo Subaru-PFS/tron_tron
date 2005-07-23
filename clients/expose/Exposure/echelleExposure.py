@@ -47,11 +47,8 @@ class echelleCB(Exposure.CB):
                     self.exposure.integrationStarted()
                 elif maybeNewState == 'aborted':
                     CPL.log("nicfps.dribble", "aborted what=%s newState=%s" % (self.what, maybeNewState))
-                    if self.exposure.aborting:
-                        newState = "aborted"
-                    else:
-                        newState = None
-                        self.exposure.finishUp()
+                    newState = None
+                    self.exposure.finishUp(aborting=True)
                 elif maybeNewState == 'done':
                     newState = None
                     self.exposure.finishUp()
@@ -121,7 +118,7 @@ class echelleExposure(Exposure.Exposure):
 
         self.headerStarted = True
         
-    def finishUp(self):
+    def finishUp(self, aborting=False):
         """ Clean up and close out the FITS files.
 
         This is HORRIBLE! -- we are blocking at the worst time for the exposure. FIX THIS!!!
@@ -133,12 +130,13 @@ class echelleExposure(Exposure.Exposure):
         rawFile = os.path.join(*self.rawpath)
         CPL.log('echelleExpose', "finishing from rawfile=%s" % (rawFile))
         
-        if self.state != "aborted":
-            self.callback('fits', 'finish echelle infile=%s' % (rawFile))
-        else:
+        if aborting:
             self.callback('fits', 'abort echelle')
+            self.setState('aborted', 0.0)
+        else:
+            self.callback('fits', 'finish echelle infile=%s' % (rawFile))
+            self.setState('done', 0.0)
 
-        self.setState('done', 0.0)
             
     def genRawfileName(self, cmd):
         """ Generate a filename for the ICC to write to.

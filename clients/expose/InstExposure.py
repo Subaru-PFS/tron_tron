@@ -36,7 +36,7 @@ class InstExposure(Actor.Actor):
     def setPath(self, cmd):
         """ Extract all the pathname parts from the command and configure (or create) the ExpPath. """
 
-        req, notMatched, leftovers = cmd.match([('name', str),
+        req, notMatched, leftovers = cmd.match([('name', cmd.qstr),
                                                 ('seq', str),
                                                 ('places', int)])
         path = self.getPath(cmd)

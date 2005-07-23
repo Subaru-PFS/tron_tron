@@ -1163,20 +1163,9 @@ class GuideLoop(object):
             if self.state == 'stopping':
                 self.stopGuiding()
                 return
-            if self.invalidLoop:
-                self._guideLoopTop()
-                return
 
             #self.cmd.warn('debug=%s' % (CPL.qstr('new guide camera file=%s, frame=%s' % \
             #                                     (camFile, frame))))
-
-            if self.telHasBeenMoved:
-                self.genStateKey(action='deferring')
-                self.cmd.warn('text=%s' % \
-                              (CPL.qstr("guiding deferred: %s" % (self.telHasBeenMoved))))
-                self.telHasBeenMoved = False
-                self._guideLoopTop()
-                return
 
             if self.cmd.argDict.has_key('file'):
                 camFile = self.getNextTrackedFilename(self.cmd.argDict['file'])
@@ -1192,10 +1181,22 @@ class GuideLoop(object):
                                         procFile, maskFile, camFile, darkFile, flatFile)
             self.genChangedTweaks(self.cmd)
             
+            if self.invalidLoop:
+                self._guideLoopTop()
+                return
+
             if self.tweaks.has_key('noGuide'):
                 self.stopGuiding()
                 return
             
+            if self.telHasBeenMoved:
+                self.genStateKey(action='deferring')
+                self.cmd.warn('text=%s' % \
+                              (CPL.qstr("guiding deferred: %s" % (self.telHasBeenMoved))))
+                self.telHasBeenMoved = False
+                self._guideLoopTop()
+                return
+
             self.genStateKey(action='analysing')
             frame = GuideFrame.ImageFrame(self.controller.size)
             frame.setImageFromFITSFile(procFile)
