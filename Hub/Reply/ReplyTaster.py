@@ -14,6 +14,11 @@ class ReplyTaster(CPL.Object):
         self.cmdrs = {}
         self.sources = {}
         
+    def __str__(self):
+        return "ReplyTaster(actors=%s; cmdrs=%s; sources=%s)" % (self.actors.keys(),
+                                                                 self.cmdrs.keys(),
+                                                                 self.sources.keys())
+                                                                 
     def listeningTo(self):
         return self.actors.keys(), self.cmdrs.keys(), self.sources.keys()
     

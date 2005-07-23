@@ -13,6 +13,13 @@ def acceptTUI(in_f, out_f, addr=None):
     # Fetch a unique ID
     #
     nubID = g.nubIDs.gimme()
+
+    all = ('dcam', 'ecam', 'gcam',
+           'dcamera', 'ecamera', 'gcamera',
+           'disExpose', 'echelleExpose', 'nicfpsExpose',
+           'nicfps', 'dis', 'echelle',
+           'tcc', 'tlamps', 'hub', 'msg',
+           'perms', 'auth', 'fits')
     
     d = Hub.ASCIICmdDecoder(needCID=False, EOL='\r\n', debug=1)
     e = Hub.ASCIIReplyEncoder(EOL='\r', simple=True, debug=1, CIDfirst=True)
@@ -21,7 +28,7 @@ def acceptTUI(in_f, out_f, addr=None):
                          encoder=e, decoder=d, debug=1,
                          type='TUI', needsAuth=True,
                          isUser=True)
-    c.taster.addToFilter(['*'], (), ['*'])
+    c.taster.addToFilter(all, (), all)
     hub.addCommander(c)
 
 def start(poller):

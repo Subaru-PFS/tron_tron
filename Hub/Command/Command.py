@@ -156,7 +156,14 @@ class Command(CPL.Object):
     def cmdr(self):
         """ Return our commander. """
 
-        return g.commanders.get(self.cmdrName, None)
+        for c in g.commanders.values():
+            CPL.log("Command.cmdr()" , "checking %s in %s" % (self.cmdrName, c))
+            if self.cmdrName == c.name:
+                CPL.log("Command.cmdr()" , "matched %s in %s" % (self.cmdrName, c))
+                return c
+
+        CPL.log("Command.cmdr()" , "no cmdr %s in %s" % (self.cmdrName, g.commanders))
+        return None
         
         
     def eatAVee(self, s):

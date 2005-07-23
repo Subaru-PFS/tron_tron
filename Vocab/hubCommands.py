@@ -27,6 +27,7 @@ class hubCommands(InternalCmd.InternalCmd):
                           'status' : self.status,
                           'loadWords' : self.loadWords,
                           'getKeys' : self.getKeys,
+                          'listen' : self.doListen,
                           'version' : self.version,
                           }
 
@@ -38,6 +39,37 @@ class hubCommands(InternalCmd.InternalCmd):
             cmd.finish(vString)
         else:
             cmd.inform(vString)
+
+    def doListen(self, cmd):
+        """ Change what replies get sent to us. """
+
+        matched, unmatched, leftovers = cmd.match([('listen', None),
+                                                   ('addActors', None),
+                                                   ('delActors', None)])
+
+        cmdr = cmd.cmdr()
+        if not cmdr:
+            cmd.fail('debug=%s' % (CPL.qstr("cmdr=%s; cmd=%s" % (cmdr, cmd))))
+            return
+        CPL.log("doListen", "start: %s" % (cmdr.taster))
+        CPL.log("doListen", "leftovers: %s" % (leftovers))
+        
+        if 'addActors' in matched:
+            actors = leftovers.keys()
+            CPL.log("doListen", "addActors: %s" % (actors))
+            #cmd.respond('text=%s' % (CPL.qstr("adding actors: %s" % (actors))))
+            cmdr.taster.addToFilter(actors, [], actors)
+            cmd.finish()
+        elif 'delActors' in matched:
+            actors = leftovers.keys()
+            CPL.log("doListen", "delActors: %s" % (actors))
+            #cmd.respond('text=%s' % (CPL.qstr("removing actors: %s" % (actors))))
+            cmdr.taster.removeFromFilter(actors, [], actors)
+            cmd.finish()
+        else:
+            cmd.fail('text="unknown listen command"')
+            
+        CPL.log("doListen", "finish: %s" % (cmdr.taster))
 
     def actors(self, cmd, finish=True):
         """ Return a list of the currently connected actors. """

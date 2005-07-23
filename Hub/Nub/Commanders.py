@@ -36,6 +36,8 @@ class CommanderNub(CoreNub.CoreNub):
             program, user = argv.get('forceUser').split('.')
             self.setNames(program, user)
 
+    def __str__(self):
+        return "CommanderNub(id=%s, name=%s, type=%s)" % (self.ID, self.name, self.nubType)
         
     def setNames(self, programName, username):
         """ Set our program and usernames. """
@@ -84,9 +86,6 @@ class CommanderNub(CoreNub.CoreNub):
             if not intercepted:
                 hub.addCommand(cmd)
 
-    def __str__(self):
-        return "CommanderNub(%s)" % (self.ID)
-    
     def reply(self, r):
 
         # The authentication system want to be able to block all output until

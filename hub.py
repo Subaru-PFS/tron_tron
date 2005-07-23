@@ -104,8 +104,9 @@ def init():
     #   - A PollHandler
     g.poller = IO.PollHandler(debug=1)
 
+    loadKeys()
     loadWords(None)
-
+    
     # atexit.register(shutdown)
     signal.signal(signal.SIGHUP, handleSIGHUP)
     signal.signal(signal.SIGTERM, handleSIGTERM)
@@ -120,10 +121,10 @@ def handleSIGTERM(signal, frame):
     shutdown()
     
 def loadKeys():
-    for k in ('httpRoot',):
-        val = CPL.cfg.get(k, None)
-        if val:
-            self.KVs.setKV('hub', k, val, None)
+    rootDir = CPL.cfg.get('hub', 'httpRoot')
+    host = CPL.cfg.get('hub', 'httpHost')
+
+    g.KVs.setKV('hub', 'httpRoot', (host, rootDir), None)
 
 
 def loadWords(words=None):
