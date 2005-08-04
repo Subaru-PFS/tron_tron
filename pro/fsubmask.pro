@@ -15,8 +15,6 @@
 ;    offset            - the _binned_ pixel offset of the desired subframe
 ;    size              - the _binned_ pixel size of the desired subframe.
 ;    binning           - the desired binning factor.
-;    thresh            - the value below which a pixel is considered
-;                        masked out.
 ;
 ; NOTES:
 ;    A binned pixel is considered masked if at least half of its unbinned pixels were 
@@ -27,13 +25,13 @@
 ;
 ; EXAMPLE:
 ;
-; fsubframe, 'na2.fits', 'na2-3x3.fits', [80,90], [40,50], [3x3], 1500
+; fsubframe, 'na2.fits', 'na2-3x3.fits', [80,90], [40,50], [3x3]
 ;
 ; MODIFICATION HISTORY:
 ;
 ;-
 
-pro fsubmask,infileName,outfileName,offset,size,binning,thresh
+pro fsubmask,infileName,outfileName,offset,size,binning
 
                                 ; Read in the unbinned mask file and figure its size
   inData = mrdfits(infileName, /unsigned)
@@ -55,14 +53,6 @@ pro fsubmask,infileName,outfileName,offset,size,binning,thresh
                                 ; to rebin must be in integral binned
                                 ; pixels.
   binnedData = rebin(inData, size)
-
-                                ; dilate the mask to smooth the edges.
-                                ; While at it, expand the mask a scooch.
-  ;r3 = replicate(1,3,3)
-  ;r5 = replicate(1,5,5)
-
-  ;mask = binnedData lt thresh
-  ;mask = dilate(erode(mask, r3), r5)
 
   mask = binnedData
 

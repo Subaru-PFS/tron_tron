@@ -131,13 +131,11 @@ class GuiderMask(object):
         # Call an external IDL routine which rebins for us. The ugly secret
         # which this papers over is that Numeric stinks.
         #
-        thresh = CPL.cfg.get(self.name, 'maskThresh')
-        IDLcmd = "echo \"fsubmask, '%s', '%s', %s, %s, %s, %0.2f\" | idl" % \
+        IDLcmd = "echo \"fsubmask, '%s', '%s', %s, %s, %s\" | idl" % \
                  (self.baseFile, newFile,
                   list(offset),
                   list(size),
-                  list(binning),
-                  thresh)
+                  list(binning))
 
         self.runIDLcmd(cmd, IDLcmd)
         
