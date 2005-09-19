@@ -1,10 +1,16 @@
+import CPL
+import g
 import hub
 
 def startAllConnections(names=[]):
     """ Create all default connections, as defined by the proper configuration file. """
 
     for n in names:
-        hub.startNub(n)
+        try:
+            hub.startNub(n)
+        except Exception, e:
+            sys.stderr.write("FAILED to start nub %s: %s\n", n, e)
+            g.hubcmd.warn('text=%s' % (CPL.qstr('FAILED to start nub %s: %s\n', n, e)))
     
 hub.init()
 startAllConnections(['client',
@@ -16,7 +22,7 @@ startAllConnections(['client',
                      'ecamera','ecam',
                      'tcc2gcam','tcc2ecam',
                      'disExpose', 'dis',
-                     # 'nicfpsExpose', 'nicfps',
+                     'nicfpsExpose', 'nicfps',
                      'echelleExpose', 'echelle',
                      ])
 hub.run()

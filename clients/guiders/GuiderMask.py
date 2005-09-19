@@ -21,12 +21,13 @@ class GuiderMask(object):
         self.name = name
         self.baseFile = baseFile
 
-        try:
-            self.fullSize = self.getImgSize(self.baseFile)
-        except Exception, e:
-            if cmd:
-                cmd.warn('text="Cannot load mask file %s"' % (baseFile))
-            raise
+        if baseFile:
+            try:
+                self.fullSize = self.getImgSize(self.baseFile)
+            except Exception, e:
+                if cmd:
+                    cmd.warn('text="Cannot load mask file %s"' % (baseFile))
+                raise
 
         # We could cache all recent subframes, or we could just cache the last one.
         # I'll wager that the last one is good enough,
@@ -97,6 +98,9 @@ class GuiderMask(object):
            - a Numeric mask.
         """
 
+        if not self.basename:
+            return None, None
+        
         # Make sure that our args will a) compare nicely and format nicely for IDL.
         binning, offset, size = frame.imgFrame()
         
@@ -151,11 +155,6 @@ class GuiderMask(object):
         self.cachedMask = im
         self.frame = frame
 
-        #cmd.warn('debug="mask refs = %d %d %d"' % (sys.getrefcount(self.cachedMask),
-        #                                           sys.getrefcount(self),
-        #                                           sys.getrefcount(frame)))
-                                                
-        
         return self.cachedFile, self.cachedMask
 
 if __name__ == "__main__":
