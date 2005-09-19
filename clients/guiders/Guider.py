@@ -585,7 +585,7 @@ o            cb          - the callback function
             flatFile = None
 
         procFile = camFile
-        if flatFile:
+        if flatFile or darkFile:
             camFITS = pyfits.open(camFile)
             camBits = camFITS[0].data
             camBits = camBits * 1.0
@@ -596,16 +596,14 @@ o            cb          - the callback function
                 darkFITS.close()
 
                 x0, y0, x1, y1 = frame.imgFrameAsWindow(inclusive=False)
-
                 darkBits = darkBits[y0:y1, x0:x1]
-                #cmd.warn('debug="dark shape=%s; img shape=%s"' % (darkBits.getshape(),
-                #                                                  camBits.getshape()))
             else:
                 darkBits = camBits * 0.0 + tweaks['bias']
 
             try:
                 camBits -= darkBits
-                camBits *= maskBits
+                if flatFile:
+                    camBits *= maskBits
 
                 # Shove bias-level pixels into the mask so that displays look OK.
                 # maskBits = maskBits > 0.01
@@ -621,8 +619,8 @@ o            cb          - the callback function
 
                 CPL.log('processCamFile', "min=%01.f max=%0.1f step=%0.1f" % (min, max, bias))
                 if min < 0:
-                    camBits += -min
-                    max += -min
+                    camBits -= min
+                    max -= min
                     min = 0
 
                 if max > 65536:
@@ -635,15 +633,15 @@ o            cb          - the callback function
                               camBits.min(), camBits.max()))
 
                 #camBits = camBits.astype('u2')
-                procFile = self.changeFileBase(camFile, "proc")
+                #procFile = self.changeFileBase(camFile, "proc")
+                procFile = "proc-" + camFile
             except Exception, e:
                 cmd.warn('text="flatfielding failed: %s"' % (e))
-                         
+
             try:
                 os.remove(procFile)
             except:
                 pass
-
             
             camFITS[0].data = camBits
             camFITS.writeto(procFile)
@@ -698,6 +696,8 @@ o            cb          - the callback function
                 darkFile = self.darks[expTime]
             else:
                 darkFile = None
+        elif tweaks.get('darkFile'):
+            return tweaks['darkFile']
         elif tweaks.get('biasFile'):
             return tweaks['biasFile']
         else:
@@ -705,9 +705,6 @@ o            cb          - the callback function
 
         if not darkFile:
             return None
-        
-        frame = GuideFrame.ImageFrame(self.size)
-        frame.setImageFromFITSFile(camFile)
         
     def findFile(self, cmd, fname):
         """ Get the absolute path for a given filename.
@@ -868,6 +865,7 @@ o            cb          - the callback function
                                                    ('autoSubframe', self.parseSize),
                                                    ('centerOn', self.parseCoord),
                                                    ('manDelay', float),
+                                                   ('darkFile', cmd.qstr),
                                                    ('ds9', cmd.qstr)])
 
         #if leftovers:
