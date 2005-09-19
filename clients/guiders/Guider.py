@@ -280,7 +280,7 @@ class Guider(Actor.Actor):
         if cmd.argDict.has_key('on'):
             seed = self.parseCoord(cmd.argDict['on'])
         else:
-            stars = MyPyGuide.findstars(cmd, camFile, maskFile,
+            stars = MyPyGuide.findstars(cmd, procFile, maskFile,
                                         frame, tweaks,
                                                cnt=1)
             if not stars:
@@ -292,7 +292,7 @@ class Guider(Actor.Actor):
         # Currently unnecessary if we have run findstars, but that might change, so
         # always call the centroid routine.
         #
-        star = MyPyGuide.centroid(cmd, camFile, maskFile, frame, seed, tweaks)
+        star = MyPyGuide.centroid(cmd, procFile, maskFile, frame, seed, tweaks)
         if not star:
             cmd.fail('text="no star found"')
             return
@@ -572,7 +572,13 @@ o            cb          - the callback function
 
         #t0 = time.time()
         if not frame:
-            frame = GuideFrame.ImageFrame(self.size)
+            camFITS = pyfits.open(camFile) 
+            camBits = camFITS[0].data
+            camFITS.close()
+            size = camBits.shape
+            del camBits
+            
+            frame = GuideFrame.ImageFrame(size)
             frame.setImageFromFITSFile(camFile)
 
         maskFile, maskBits = self.mask.getMaskForFrame(cmd, camFile, frame)
@@ -585,11 +591,11 @@ o            cb          - the callback function
             flatFile = None
 
         procFile = camFile
-        if flatFile or darkFile:
-            camFITS = pyfits.open(camFile)
-            camBits = camFITS[0].data
-            camBits = camBits * 1.0
+        camFITS = pyfits.open(camFile)
+        camBits = camFITS[0].data
+        camBits = camBits * 1.0
             
+        if flatFile or darkFile:
             if darkFile:
                 darkFITS = pyfits.open(darkFile)
                 darkBits = darkFITS[0].data
@@ -597,10 +603,14 @@ o            cb          - the callback function
 
                 x0, y0, x1, y1 = frame.imgFrameAsWindow(inclusive=False)
                 darkBits = darkBits[y0:y1, x0:x1]
+
             else:
                 darkBits = camBits * 0.0 + tweaks['bias']
 
             try:
+                if camBits.shape != darkBits.shape:
+                    cmd.warn('debug="cam=%s dark=%s"' % (camBits.shape, darkBits.shape))
+                    
                 camBits -= darkBits
                 if flatFile:
                     camBits *= maskBits
@@ -622,19 +632,20 @@ o            cb          - the callback function
                     camBits -= min
                     max -= min
                     min = 0
+                    CPL.log('processCamFile', "after min-up min=%01.f max=%0.1f step=%0.1f" % (min, max, bias))
 
                 if max > 65536:
                     camBits -= min
                     camBits *= ((65535 - min) / max)
                     camBits += min
+                    CPL.log('processCamFile', "after max-down min=%01.f max=%0.1f step=%0.1f" % (min, max, bias))
                     
                     cmd.warn('debug="limits=%0.1f,%0.1f; newLimits=%01.f,%0.1f"' % \
                              (min, max,
                               camBits.min(), camBits.max()))
 
                 #camBits = camBits.astype('u2')
-                #procFile = self.changeFileBase(camFile, "proc")
-                procFile = "proc-" + camFile
+                procFile = self.changeFileBase(camFile, "proc-", prepend=True)
             except Exception, e:
                 cmd.warn('text="flatfielding failed: %s"' % (e))
 
@@ -643,11 +654,49 @@ o            cb          - the callback function
             except:
                 pass
             
-            camFITS[0].data = camBits
+            camFITS[0].data = camBits.astype(numarray.Float32)
             camFITS.writeto(procFile)
             camFITS.close()
 
             del darkBits
+            del camBits
+        else:
+            # If necessary, squeeze pixels back into 16-bit unsigned values.
+            min = min0 = camBits.min()
+            max = max0 = camBits.max()
+            CPL.log('processCamFile', "min=%01.f max=%0.1f" % (min, max))
+
+            fiddled = False
+            if min < 0:
+                camBits -= min
+                max -= min
+                min = 0
+                fiddled = True
+                
+            if max > 65536:
+                camBits -= min
+                camBits *= ((65535 - min) / max)
+                camBits += min
+                CPL.log('processCamFile', "after max-down min=%01.f max=%0.1f" % (min, max))
+                    
+                fiddled = True
+
+
+            if fiddled:
+                cmd.warn('debug="adjusted limits=%0.1f,%0.1f; newLimits=%01.f,%0.1f"' % \
+                         (min0, max0,
+                          camBits.min(), camBits.max()))
+                #camBits = camBits.astype('u2')
+                procFile = self.changeFileBase(camFile, "proc-", prepend=True)
+                try:
+                    os.remove(procFile)
+                except:
+                    pass
+            
+                camFITS[0].data = camBits.astype(numarray.Float32)
+                camFITS.writeto(procFile)
+
+            camFITS.close()
             del camBits
             
         #t1 = time.time()
@@ -655,10 +704,11 @@ o            cb          - the callback function
         
         del maskBits
 
-        darkFile = None
+        if darkFile and darkFile.find('bias') > -1:
+            darkFile = None
         return procFile, maskFile, darkFile, flatFile
     
-    def changeFileBase(self, filename, newbase):
+    def changeFileBase(self, filename, newbase, prepend=False):
         """ Replace the 'name' part of the filename with some other prefix.
 
         E.g. 'g0123.fits' -> 'mask0123.fits'
@@ -668,11 +718,14 @@ o            cb          - the callback function
 
         basedir, basefile = os.path.split(filename)
         numIdx = 0
-        for i in range(len(basefile)):
-            if basefile[i].isdigit():
-                numIdx = i
-                break
-        basefile = newbase + basefile[numIdx:]
+        if prepend:
+            basefile = newbase + basefile
+        else:
+            for i in range(len(basefile)):
+                if basefile[i].isdigit():
+                    numIdx = i
+                    break
+            basefile = newbase + basefile[numIdx:]
         return os.path.join(basedir, basefile)
 
             

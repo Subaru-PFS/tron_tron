@@ -11,6 +11,7 @@ import client
 import CPL
 import Guider
 import GuideFrame
+import CameraShim
 
 sys.stderr.write("done imports\n")
 
@@ -18,7 +19,7 @@ class nfocus(Guider.Guider):
     def __init__(self, **argv):
         sys.stderr.write("in nfocus.__init__\n")
 
-        cameraShim = None
+        cameraShim = CameraShim.CameraShim('nfake', [1,1], self)
         Guider.Guider.__init__(self, cameraShim, 'nfocus', **argv)
         
     def _setDefaults(self):

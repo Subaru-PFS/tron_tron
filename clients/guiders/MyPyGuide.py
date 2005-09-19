@@ -45,6 +45,9 @@ def findstars(cmd, imgFile, maskFile, frame, tweaks, radius=None, cnt=10):
         
     fits = pyfits.open(imgFile)
     img = fits[0].data
+
+#    if tweaks.has_key('biasOffset'):
+#        img += tweaks['biasOffset']
     min = img.min()
     max = img.max()
     if min < 0 or max > 65536:
@@ -69,7 +72,7 @@ def findstars(cmd, imgFile, maskFile, frame, tweaks, radius=None, cnt=10):
         fits.close()
         del fits
     else:
-        maskbits = img * 0 + 1
+        maskbits = img * 0
         cmd.warn('text="no mask file available to findstars"')
 
     CPL.log('findstars', 'tweaks=%s' % (tweaks))
@@ -161,6 +164,7 @@ def centroid(cmd, imgFile, maskFile, frame, seed, tweaks, xxx=None):
     max = img.max()
     if min < 0 or max > 65536:
         cmd.warn('text="bad pixel values for findstars: %0.1f .. %0.1f"' % (min, max))
+        
     #img = img.astype('u2')
     header = fits[0].header
     fits.close()
@@ -187,7 +191,7 @@ def centroid(cmd, imgFile, maskFile, frame, seed, tweaks, xxx=None):
         fits.close()
         del fits
     else:
-        maskbits = img * 0 + 1
+        maskbits = img * 0
         cmd.warn('text="no mask file available to centroid"')
 
     if xxx:

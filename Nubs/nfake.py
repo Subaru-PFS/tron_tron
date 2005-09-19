@@ -4,7 +4,7 @@ import g
 import Hub
 import hub
 
-name = 'nfocus'
+name = 'nfake'
 
 def start(poller):
 
@@ -26,7 +26,7 @@ def start(poller):
                                 'clients/guiders/%s.py' % (name)],
                        name=name, encoder=e, decoder=d,
                        logDir=os.path.join(g.logDir, name),
-                       needsAuth='nicfps',
+                       needsAuth=False,
                        grabCID=True,
                        initCmds=initCmds,
                        safeCmds=safeCmds,

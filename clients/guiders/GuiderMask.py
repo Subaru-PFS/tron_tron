@@ -98,7 +98,7 @@ class GuiderMask(object):
            - a Numeric mask.
         """
 
-        if not self.basename:
+        if not self.baseFile:
             return None, None
         
         # Make sure that our args will a) compare nicely and format nicely for IDL.
