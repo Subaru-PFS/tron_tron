@@ -92,7 +92,7 @@ class ImageFrame(object):
         try:
             binning = (h['BINX'], h['BINY'])
         except KeyError:
-            binning = (3,3)
+            binning = (1,1)
 
         try:
             FITSoffset = (h['BEGX'], h['BEGY'])

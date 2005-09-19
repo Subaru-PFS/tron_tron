@@ -26,7 +26,7 @@ def start(poller):
                                 'clients/guiders/%s.py' % (name)],
                        name=name, encoder=e, decoder=d,
                        logDir=os.path.join(g.logDir, name),
-                       needsAuth='dis',
+                       needsAuth=True,
                        initCmds=initCmds,
                        safeCmds=safeCmds,
                        grabCID=True,
