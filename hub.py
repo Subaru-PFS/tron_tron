@@ -104,9 +104,12 @@ def init():
     #   - A PollHandler
     g.poller = IO.PollHandler(debug=1)
 
-    loadKeys()
+    CPL.log('hub.init', 'loading internal vocabulary...')
     loadWords(None)
     
+    CPL.log('hub.init', 'loading keys...')
+    loadKeys()
+
     # atexit.register(shutdown)
     signal.signal(signal.SIGHUP, handleSIGHUP)
     signal.signal(signal.SIGTERM, handleSIGTERM)
@@ -124,8 +127,7 @@ def loadKeys():
     rootDir = CPL.cfg.get('hub', 'httpRoot')
     host = CPL.cfg.get('hub', 'httpHost')
 
-    g.KVs.setKV('hub', 'httpRoot', (host, rootDir), None)
-
+    g.KVs.setKV('hub', 'httpRoot', [host, rootDir], None)
 
 def loadWords(words=None):
     if words == None:
@@ -198,7 +200,7 @@ def restart():
 
     CPL.log('hub.restart', 'for real......................................')
     time.sleep(1)
-    os.execlp("mc", "mc", "restart")
+    os.execlp("tron", "tron", "restart")
     
 def _shutdown():
     sys.stderr.write("final cleanup; deleting hub pieces...\n")
