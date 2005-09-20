@@ -31,7 +31,7 @@ import sys
 import time
 import traceback
 
-import svn-version
+import svnVersion
 import CPL
 from RO.Alg import OrderedDict
 from Misc.cdict import cdict
@@ -130,7 +130,7 @@ def loadKeys():
 
     g.KVs.setKV('hub', 'httpRoot', [host, rootDir], None)
 
-    version = svn-version.getTagOrRevision()
+    version = svnVersion.svnTagOrRevision()
     g.KVs.setKV('hub', 'version', version, None)
 
 def loadWords(words=None):
