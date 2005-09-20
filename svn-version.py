@@ -11,7 +11,6 @@ svnInfo = { 'Date' : '$Date$',
             'Id' : '$Id$'
             }
 
-
 def stripKeyword(s):
     """ Remove the svn keyword goo from a string.
 
