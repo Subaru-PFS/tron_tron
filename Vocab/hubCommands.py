@@ -94,6 +94,8 @@ class hubCommands(InternalCmd.InternalCmd):
         g.KVs.setKV('hub', 'httpRoot', (host, rootDir), None)
         cmd.inform('httpRoot=%s,%s' % (CPL.qstr(host),
                                        CPL.qstr(rootDir)))
+
+        cmd.inform('version=%s' % (CPL.qstr(g.KVs.getKV('hub', 'version', default='Unknown'))))
         
         self.actors(cmd, finish=False)
         self.commanders(cmd, finish=False)

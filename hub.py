@@ -31,6 +31,7 @@ import sys
 import time
 import traceback
 
+import svn-version
 import CPL
 from RO.Alg import OrderedDict
 from Misc.cdict import cdict
@@ -128,6 +129,9 @@ def loadKeys():
     host = CPL.cfg.get('hub', 'httpHost')
 
     g.KVs.setKV('hub', 'httpRoot', [host, rootDir], None)
+
+    version = svn-version.getTagOrRevision()
+    g.KVs.setKV('hub', 'version', version, None)
 
 def loadWords(words=None):
     if words == None:
