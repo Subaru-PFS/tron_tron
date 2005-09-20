@@ -578,7 +578,7 @@ o            cb          - the callback function
             size = camBits.shape
             del camBits
             
-            frame = GuideFrame.ImageFrame(size)
+            frame = GuideFrame.ImageFrame(self.size)
             frame.setImageFromFITSFile(camFile)
 
         maskFile, maskBits = self.mask.getMaskForFrame(cmd, camFile, frame)
@@ -644,7 +644,6 @@ o            cb          - the callback function
                              (min, max,
                               camBits.min(), camBits.max()))
 
-                #camBits = camBits.astype('u2')
                 procFile = self.changeFileBase(camFile, "proc-", prepend=True)
             except Exception, e:
                 cmd.warn('text="flatfielding failed: %s"' % (e))
@@ -654,7 +653,7 @@ o            cb          - the callback function
             except:
                 pass
             
-            camFITS[0].data = camBits.astype(numarray.Float32)
+            camFITS[0].data = camBits.astype('u2')
             camFITS.writeto(procFile)
             camFITS.close()
 
@@ -686,7 +685,7 @@ o            cb          - the callback function
                 cmd.warn('debug="adjusted limits=%0.1f,%0.1f; newLimits=%01.f,%0.1f"' % \
                          (min0, max0,
                           camBits.min(), camBits.max()))
-                #camBits = camBits.astype('u2')
+                camBits = camBits.astype('u2')
                 procFile = self.changeFileBase(camFile, "proc-", prepend=True)
                 try:
                     os.remove(procFile)

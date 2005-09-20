@@ -101,6 +101,8 @@ class GuiderMask(object):
         if not self.baseFile:
             return None, None
         
+        # cmd.warn('debug=%s' % (CPL.qstr("frame frame=%s, self=%s" % (frame, self))))
+        
         # Make sure that our args will a) compare nicely and format nicely for IDL.
         binning, offset, size = frame.imgFrame()
         
