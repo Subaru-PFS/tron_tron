@@ -70,6 +70,7 @@ def svnTagOrRevision():
 
 def test():
     print svnTagOrRevision()
+    print "Revision: %s" % svnRevision()
 
 if __name__ == "__main__":
     test()
