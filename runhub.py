@@ -24,5 +24,6 @@ startAllConnections(['client',
                      'disExpose', 'dis',
                      'nicfpsExpose', 'nicfps',
                      'echelleExpose', 'echelle',
+                     'nfake', 'nfocus',
                      ])
 hub.run()

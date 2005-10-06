@@ -5,6 +5,7 @@ __all__ = ['GImCtrlActor']
 import os.path
 import pyfits
 import re
+import shutil
 
 import client
 import Actor
@@ -199,6 +200,14 @@ class GImCtrlActor(GCamera.GCamera, Actor.Actor):
 
         CPL.log("copyinNewRawImage", "old=%s; new=%s" % (oldPath, newPath))
         try:
+            shutil.copyfile(oldPath, newPath)
+            os.chmod(newPath, 0644)
+        except Exception, e:
+            raise RuntimeError("could not read new image file: %s" % (e))
+        return newPath
+
+        """
+        try:
             inFITS = pyfits.open(oldPath)
             hdr = inFITS[0].header
             inFITS.writeto(newPath)
@@ -208,6 +217,7 @@ class GImCtrlActor(GCamera.GCamera, Actor.Actor):
             raise RuntimeError("could not read new image file: %s" % (e))
         
         return newPath
+        """
 
 # Start it all up.
 #
