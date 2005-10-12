@@ -232,7 +232,7 @@ def getKeys(actor, keyList):
     keyNames = [i[0] for i in keyList]
     ret = call('keys', 'getFor=%s %s' % (actor, ' '.join(keyNames)))
 
-    retKeys = ret['lines'][0]
+    retKeys = ret.KVs
     haveKeys = retKeys.copy()
 
     for k, cvt in keyList:

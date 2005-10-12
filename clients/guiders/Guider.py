@@ -653,7 +653,7 @@ o            cb          - the callback function
             except:
                 pass
             
-            camFITS[0].data = camBits.astype('u2')
+            camFITS[0].data = camBits
             camFITS.writeto(procFile)
             camFITS.close()
 

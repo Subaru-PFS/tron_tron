@@ -25,6 +25,8 @@ class CoreNub(IO.IOHandler):
         name = argv.get('name', None)
         self.ID = name
         self.name = name
+        self.nubType = argv.get('type', 'unknown')
+        self.needsAuth = argv.get('needsAuth', False)
         
         IO.IOHandler.__init__(self, poller, **argv)
 
@@ -35,9 +37,6 @@ class CoreNub(IO.IOHandler):
         
         self.inputBuffer = ""
         self.outputBuffer = ""
-
-        self.nubType = argv.get('type', 'unknown')
-        self.needsAuth = argv.get('needsAuth', False)
 
     def __str__(self):
         return "CoreNub(id=%s, name=%s, type=%s)" % (self.ID, self.name, self.nubType)

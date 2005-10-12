@@ -274,14 +274,19 @@ class CM(Actor.Actor):
             am = 1.0 / math.sin(alt * math.pi/180)
             focus = keys['SecFocus']
         except Exception, e:
-            CPL.log("cmDebug", "REQSTAT barfedd")
+            CPL.tback('reqstat', e)
             cmd.warn("cmDebug=%s" % (CPL.qstr(e)))
             ra = -9999
+            raS = "-9999"
             dec = -9999
+            decS = "-9999"
             rotpos = -9999
             ut = -9999
+            utS = "-9999"
             lst = -9999
+            lstS = "-9999"
             ha = -9999
+            haS = "-9999"
             alt = -9999
             am = -9999
             focus = -9999
@@ -338,13 +343,19 @@ class CM(Actor.Actor):
             alt = keys['AxePos'][1]
             am = 1.0 / math.sin(alt * math.pi/180)
         except Exception, e:
+            CPL.tback('reqpos', e)
             cmd.warn("cmDebug=%s" % (CPL.qstr(e)))
             ra = -9999
+            raS = "-9999"
             dec = -9999
+            decS = "-9999"
             rotpos = -9999
             ut = -9999
+            utS = "-9999"
             lst = -9999
+            lstS = "-9999"
             ha = -9999
+            haS = "-9999"
             alt = -9999
             am = -9999
             

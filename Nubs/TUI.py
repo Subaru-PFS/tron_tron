@@ -19,7 +19,8 @@ def acceptTUI(in_f, out_f, addr=None):
            'disExpose', 'echelleExpose', 'nicfpsExpose',
            'nicfps', 'dis', 'echelle',
            'tcc', 'tlamps', 'hub', 'msg',
-           'perms', 'auth', 'fits')
+           'perms', 'auth', 'fits',
+           'cm')
     
     d = Hub.ASCIICmdDecoder(needCID=False, EOL='\r\n', debug=1)
     e = Hub.ASCIIReplyEncoder(EOL='\r', simple=True, debug=1, CIDfirst=True)
