@@ -25,5 +25,6 @@ startAllConnections(['client',
                      'nicfpsExpose', 'nicfps',
                      'echelleExpose', 'echelle',
                      'nfake', 'nfocus',
+                     'cmiccServer', 'cm'
                      ])
 hub.run()
