@@ -877,6 +877,15 @@ class GuideLoop(object):
         else:
             return self.getBoresight(t)
 
+    def self.diffSkyDegrees(self, p1, p2):
+        """ Return p1 - p2, unwrapping the [0..360) range. """
+        
+        d = p1 - p2
+        if d <= -180.0:
+            d = - (d + 360.0)
+            
+        return d
+        
     def _genOffsetCmd(self, cmd, star, frame, refGpos, offsetType='guide', doScale=True, fname=''):
         """ Generate the TCC offset command between the given star and refGpos
         
@@ -917,8 +926,8 @@ class GuideLoop(object):
 
         refPos = self.PVT2pos(refPVT, t=now)
         starPos = self.PVT2pos(starPVT, t=now)
-        baseDiffPos = [starPos[0] - refPos[0], \
-                       starPos[1] - refPos[1]]
+        baseDiffPos = [self.diffSkyDegrees(starPos[0], refPos[0]), \
+                       self.diffSkyDegrees(starPos[1], refPos[1])]
 
         if doScale:
             diffPos = self.scaleOffset(star, baseDiffPos)
@@ -937,12 +946,13 @@ class GuideLoop(object):
         #
         diffSize = math.sqrt(diffPos[0] * diffPos[0] + diffPos[1] * diffPos[1])
         flag = ''
-        if diffSize > (CPL.cfg.get('telescope', 'maxUncomputedOffset', default=10.0) / (60*60)):
-            isUncomputed = False
-            flag += "/computed"
-        else:
-            isUncomputed = True
-
+        if diffSize > (CPL.cfg.get('telescope', 'maxGuideOffset', default=60.0) / (60*60)):
+            self.cmd.warn('text=%s' % \
+                          (CPL.qstr('SKIPPING huge offset (%0.2f,%0.2f) arcsec' % \
+                                    (baseDiffPos[0] * 3600.0,
+                                     baseDiffPos[1] * 3600.0))))
+            diffPos = [0.0, 0.0]
+            
         if diffSize <= (self.tweaks.get('minOffset', 0.1) / (60.0*60.0)):
             self.cmd.warn('text=%s' % \
                           (CPL.qstr('SKIPPING small offset (%0.3f,%0.3f) arcsec' % \
@@ -957,6 +967,12 @@ class GuideLoop(object):
 
         if diffPos[0] == 0.0 and diffPos[1] == 0.0:
             return '', False
+
+        if diffSize > (CPL.cfg.get('telescope', 'maxUncomputedOffset', default=10.0) / (60*60)):
+            isUncomputed = False
+            flag += "/computed"
+        else:
+            isUncomputed = True
 
         cmdTxt = 'offset %s %0.6f,%0.6f %s' % (offsetType, diffPos[0], diffPos[1], flag)
         return cmdTxt, isUncomputed
