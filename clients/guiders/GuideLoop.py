@@ -877,7 +877,7 @@ class GuideLoop(object):
         else:
             return self.getBoresight(t)
 
-    def self.diffSkyDegrees(self, p1, p2):
+    def diffSkyDegrees(self, p1, p2):
         """ Return p1 - p2, unwrapping the [0..360) range. """
         
         d = p1 - p2
