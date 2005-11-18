@@ -81,7 +81,7 @@ class GuideLoop(object):
         self.listeners.append(client.listenFor('tcc', [self.imCtrName], self.listenToTCCImCtr))
         self.listeners.append(client.listenFor('tcc', [self.imScaleName], self.listenToTCCImScale))
 
-        self.listeners.append(client.listenFor('tcc', ['SlewEnd'], self.listenToTCCSlewEnd))
+        self.listeners.append(client.listenFor('tcc', ['SlewEnds'], self.listenToTCCSlewEnd))
 
         # Force updates of the above keywords:
         client.call("tcc", "show inst/full") # ImCtr, ImScale
