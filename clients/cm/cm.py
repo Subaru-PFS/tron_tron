@@ -250,7 +250,7 @@ class CM(Actor.Actor):
             CPL.log("cmDebug", "show time bailed: %s" % (e))
         try:
             CPL.log("cmDebug", "REQSTAT getKeys1")
-            keys = client.getKeys("tcc", [('ObjPos', asCoord2),
+            keys = client.getKeys("tcc", [('ObjNetPos', asCoord2),
                                           ('RotPos', asCoord),
                                           ('SecFocus', asFloat),
                                           ('UT1', asFloat),
@@ -259,8 +259,8 @@ class CM(Actor.Actor):
             CPL.log("cmDebug", "REQSTAT resp1")
             cmd.respond('cmKeys=%s' % (CPL.qstr(keys)))
             
-            ra = keys['ObjPos'][0]
-            dec = keys['ObjPos'][3]
+            ra = keys['ObjNetPos'][0]
+            dec = keys['ObjNetPos'][3]
             raS = dmsStrFromDeg(ra / 15.0, precision=2)
             decS = dmsStrFromDeg(dec, precision=2)
             rotpos = keys['RotPos'][0]
@@ -322,15 +322,15 @@ class CM(Actor.Actor):
         client.call('tcc', 'show time')
         time.sleep(0.5)
         try:
-            keys = client.getKeys("tcc", [('ObjPos', asCoord2),
+            keys = client.getKeys("tcc", [('ObjNetPos', asCoord2),
                                           ('RotPos', asCoord),
                                           ('UT1', asFloat),
                                           ('LST', asFloat),
                                           ('AxePos', asPos3)])
             cmd.respond('cmKeys=%s' % (CPL.qstr(keys)))
             
-            ra = keys['ObjPos'][0]
-            dec = keys['ObjPos'][3]
+            ra = keys['ObjNetPos'][0]
+            dec = keys['ObjNetPos'][3]
             raS = dmsStrFromDeg(ra / 15.0, precision=2)
             decS = dmsStrFromDeg(dec, precision=2)
             rotpos = keys['RotPos'][0]
