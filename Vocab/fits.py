@@ -382,7 +382,7 @@ class InstFITS(object):
         alt = k[1]
         zd = 90.0 - alt
         try:
-            airmass = 1.0/math.cos((zd / 180.0) / math.pi)
+            airmass = 1.0/math.cos((zd / 180.0) * math.pi)
         except:
             airmass = 0.0
                 
