@@ -671,7 +671,7 @@ class nicfpsFITS(InstFITS):
     def prepFITS(self, cmd, fits):
         """ Hook to let us fiddle with the header directly. """
 
-        fits.deleteCard('EXTEND')
+	pass
         
     def prepFITSXX(self, cmd, fits):
         """ Hook to let us fiddle with the header directly. """
