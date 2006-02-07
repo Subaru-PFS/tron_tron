@@ -54,6 +54,12 @@ class FITS:
         the existing header.
         """
 
+        # Gruesome hack to keep EXTEND/EXTNAME keys from getting pushed down.
+        if after == 'NAXIS2' and self.cards.has_key('EXTEND'):
+            after = 'EXTEND'
+        if after == 'EXTEND' and self.cards.has_key('EXTNAME'):
+            after = 'EXTNAME'
+            
         allowOverwrite = allowOverwrite or self.alwaysAllowOverwrite
             
         # Commentary cards get special treatment.
@@ -127,17 +133,7 @@ class FITS:
                 header.append(Cards.IntCard("NAXIS1", self.height).asCard())
                 header.append(Cards.IntCard("NAXIS2", self.width).asCard())
 
-        if 'EXTEND' in self.cards:
-            card = self.cards['EXTEND']
-            header.append(card.asCard())
-        if 'EXTNAME' in self.cards:
-            card = self.cards['EXTNAME']
-            header.append(card.asCard())
-            
         for cardName in self.cardOrder:
-            if cardName in ('EXTEND', 'EXTNAME'):
-                continue
-            
             card = self.cards[cardName]
             header.append(card.asCard())
         header.append(Cards.ValuelessCard("END").asCard())
