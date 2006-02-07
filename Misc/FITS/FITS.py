@@ -126,8 +126,18 @@ class FITS:
                 header.append(Cards.IntCard("NAXIS", 2).asCard())
                 header.append(Cards.IntCard("NAXIS1", self.height).asCard())
                 header.append(Cards.IntCard("NAXIS2", self.width).asCard())
+
+        if 'EXTEND' in self.cards:
+            card = self.cards['EXTEND']
+            header.append(card.asCard())
+        if 'EXTNAME' in self.cards:
+            card = self.cards['EXTNAME']
+            header.append(card.asCard())
             
         for cardName in self.cardOrder:
+            if cardName in ('EXTEND', 'EXTNAME'):
+                continue
+            
             card = self.cards[cardName]
             header.append(card.asCard())
         header.append(Cards.ValuelessCard("END").asCard())
