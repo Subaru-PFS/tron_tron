@@ -14,7 +14,7 @@ def start(poller):
 
     d = Hub.ASCIIReplyDecoder(EOL='\n', CIDfirst=True, debug=1)
     e = Hub.ASCIICmdEncoder(EOL='\n', debug=1)
-    dis = Hub.SocketActorNub(poller, 'devel1', 9878,
+    dis = Hub.SocketActorNub(poller, 'echelle-icc', 9878,
                              name=name, encoder=e, decoder=d,
                              grabCID='', # Send an empty command just to get a CID.
                              initCmds=initCmds, safeCmds=safeCmds,
