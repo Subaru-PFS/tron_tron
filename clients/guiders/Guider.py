@@ -494,7 +494,7 @@ class Guider(Actor.Actor):
             client.call('fits', 'start %s' % \
                         (self.name))
             self.camera.cbFakefile(cmd, _cb, imgFile)
-            return
+            return True
         
         else:
             if not tweaks.has_key('time') :
