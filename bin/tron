@@ -1,0 +1,137 @@
+#!/bin/bash
+
+if test -z "$TRON_DIR"; then
+    export TRON_DIR=$HOME/tron
+fi
+export LOG_DIR=$HOME/logs
+
+if test -z "$PYGUIDE_DIR"; then
+    echo "PYGUIDE_DIR is not set, and needs to be setup" >&1
+    exit 1
+fi
+
+echo
+echo ====================== Using tron with TRON_DIR=$TRON_DIR
+echo
+
+usage() {
+    echo "usage: $0 start|stop|restart|status" >&2
+    exit 1
+}
+
+if test $# != 1; then
+    usage
+fi
+cmd=$1
+
+cd $TRON_DIR
+
+# Return the ICC's pid, or the empty string.
+#
+get_pid() {
+    PID=""
+    pid=`/bin/ps -e -ww -o pid,user,command | egrep -v 'awk|grep' | grep 'python runhub.py' | awk '{print $1}'`
+    PID=$pid
+    
+    if test "$pid"; then
+        echo "Tron is running as process $pid"
+    else
+        echo "Tron is not running"
+    fi
+}
+
+# Start a new ICC. Complains if the ICC is already running, 
+# and does not start a new one.
+#
+do_start() {
+    get_pid
+    
+    if test "$PID"; then
+        echo "NOT starting new tron. Use restart if you want a new one."
+        return
+    fi
+    
+    echo "Starting new tron...\c"
+    
+
+    now=`now`.log 
+    (cd $LOG_DIR; rm -f current.log; ln -s $now current.log)
+    cd $TRON_DIR
+    python runhub.py >$LOG_DIR/$now 2>&1 &        
+    
+    # Check that it really started...
+    #
+    sleep 1
+    get_pid
+
+    if test "$PID"; then
+        echo " done."
+    else
+        echo " FAILED!"
+    fi
+}
+
+# Stop any running ICC. 
+#
+do_stop() {
+    get_pid
+    
+    if test ! "$PID"; then
+        return
+    fi
+    
+    echo "Stopping tron."
+    kill -TERM $PID
+}
+
+# Stop any running ICC fairly violently. 
+#
+do_stopdead() {
+    get_pid
+    
+    if test ! "$PID"; then
+        return
+    fi
+    
+    echo "Stopping tron gently."
+    kill -TERM $PID
+    sleep 2
+
+    echo "Stopping tron meanly."
+    kill -KILL $PID
+}
+
+# Query a running ICC for simple status.
+#
+do_status() {
+    get_pid
+}
+
+case $cmd in
+    start) 
+        do_start
+        ;;
+    stop)
+        do_stop
+        ;;
+    stopdead)
+        do_stopdead
+        ;;
+    status)
+        # Check whether the ICC is running
+        get_pid
+        
+        # Query it for essential liveness
+        ;;
+    restart)
+        do_stop
+        sleep 2
+        do_start                
+        ;;
+    *)
+        usage
+        ;;
+esac
+
+exit 0
+
