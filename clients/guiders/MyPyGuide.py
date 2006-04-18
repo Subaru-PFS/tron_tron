@@ -9,7 +9,7 @@ import numarray
 import pyfits
 
 import CPL
-import Misc.PyGuide as PyGuide
+import PyGuide
 import GuideFrame
 
 class StarInfo(object):
