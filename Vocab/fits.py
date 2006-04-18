@@ -37,7 +37,11 @@ class fits(InternalCmd.InternalCmd):
 
         self.instClasses = { 'echelle' : echelleFITS,
                              'dis' : disFITS,
-                             'nicfps' : nicfpsFITS }
+                             'nicfps' : nicfpsFITS,
+                             'ecam' : guiderFITS,
+                             'gcam' : guiderFITS,
+                             'dcam' : guiderFITS,
+                             }
 
     def getInst(self, cmd, inst):
         """ Return the instrument object, or fail the command. """
@@ -94,8 +98,9 @@ class fits(InternalCmd.InternalCmd):
         comment = matched.get('comment', None)
         outfile = matched.get('outfile', None)
 
-        self.headers[inst] = instClass(cmd, outfile=outfile, comment=comment)
+        self.headers[inst] = instClass(inst, cmd, outfile=outfile, comment=comment)
         self.headers[inst].start(cmd)
+        cmd.finish()
         
     def finish(self, cmd):
         """ Finish off a FITS file: merge all data and headers into an output file.
@@ -105,6 +110,7 @@ class fits(InternalCmd.InternalCmd):
 
         OptCmdArgs:
            infile=    - filename to read from.
+           outfile=   - filename to write from.
            inkey=     - inst keyword to use to get infile from.
            
         Notes:
@@ -118,6 +124,7 @@ class fits(InternalCmd.InternalCmd):
         d0, words, d1 = cmd.match({})
         matched, unmatched, leftovers = cmd.match([('finish', None),
                                                    ('infile', Parsing.dequote),
+                                                   ('outfile', Parsing.dequote),
                                                    ('inkey', Parsing.dequote)])
         if len(leftovers) != 1:
             cmd.fail('hubTxt="usage: fits finish INSTname [infile=FILENAME]"')
@@ -127,6 +134,7 @@ class fits(InternalCmd.InternalCmd):
         if inst not in self.headers:
             cmd.fail('hubTxt="No header to finish for %s"' % (inst))
             return
+        t0 = time.time()
         CPL.log("fits.finish", "finishing header for %s" % (inst))
         obj = self.headers[inst]
 
@@ -138,8 +146,12 @@ class fits(InternalCmd.InternalCmd):
 
         if inKey != None:
             inFile = g.KVs.getKey(inst, inKey, None)
+        outFile = matched.get('outfile', None)
         
-        obj.finish(cmd, inFile)
+        obj.finish(cmd, inFile, outFile=outFile)
+
+        t1 = time.time()
+        CPL.log("fits.finish", "finished header for %s in %0.2fs" % (inst, t1-t0))
 
         del self.headers[inst]
         
@@ -231,25 +243,23 @@ class InstFITS(object):
     """ The common FITS routines.
     """
 
-    def __init__(self, cmd, flipSign=False, **argv):
+    def __init__(self, instName, cmd, **argv):
+        self.instName = instName
         self.cmd = cmd
         self.debug = argv.get('debug', 0)
         self.cards = OrderedDict()
-        self.instName = "unknown"
         self.comment = argv.get('comment', None)
         # cmd.warn('debug=%s' % (CPL.qstr('InstFITS args = %s; comment=%s' % (argv, self.comment))))
         
-        self.outfileName = None
+        self.outfileName = argv.get('outfile', None)
         self.infile = None
         self.outfile = None
         self.allowOverwrite = argv.get('alwaysAllowOverwrite', False)
-        self.flipSign = flipSign
         
         self.isImager = False
         
-        outfileName = argv.get('outfile', None)
-        if outfileName:
-            self.createOutfile(cmd, outfileName)
+        if self.outfileName:
+            self.createOutfile(cmd, self.outfileName)
             
     def TS(self, t, format="%Y-%m-%d %H:%M:%S", zone="", goodTo=2):
         """ Return a formatted timestamp for t
@@ -410,6 +420,9 @@ class InstFITS(object):
         
         # instrument angle w.r.t. sky
         k = g.KVs.getKey('tcc', 'ObjInstAng', [0.0,0.0,0.0])
+        if 'NaN' in k:
+            return
+        
         k = map(float, k)
         instAng = (k[0] / 180.0) * math.pi
 
@@ -432,10 +445,14 @@ class InstFITS(object):
         self.appendCard(cmd, RealCard('CRVAL1', ra, 'WCS reference sky pos.'))
         self.appendCard(cmd, RealCard('CRVAL2', dec, 'WCS reference sky pos.'))
                         
-        self.appendCard(cmd, RealCard('CD1_1', (1.0 / imScale[0]) * math.cos(instAng), 'WCS (1/InstScaleX)*cos(InstAng)'))
-        self.appendCard(cmd, RealCard('CD1_2', (1.0 / imScale[1]) * math.sin(instAng), 'WCS (1/InstScaleY)*sin(InstAng)'))
-        self.appendCard(cmd, RealCard('CD2_1', -(1.0 / imScale[0]) * math.sin(instAng), 'WCS (-1/(InstScaleX)*sin(InstAng)'))
-        self.appendCard(cmd, RealCard('CD2_2', (1.0 / imScale[1]) * math.cos(instAng), 'WCS (1/InstScaleY)*cos(InstAng)'))
+        self.appendCard(cmd, RealCard('CD1_1', (1.0 / imScale[0]) * math.cos(instAng),
+                                      'WCS (1/InstScaleX)*cos(InstAng)'))
+        self.appendCard(cmd, RealCard('CD1_2', (1.0 / imScale[1]) * math.sin(instAng),
+                                      'WCS (1/InstScaleY)*sin(InstAng)'))
+        self.appendCard(cmd, RealCard('CD2_1', -(1.0 / imScale[0]) * math.sin(instAng),
+                                      'WCS (-1/(InstScaleX)*sin(InstAng)'))
+        self.appendCard(cmd, RealCard('CD2_2', (1.0 / imScale[1]) * math.cos(instAng),
+                                      'WCS (1/InstScaleY)*cos(InstAng)'))
         
     def fetchObjectCards(self, cmd):
         objSys = g.KVs.getKey('tcc', 'ObjSys', None)
@@ -445,19 +462,27 @@ class InstFITS(object):
             
         tracking = csys not in ('Mount', 'Physical', 'Unknown', 'None')
         
-        self.fetchCardAs(cmd, 'OBJNAME', 'tcc', 'ObjName', asDeQStr, StringCard, 'Object name, per TCC ObjName')
+        self.fetchCardAs(cmd, 'OBJNAME', 'tcc', 'ObjName',
+                         asDeQStr, StringCard, 'Object name, per TCC ObjName')
 
         # self.appendCard(cmd, CommentCard('COMMENT', 'All coordinates and offsets are from the start of the exposure'))
         
-        self.fetchCardAs(cmd, 'RADECSYS', 'tcc', 'ObjSys', asStr, StringCard, 'Coordinate system, per TCC ObjSys', idx=0)
-        self.fetchCardAs(cmd, 'ROTTYPE', 'tcc', 'RotType', asFloat, StringCard, 'TCC RotType')
-        self.fetchCardAs(cmd, 'ROTPOS', 'tcc', 'RotPos', asFloat, RealCard, 'User-specified rotation wrt ROTTYPE')
+        self.fetchCardAs(cmd, 'RADECSYS', 'tcc', 'ObjSys',
+                         asStr, StringCard, 'Coordinate system, per TCC ObjSys', idx=0)
+        self.fetchCardAs(cmd, 'ROTTYPE', 'tcc', 'RotType',
+                         asFloat, StringCard, 'TCC RotType')
+        self.fetchCardAs(cmd, 'ROTPOS', 'tcc', 'RotPos',
+                         asFloat, RealCard, 'User-specified rotation wrt ROTTYPE')
 
         if tracking:
-            self.fetchCardAs(cmd, 'EQUINOX', 'tcc', 'ObjSys', asFloat, RealCard, 'Equinox, per TCC ObjSys', idx=1)
-            self.fetchCardAs(cmd, 'OBJANGLE', 'tcc', 'ObjInstAng', asFloat, RealCard, 'Angle from inst x,y to sky', idx=0)
-            self.fetchCardAs(cmd, 'RA', 'tcc', 'ObjPos', asRASex, StringCard, 'RA hours, from TCC ObjNetPos', idx=0)
-            self.fetchCardAs(cmd, 'DEC', 'tcc', 'ObjPos', asDecSex, StringCard, 'Dec degrees, from TCC ObjNetPos', idx=3)
+            self.fetchCardAs(cmd, 'EQUINOX', 'tcc', 'ObjSys',
+                             asFloat, RealCard, 'Equinox, per TCC ObjSys', idx=1)
+            self.fetchCardAs(cmd, 'OBJANGLE', 'tcc', 'ObjInstAng',
+                             asFloat, RealCard, 'Angle from inst x,y to sky', idx=0)
+            self.fetchCardAs(cmd, 'RA', 'tcc', 'ObjPos',
+                             asRASex, StringCard, 'RA hours, from TCC ObjNetPos', idx=0)
+            self.fetchCardAs(cmd, 'DEC', 'tcc', 'ObjPos',
+                             asDecSex, StringCard, 'Dec degrees, from TCC ObjNetPos', idx=3)
 
             try:
                 lst = float(g.KVs.getKey('tcc', 'LST')) / 15.0
@@ -465,12 +490,18 @@ class InstFITS(object):
             except:
                 pass
             
-            self.fetchCardAs(cmd, 'ARCOFFX', 'tcc', 'ObjArcOff', asFloat, RealCard, 'TCC arc offset X', idx=0)
-            self.fetchCardAs(cmd, 'ARCOFFY', 'tcc', 'ObjArcOff', asFloat, RealCard, 'TCC arc offset Y', idx=3)
-            self.fetchCardAs(cmd, 'OBJOFFX', 'tcc', 'ObjOff', asFloat, RealCard, 'TCC object offset X', idx=0)
-            self.fetchCardAs(cmd, 'OBJOFFY', 'tcc', 'ObjOff', asFloat, RealCard, 'TCC object offset Y', idx=3)
-            self.fetchCardAs(cmd, 'CALOFFX', 'tcc', 'CalibOff', asFloat, RealCard, 'TCC calibration offset X', idx=0)
-            self.fetchCardAs(cmd, 'CALOFFY', 'tcc', 'CalibOff', asFloat, RealCard, 'TCC calibration offset Y', idx=3)
+            self.fetchCardAs(cmd, 'ARCOFFX', 'tcc', 'ObjArcOff',
+                             asFloat, RealCard, 'TCC arc offset X', idx=0)
+            self.fetchCardAs(cmd, 'ARCOFFY', 'tcc', 'ObjArcOff',
+                             asFloat, RealCard, 'TCC arc offset Y', idx=3)
+            self.fetchCardAs(cmd, 'OBJOFFX', 'tcc', 'ObjOff',
+                             asFloat, RealCard, 'TCC object offset X', idx=0)
+            self.fetchCardAs(cmd, 'OBJOFFY', 'tcc', 'ObjOff',
+                             asFloat, RealCard, 'TCC object offset Y', idx=3)
+            self.fetchCardAs(cmd, 'CALOFFX', 'tcc', 'CalibOff',
+                             asFloat, RealCard, 'TCC calibration offset X', idx=0)
+            self.fetchCardAs(cmd, 'CALOFFY', 'tcc', 'CalibOff',
+                             asFloat, RealCard, 'TCC calibration offset Y', idx=3)
             if self.isImager:
                 try:
                     self.fetchWCSCards(cmd)
@@ -484,7 +515,7 @@ class InstFITS(object):
 
         UTC_TAI = self.fetchValueAs(cmd, 'tcc', 'UTC_TAI', float)
         if UTC_TAI == None:
-            UTC_TAI = -32.0
+            UTC_TAI = -33.0
 
         self.UTC_TAI = UTC_TAI
         
@@ -497,27 +528,30 @@ class InstFITS(object):
     def fetchTimeCards(self, cmd):
         return []
     
-    def finish(self, cmd, inFile):
+    def finish(self, cmd, inFile, outFile=None):
 
         self.fetchInstCards(cmd)
         if inFile == None:
             cmd.fail('fitsTxt=%s' % (CPL.qstr("NO IMAGE FILE FOR %s!!!!" % (self.instName))))
             return
-
         try:
             inFITS = Misc.FITS.FITS(inputFile=inFile, alwaysAllowOverwrite=self.allowOverwrite)
         except Exception, e:
             cmd.fail('fitsTxt=%s' % (CPL.qstr("Could not read FITS file %s: %s" % (inFile, e))))
             return False
 
-        if self.flipSign:
-            inFITS.flipSign()
+        if outFile:
+            self.outfileName = outFile
+            self.outfile = open(self.outfileName, "w+")
             
         self.finishHeader(cmd, inFITS)
 
     def prepFITS(self, cmd, fits):
         """ Hook to let us fiddle with the header directly. """
-
+        pass
+    
+    def fetchInstCards(self, cmd):
+        """ Hook to let us fiddle with the instrument cards directly. """
         pass
     
     def finishHeader(self, cmd, fits):
@@ -557,10 +591,13 @@ class InstFITS(object):
             fits.addCard(CommentCard('COMMENT', self.comment), after='NAXIS2')
 
         if self.outfile == None:
-            self.outfile, self.outfileName = tempfile.mkstemp('.fits', "%s-" % (self.name), '/export/images')
+            self.outfile, self.outfileName = tempfile.mkstemp('.fits', "%s-" % (self.instName),
+                                                              '/export/images')
             cmd.warn('fitsTxt=%s' % \
-                     (CPL.qtsr("BAD NEWS: no filename specified for fits start or finish. Saving to %s" % (self.outfileName))))
+                     (CPL.qstr("BAD NEWS: no filename specified for fits start or finish. Saving to %s" % \
+                               (self.outfileName))))
             
+        cmd.inform('fitsDebug=%s' % (CPL.qstr("Writing fits file %s" % (self.outfileName))))
         fits.writeToFile(self.outfile)
         self.outfile.close()
         del fits
@@ -615,13 +652,13 @@ class InstFITS(object):
         """
 
         cards = []
+        cards.append(RealCard('UTC-TAI', self.UTC_TAI, 'UTC offset from TAI, seconds.'))
 
         cards.append(StringCard('TIMESYS', 'TAI', 'Timebase for DATE-OBS'))
         cards.append(StringCard('DATE-OBS',
                                 self.TS(expStart, format="%Y-%m-%dT%H:%M:%S", goodTo=3),
                                 'Start of integration.'))
 
-        cards.append(RealCard('UTC-TAI', self.UTC_TAI, 'UTC offset from TAI, seconds.'))
         cards.append(StringCard('UTC-OBS',
                                 self.TS(expStart + self.UTC_TAI, format="%H:%M:%S", goodTo=3),
                                 'Start of integration.'))
@@ -636,27 +673,29 @@ class InstFITS(object):
 
         # Calculate Unix time for the beginning of the exposure.
         #
-        time_s = self.fetchValueAs(cmd, 'grim', 'STARTTIME', str)
-        date_s = self.fetchValueAs(cmd, 'grim', 'STARTDATE', str)
-        opentime = self.fetchValueAs(cmd, 'grim', 'OPENTIME', float)
-        if time_s == None or date_s == None:
-            return
+        #time_s = self.fetchValueAs(cmd, 'grim', 'STARTTIME', str)
+        #date_s = self.fetchValueAs(cmd, 'grim', 'STARTDATE', str)
+        #opentime = self.fetchValueAs(cmd, 'grim', 'OPENTIME', float)
+        #if time_s == None or date_s == None:
+        #    return
 
-        dt_s = "%s %s" % (date_s, time_s)
-        utcExpStart = time.mktime(time.strptime(dt_s, "%m/%d/%Y %H:%M:%S")) - time.timezone
+        #dt_s = "%s %s" % (date_s, time_s)
+        #utcExpStart = time.mktime(time.strptime(dt_s, "%m/%d/%Y %H:%M:%S")) - time.timezone
 
+        utcExpStart = time.time()
+        opentime = 0.0
         cards = self.baseTimeCards(cmd, utcExpStart - self.UTC_TAI, opentime)
-        
         return cards
     
 class nicfpsFITS(InstFITS):
     """ The NICFPS-specific FITS routines.
     """
 
-    def __init__(self, cmd, **argv):
+    def __init__(self, instName, cmd, **argv):
         argv['alwaysAllowOverwrite'] = True
-        InstFITS.__init__(self, cmd, **argv)
-        self.instName = 'nicfps'
+        InstFITS.__init__(self, instName, cmd, **argv)
+
+        # Request WCS cards.
         self.isImager = True
         
     def start(self, cmd, inFile=None):
@@ -664,89 +703,6 @@ class nicfpsFITS(InstFITS):
         
         self.fetchInstCards(cmd)
 
-    def fetchInstCards(self, cmd):
-        pass
-
-    
-    def prepFITS(self, cmd, fits):
-        """ Hook to let us fiddle with the header directly. """
-
-	pass
-        
-    def prepFITSXX(self, cmd, fits):
-        """ Hook to let us fiddle with the header directly. """
-
-        fits.deleteCard('SIDETIME')
-        fits.deleteCard('OBJEPOCH')
-        fits.deleteCard('AIRMASS')
-        fits.deleteCard('HA')
-        fits.deleteCard('FILTER1')
-        fits.deleteCard('FILTER2')
-        fits.deleteCard('OBJECT')
-        fits.deleteCard('TELRA')
-        fits.deleteCard('TELDEC')
-        fits.deleteCard('OBSERVER')
-    
-    def fetchNiceInstCards(self, cmd):
-        """ Generate gussied up, human-readable versions of the instrument state """
-        pass
-    
-    def fetchInstCardsXX(self, cmd):
-        self.cards['BSCALE'] = RealCard('BSCALE', 1.0)
-        self.cards['BZERO'] = RealCard('BZERO', 32768.0)
-        
-        self.fetchNiceInstCards(cmd)
-        
-        self.fetchCardAs(cmd, 'FILTER1M', 'nicfps', 'FILTER_POS', asInt, IntCard, 'The physical position of filter wheel 1', idx=0)
-        self.fetchCardAs(cmd, 'FILTER2M', 'nicfps', 'FILTER_POS', asInt, IntCard, 'The physical position of filter wheel 2', idx=1)
-        self.fetchCardAs(cmd, 'FILTER3M', 'nicfps', 'FILTER_POS', asInt, IntCard, 'The physical position of filter wheel 3', idx=2)
-        self.fetchCardAs(cmd, 'FILTER', 'nicfps', 'FILTER_DONE', asStr, StringCard, 'The name of the current filter')
-        
-        self.fetchCardAs(cmd, 'TEMP1VAL', 'nicfps', 'TEMPS', asFloat, RealCard, 'Temperature sensor 1, in degK', idx=0)
-        self.fetchCardAs(cmd, 'TEMP2VAL', 'nicfps', 'TEMPS', asFloat, RealCard, 'Temperature sensor 2, in degK', idx=1)
-        self.fetchCardAs(cmd, 'TEMP3VAL', 'nicfps', 'TEMPS', asFloat, RealCard, 'Temperature sensor 3, in degK', idx=2)
-        self.fetchCardAs(cmd, 'TEMP4VAL', 'nicfps', 'TEMPS', asFloat, RealCard, 'Temperature sensor 4, in degK', idx=3)
-        self.fetchCardAs(cmd, 'PRESSURE', 'nicfps', 'PRESSURE', asFloat, RealCard, 'Dewar pressure, in torr')
-
-        etalonInBeam = g.KVs.getKey('nicfps', 'FP_OPATH', 'Unknown')
-        self.cards['FPINBEAM'] = StringCard('FPINBEAM', etalonInBeam, 'Is the FP etalon in the beam?')
-        if etalonInBeam == 'In':
-            self.fetchCardAs(cmd, 'FPMODE', 'nicfps', 'FP_MODE', asStr, StringCard, 'FP operating mode')
-            self.fetchCardAs(cmd, 'FPX', 'nicfps', 'FP_X', asFloat, RealCard, 'REQUESTED X etalon spacing in steps')
-            self.fetchCardAs(cmd, 'FPY', 'nicfps', 'FP_Y', asFloat, RealCard, 'REQUESTED Y etalon spacing in steps')
-            self.fetchCardAs(cmd, 'FPZ', 'nicfps', 'FP_Z', asFloat, RealCard, 'ACTUAL Z etalon spacing in steps')
-
-    def TS(self, t, format="%Y-%m-%d %H:%M:%S", zone="", goodTo=1):
-        """ Return a formatted timestamp for t
-
-        Args:
-           t       - seconds.
-           format  - the strftime format string for the integral seconds.
-           zone    - an optional ISO marker for the end of the string
-           goodTo  - how precise the timestamp is. 10e-goodTo seconds. Must be >= 0
-        """
-
-        if zone == None:
-            zone = ''
-
-        # Parts:
-        #  - the to-a-second timestamp
-        #
-        iSecs = time.strftime(format, time.gmtime(t))
-
-        # The fractional seconds.
-        #
-        if goodTo <= 0:
-            fSecs = ""
-        else:
-            fSecsFmt = ".%%0%dd" % (goodTo)
-            multiple = 10 ** goodTo
-            fSecs = fSecsFmt % ((10 ** goodTo) * math.modf(t)[0])
-
-        # Add it all up:
-        #
-        return "%s%s%s" % (iSecs, fSecs, zone)
-    
     def baseTimeCards(self, cmd, expStart, expLength, goodTo=0.1):
         """ Return the core time cards.
 
@@ -758,62 +714,18 @@ class nicfpsFITS(InstFITS):
         """
 
         cards = []
-
-        #cards.append(StringCard('TIMESYS', 'TAI', 'Timebase for DATE-OBS'))
-        #cards.append(StringCard('DATE-OBS',
-        #                        self.TS(expStart, format="%Y-%m-%dT%H:%M:%S", goodTo=3),
-        #                        'Start of integration.'))
-
         cards.append(RealCard('UTC-TAI', self.UTC_TAI, 'UTC offset from TAI, seconds.'))
-        #cards.append(StringCard('UTC-OBS',
-        #                        self.TS(expStart + self.UTC_TAI, format="%H:%M:%S", goodTo=3),
-        #                        'Start of integration.'))
-        #cards.append(StringCard('UTMIDDLE',
-        #                        self.TS(expStart + self.UTC_TAI + (expLength/2.0), format="%H:%M:%S", goodTo=3),
-        #                        'Middle of integration.'))
-        #cards.append(RealCard('EXPTIME', expLength, 'Exposure time, seconds'))
 
-        return cards
-    
-    def fetchTimeCards(self, cmd):
-
-        # Calculate Unix time for the beginning of the exposure.
-        #
-        #time_s = self.fetchValueAs(cmd, 'grim', 'STARTTIME', str)
-        #date_s = self.fetchValueAs(cmd, 'grim', 'STARTDATE', str)
-        #opentime = self.fetchValueAs(cmd, 'grim', 'OPENTIME', float)
-        #if time_s == None or date_s == None:
-        #    return
-
-        #dt_s = "%s %s" % (date_s, time_s)
-        #utcExpStart = time.mktime(time.strptime(dt_s, "%m/%d/%Y %H:%M:%S")) - time.timezone
-
-        cards = self.baseTimeCards(cmd, 0, 0)
-        
         return cards
     
 class echelleFITS(InstFITS):
     """ The Echelle-specific FITS routines.
     """
 
-    def __init__(self, cmd, **argv):
+    def __init__(self, instName, cmd, **argv):
         argv['alwaysAllowOverwrite'] = True
-        InstFITS.__init__(self, cmd, **argv)
-        self.instName = 'echelle'
+        InstFITS.__init__(self, instName, cmd, **argv)
         
-    def fetchInstCards(self, cmd):
-        pass
-    
-    def prepFITS(self, cmd, fits):
-        """ Hook to let us fiddle with the header directly. """
-
-        pass
-        
-    def fetchNiceInstCards(self, cmd):
-        """ Generate gussied up, human-readable versions of the instrument state """
-        pass
-    
-    
     def baseTimeCards(self, cmd, expStart, expLength, goodTo=0.1):
         """ Return the core time cards.
 
@@ -825,49 +737,58 @@ class echelleFITS(InstFITS):
         """
 
         cards = []
+        cards.append(RealCard('UTC-TAI', self.UTC_TAI, 'UTC offset from TAI, seconds.'))
 
-        #cards.append(StringCard('TIMESYS', 'TAI', 'Timebase for DATE-OBS'))
-        #cards.append(StringCard('DATE-OBS',
-        #                        self.TS(expStart, format="%Y-%m-%dT%H:%M:%S", goodTo=3),
-        #                        'Start of integration.'))
-
-        #cards.append(RealCard('UTC-TAI', self.UTC_TAI, 'UTC offset from TAI, seconds.'))
-        #cards.append(StringCard('UTC-OBS',
-        #                        self.TS(expStart + self.UTC_TAI, format="%H:%M:%S", goodTo=3),
-        #                        'Start of integration.'))
-        #cards.append(StringCard('UTMIDDLE',
-        #                        self.TS(expStart + self.UTC_TAI + (expLength/2.0), format="%H:%M:%S", goodTo=3),
-        #                        'Middle of integration.'))
-        #cards.append(RealCard('EXPTIME', expLength, 'Exposure time, seconds'))
-
-        return cards
-    
-    def fetchTimeCards(self, cmd):
-
-        # Calculate Unix time for the beginning of the exposure.
-        #
-        #time_s = self.fetchValueAs(cmd, 'grim', 'STARTTIME', str)
-        #date_s = self.fetchValueAs(cmd, 'grim', 'STARTDATE', str)
-        #opentime = self.fetchValueAs(cmd, 'grim', 'OPENTIME', float)
-        #if time_s == None or date_s == None:
-        #    return
-
-        #dt_s = "%s %s" % (date_s, time_s)
-        #utcExpStart = time.mktime(time.strptime(dt_s, "%m/%d/%Y %H:%M:%S")) - time.timezone
-
-        cards = self.baseTimeCards(cmd, 0, 0)
-        
         return cards
     
 class disFITS(InstFITS):
-    """ The DIS-specific FITS routines.
+    """ The Dis-specific FITS routines.
     """
 
-    def __init__(self, cmd, **argv):
-        InstFITS.__init__(self, cmd, **argv)
-        self.instName = 'dis'
+    def __init__(self, instName, cmd, **argv):
+        argv['alwaysAllowOverwrite'] = True
+        InstFITS.__init__(self, instName, cmd, **argv)
         
-    def fetchInstCards(self, cmd):
-        pass
+    def baseTimeCards(self, cmd, expStart, expLength, goodTo=0.1):
+        """ Return the core time cards.
+
+        Args:
+           cmd       - the controlling Command.
+           expStart  - the start of the exposure, TAI
+           expLength - the length of the exposure, seconds.
+           goodTo    - the precision of the timestamps.
+        """
+
+        cards = []
+        cards.append(RealCard('UTC-TAI', self.UTC_TAI, 'UTC offset from TAI, seconds.'))
+
+        return cards
     
-        
+class guiderFITS(InstFITS):
+    """ The guider specific FITS routines.
+    """
+
+    def __init__(self, instName, cmd, **argv):
+        argv['alwaysAllowOverwrite'] = True
+        InstFITS.__init__(self, instName, cmd, **argv)
+
+        # Hack out the gcam WCS cards, since I don't know how to
+        # get the equivalent of ObjNetPos.
+        #
+        if instName != 'gcam':
+            self.isImager = True
+            
+    def baseTimeCards(self, cmd, expStart, expLength, goodTo=0.1):
+        """ Return the core time cards.
+
+        Args:
+           cmd       - the controlling Command.
+           expStart  - the start of the exposure, TAI
+           expLength - the length of the exposure, seconds.
+           goodTo    - the precision of the timestamps.
+        """
+
+        cards = []
+        cards.append(RealCard('UTC-TAI', self.UTC_TAI, 'UTC offset from TAI, seconds.'))
+
+        return cards

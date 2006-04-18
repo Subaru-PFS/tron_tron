@@ -1,6 +1,6 @@
-__all__ = ['GCamera']
+__all__ = ['GCamBase']
 
-""" GCamera.py -- base guide camera controllers.
+""" GCamBase.py -- base guide camera controllers.
 
     A "guide camera" is a _simple_ device. It can:
      - expose for S seconds
@@ -18,9 +18,9 @@ import time
 import CPL
 import GuideFrame
 
-class GCamera(object):
+class GCamBase(object):
     def __init__(self, name, **argv):
-        """ Create a GCamera instance.
+        """ Create a GCamBase instance.
 
         Args:
              name        - a unique, human-readable name.
@@ -45,10 +45,10 @@ class GCamera(object):
         self.lastDir = None
         self.lastID = None
 
-        CPL.log("GCamera", "after init: %s" % (self))
+        CPL.log("GCamBase", "after init: %s" % (self))
         
     def __str__(self):
-        return "GCamera(name=%s, ccdSize=%s, path=%s)" % (self.name, self.ccdSize, self.path)
+        return "GCamBase(name=%s, ccdSize=%s, path=%s)" % (self.name, self.ccdSize, self.path)
     
     def initCmd(self, cmd, doFinish=True):
         self._doConnect()

@@ -259,12 +259,15 @@ showstatus
         #cmd.warn('debug="tccDoread frame = %s"' % (doreadFrame))
         #cmd.warn('debug="tccFindstars frame = %s"' % (findstarsFrame))
         
-        maskFile, maskbits = self.mask.getMaskForFrame(cmd, self.fileForTcc, self.frameForTcc)
-        CPL.log('TCCGcam', 'note maskFile = %s' % (maskFile))
+        #maskFile, maskbits = self.mask.getMaskForFrame(cmd, self.fileForTcc, self.frameForTcc)
+        #CPL.log('TCCGcam', 'note maskFile = %s' % (maskFile))
         
         tweaks = self.config
+        parts = self.processCamFile(cmd, self.fileForTcc,
+                                    tweaks, self.frameForTcc)
+        procFile = parts[0]
         try:
-            stars = MyPyGuide.findstars(cmd, self.fileForTcc, maskFile,
+            stars = MyPyGuide.findstars(cmd, procFile,
                                         self.frameForTcc, tweaks)
         except Exception, e:
             stars = []
@@ -301,5 +304,3 @@ showstatus
 if __name__ == "__main__":
     import sys
     sys.stdout.write("in main\n")
-    
-    

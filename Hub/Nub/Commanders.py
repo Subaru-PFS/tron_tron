@@ -37,7 +37,8 @@ class CommanderNub(CoreNub.CoreNub):
             self.setNames(program, user)
 
     def __str__(self):
-        return "CommanderNub(id=%s, name=%s, type=%s)" % (self.ID, self.name, self.nubType)
+        return "%s(id=%s, name=%s, type=%s)" % (self.__class__.__name__,
+                                                self.ID, self.name, self.nubType)
         
     def setNames(self, programName, username):
         """ Set our program and usernames. """

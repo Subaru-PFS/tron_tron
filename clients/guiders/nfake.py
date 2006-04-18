@@ -7,9 +7,9 @@ import os.path
 import client
 import Actor
 import CPL
-import GCamera
+import GCamBase
 
-class GFake(GCamera.GCamera, Actor.Actor):
+class GFake(GCamBase.GCamBase, Actor.Actor):
     """
     Pretend to take images.
     """
@@ -18,7 +18,7 @@ class GFake(GCamera.GCamera, Actor.Actor):
         """ Use an Alta camera. """
         
         Actor.Actor.__init__(self, name, **argv)
-        GCamera.GCamera.__init__(self, name, **argv)
+        GCamBase.GCamBase.__init__(self, name, **argv)
 
         self.commands.update({'status':     self.statusCmd,
                               'expose':     self.exposeCmd,

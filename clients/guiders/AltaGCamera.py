@@ -4,11 +4,11 @@ import os.path
 
 import client
 import CPL
-import GCamera
+import GCamBase
 import AltaNet
 import GuideFrame
 
-class AltaGCamera(GCamera.GCamera):
+class AltaGCamera(GCamBase.GCamBase):
     """ Use an Alta camera.
 
     Takes images and puts fleshed out versions into the given public directory.
@@ -18,7 +18,7 @@ class AltaGCamera(GCamera.GCamera):
     def __init__(self, name, path, hostname, ccdSize, **argv):
         """ Use an Alta camera. """
         
-        GCamera.GCamera.__init__(self, name, path, ccdSize, **argv)
+        GCamBase.GCamBase.__init__(self, name, path, ccdSize, **argv)
 
         self.cam = AltaNet.AltaNet(hostName=hostname)
 

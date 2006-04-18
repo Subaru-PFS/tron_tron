@@ -8,6 +8,7 @@ class Object(object):
     """
     
     def __init__(self, **argv):
+        object.__init__(self)
         self.debug = argv.get('debug', 0)
  
         if self.debug > 5:

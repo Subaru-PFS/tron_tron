@@ -241,6 +241,7 @@ class FITS:
         # Write the FITS header...
         #
         formattedHeader = self.FITSHeader()
+        file.seek(0, 0)
         file.write(formattedHeader)
         file.flush()
 
