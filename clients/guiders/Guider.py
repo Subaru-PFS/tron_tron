@@ -29,6 +29,7 @@ import GuiderMask
 import GuideFrame
 import GuiderPath
 import MyPyGuide
+import TCCState
 import client
 
 class Guider(Actor.Actor):
@@ -71,42 +72,35 @@ class Guider(Actor.Actor):
         self.pathControl = GuiderPath.GuiderPath(os.path.join(self.config['imageRoot'],
                                                               self.config['imageDir']),
                                                  self.name[0])
-        self.ubufIDs = {}
+
+        self.guiderType = CPL.cfg.get(self.name, 'guiderType')
+        self.tcc = None
         
-    def realXxxCmd(self, cmd):
-        self.xxxCmd(cmd, doFinish=True)
-        
-    def xxxCmd(self, cmd, place=None, doFinish=False):
-        
-        gc.collect()
-        bufs = self.xxx(cmd)
-        cmd.warn('ubufsCnt=%d; place=%s' % (len(bufs), place))
-        if doFinish:
-            cmd.finish()
-        
-    def xxx(self, cmd):
-        ubufs = gc.get_referrers(numarray.numarraycore._UBuffer)
-        return ubufs
-    
-        #refs = gc.get_referents(self)
-        #for x in refs:
-        #    CPL.log("refs", "Guide ref: %s" % (pprint.pformat(x)))
-        #    for y in gc.get_referents(x):
-        #        CPL.log("refs", "++++++++++ ref: %s" % (pprint.pformat(y)))
+    #def run(self):
+    #    CPL.log("Guider", "starting TCCState")
+    #    self.tcc = TCCState.TCCState(self.guiderType)
+    #    CPL.log("Guider", "starting run")
+    #    Actor.Actor.run(self)
+
+    def parse(self, cmd):
+        CPL.log("Guider", "starting TCCState")
+        if not self.tcc:
+            self.tcc = TCCState.TCCState(self.guiderType)
+
+        Actor.Actor.parse(self, cmd)
         
     def _setDefaults(self):
         self.defaults = {}
 
         for name in ('bias',
                      'readNoise', 'ccdGain',
-                     'ccdSize', 'binning',
+                     'ccdSize', 'binning', 'saturation',
                      'thresh', 'cradius', 'radMult',
                      'retry', 'restart',
                      'maskFile', 'biasFile',
                      'imageHost', 'imageRoot', 'imageDir',
                      'fitErrorScale', 'doFlatfield',
-                     'requiredInst', 'requiredPort',
-                     'imCtrName', 'imScaleName'):
+                     'requiredInst', 'requiredPort'):
             self.defaults[name] = CPL.cfg.get(self.name, name)
         self.size = self.defaults['ccdSize']
         self.defaults['minOffset'] = CPL.cfg.get('telescope', 'minOffset')
@@ -136,7 +130,7 @@ class Guider(Actor.Actor):
         if self.guideLoop:
             self.guideLoop.statusCmd(cmd, doFinish=False)
         else:
-            cmd.respond('guideState="off",""')
+            cmd.respond('guideState="off",""; guideMode="idle"')
             
         if doFinish:
             cmd.finish()
@@ -229,7 +223,7 @@ class Guider(Actor.Actor):
         cmd.respond("fsActThresh=%0.1f; fsActRadMult=%0.1f" % (tweaks['thresh'],
                                                                tweaks['radMult']))
         
-        stars = MyPyGuide.findstars(cmd, procFile, maskFile, frame, tweaks)
+        stars = MyPyGuide.findstars(cmd, procFile, frame, tweaks)
         if not stars:
             cmd.fail('text="no stars found"')
             return
@@ -280,7 +274,7 @@ class Guider(Actor.Actor):
         if cmd.argDict.has_key('on'):
             seed = self.parseCoord(cmd.argDict['on'])
         else:
-            stars = MyPyGuide.findstars(cmd, procFile, maskFile,
+            stars = MyPyGuide.findstars(cmd, procFile,
                                         frame, tweaks,
                                                cnt=1)
             if not stars:
@@ -292,7 +286,7 @@ class Guider(Actor.Actor):
         # Currently unnecessary if we have run findstars, but that might change, so
         # always call the centroid routine.
         #
-        star = MyPyGuide.centroid(cmd, procFile, maskFile, frame, seed, tweaks)
+        star = MyPyGuide.centroid(cmd, procFile, frame, seed, tweaks)
         if not star:
             cmd.fail('text="no star found"')
             return
@@ -330,6 +324,7 @@ class Guider(Actor.Actor):
             else:
                 cmd.fail('text="Guiding is already off."')
             return
+
         elif cmd.argDict.has_key('zap'):
             if self.guideLoop:
                 self.guideLoop.stop(cmd)
@@ -339,6 +334,17 @@ class Guider(Actor.Actor):
                 cmd.fail('text="Guiding is already off."')
             return
 
+        elif cmd.argDict.has_key('centerOn'):
+            if self.guideLoop:
+                newTweaks = self.parseCmdTweaks(cmd, None)
+                self.guideLoop.tweakCmd(cmd, newTweaks)
+                cmd.finish('')
+            else:
+                newTweaks = self.parseCmdTweaks(cmd, self.config)
+                self.guideLoop = GuideLoop.GuideLoop(self, self.tcc, cmd, newTweaks)
+                self.guideLoop.run()
+            return
+
         elif cmd.argDict.has_key('tweak'):
             if not self.guideLoop:
                 cmd.fail('text="No guide loop to tweak."')
@@ -346,22 +352,25 @@ class Guider(Actor.Actor):
             newTweaks = self.parseCmdTweaks(cmd, None)
             self.guideLoop.tweakCmd(cmd, newTweaks)
             cmd.finish('')
-        elif cmd.argDict.has_key('on'):
-            if self.guideLoop:
-                # Hack, hack, double evil nasty hack: this is
-                # here 'cuz I stupidly implemented centering offsets as
-                # mini guide loops.
-                if cmd.argDict.has_key('centerOn') and self.guideLoop.guidingType == 'manual':
-                    newTweaks = self.parseCmdTweaks(cmd, None)
-                    self.guideLoop.centerUp(cmd, newTweaks)
-                else:
-                    cmd.fail('text="cannot start guiding while guiding"')
-                return
+            return
 
+        elif cmd.argDict.has_key('on'):
             tweaks = self.parseCmdTweaks(cmd, self.config)
+
+            if self.guideLoop:
+                if cmd.argDict.has_key('centerOn') \
+                       and cmd.argDict.has_key('noGuide') \
+                       and self.guideLoop.mode in ('manual', 'boresight'):
+                    self.guideLoop.tweakCmd(cmd, tweaks)
+                    cmd.finish('')
+                    return
+                else:
+                    cmd.fail('text="a guide loop is already running."')
+                    return
             
-            self.guideLoop = GuideLoop.GuideLoop(self, cmd, tweaks)
+            self.guideLoop = GuideLoop.GuideLoop(self, self.tcc, cmd, tweaks)
             self.guideLoop.run()
+
         else:
             cmd.fail('text="unknown guide command"')
             
@@ -417,10 +426,12 @@ class Guider(Actor.Actor):
            stateName=value
         """
 
+        CPL.log('Guider.setCmd', 'cmd=%s, config=%s' % (cmd, self.config))
         kwBase = (self.config['cradius'], self.config['radMult'], self.config['thresh'])
         self.config = self.parseCmdTweaks(cmd, self.config)
         kwNew = (self.config['cradius'], self.config['radMult'], self.config['thresh'])
 
+        CPL.log('Guider.setCmd', 'config=%s' % (self.config))
         if kwBase != kwNew:
             self.genPGStatusKeys(cmd)
             
@@ -445,28 +456,14 @@ class Guider(Actor.Actor):
             - a 
         """
 
-        matched, notMatched, leftovers = cmd.match([('time', float), ('exptime', float),
-                                                    ('window', str),
-                                                    ('bin', str),
-                                                    ('file', cmd.qstr)])
-
-        #if notMatched:
-        #    cmd.warn('text="unknown arguments: %s"' % (notMatched))
-            
-        if matched.has_key('exptime'):
-            matched['time'] = matched['exptime']
-
-        if matched.get('itime'):
-            tweaks['itime'] = matched['time']
-
         # Extra double hack: have a configuration override to the filenames. And
         # if that does not work, look for a command option override.
         tweaks['newFile'] = True
         filename = None
-        if matched.has_key('file'):
-            filename = matched['file']
+        if tweaks.has_key('file'):
+            filename = tweaks['file']
             tweaks['newFile'] = False
-        forcefile = self.config.get('forceFile', None)
+        forcefile = tweaks.get('forceFile', None)
         if not filename and forcefile:
             cmd.warn('text=%s' % (CPL.qstr("using forceFile: %s" % (forcefile))))
             filename = forcefile
@@ -476,7 +473,7 @@ class Guider(Actor.Actor):
 
             if not imgFile:
                 cmd.fail('text=%s' % (CPL.qstr("No such file: %s" % (filename))))
-                return
+                return False
 
             frame = GuideFrame.ImageFrame(self.size)
             frame.setImageFromFITSFile(imgFile)
@@ -486,31 +483,34 @@ class Guider(Actor.Actor):
                     cmd.respond('camFile=%s'% (CPL.qstr(filename)))
                 else:
                     cmd.respond('darkFile=%s'% (CPL.qstr(filename)))
+
+                # Annotate the headers with all sorts of goodness.
+                if not failure:
+                    client.call('fits', 'finish %s infile=%s outfile=%s' % \
+                                (self.name, filename, filename))
+                time.sleep(3)
                 cb(cmd, filename, frame, tweaks=tweaks, warning=warning, failure=failure)
                 
+            client.call('fits', 'start %s' % \
+                        (self.name))
             self.camera.cbFakefile(cmd, _cb, imgFile)
             return
         
         else:
-            if not matched.has_key('time') :
+            if not tweaks.has_key('time') :
                 cmd.fail('text="Exposure commands must specify exposure times"')
-                return
-            time = matched['time']
+                return False
 
-            window = None
-            bin = None
-            if matched.has_key('bin'):
-                bin = self.parseBin(matched['bin'])
-            if matched.has_key('window'):
-                window = self.parseWindow(matched['window'])
-
-            bin = tweaks.get('bin', window)
-            window = tweaks.get('window', window)
+            itime = tweaks['time']
+            window = tweaks.get('window', None)
+            bin = tweaks.get('bin', None)
             
             frame = GuideFrame.ImageFrame(self.size)
             frame.setImageFromWindow(bin, window)
-            self.doCBExpose(cmd, cb, type, time, frame, cbArgs={'tweaks':tweaks}) 
+            self.doCBExpose(cmd, cb, type, itime, frame, cbArgs={'tweaks':tweaks}) 
 
+            return True
+            
     def doCBExpose(self, cmd, cb, type, itime, frame, cbArgs={}):
         """ Actually request an exposure from a camera.
 
@@ -536,12 +536,19 @@ o            cb          - the callback function
             return
         
         def _cb(cmd, filename, frame, warning=None, failure=None):
+            CPL.log('Guider', 'exposure callback %s(%s) frame=%s' % (type, itime, frame))
             self.exposing = False
             self.pathControl.unlock(cmd, filename)
             if type == 'expose':
                 cmd.respond('camFile=%s'% (CPL.qstr(filename)))
             else:
                 cmd.respond('darkFile=%s'% (CPL.qstr(filename)))
+
+            # Annotate the headers with all sorts of goodness.
+            if not failure:
+                client.call('fits', 'finish %s infile=%s outfile=%s' % \
+                            (self.name, filename, filename))
+                
             cb(cmd, filename, frame, warning=warning, failure=failure, **cbArgs)
             
         CPL.log('Guider', 'exposing %s(%s) frame=%s' % (type, itime, frame))
@@ -549,8 +556,96 @@ o            cb          - the callback function
         filename = self.pathControl.lockNextFilename(cmd)
         self.exposing = True
         mycb = self.camera.cbExpose(cmd, _cb, type, itime, frame, filename)
+        client.call('fits', 'start %s' % \
+                    (self.name))
         return mycb
 
+    def trimToInt16(self, cmd, im, saturation):
+        """ Take an image and trim it to 16-bit unsigned int values. """
+
+        # If necessary, squeeze pixels back into 16-bit unsigned values.
+        min = min0 = im.min()
+        max = max0 = im.max()
+        fiddled = False
+        
+        CPL.log('processCamFile', "min=%01.f max=%0.1f" % (min, max))
+        if min < 0:
+            fiddled = True
+            im += -min
+            max -= min
+            min = 0
+            CPL.log('processCamFile', "after min-up min=%01.f max=%0.1f" % (min, max))
+            
+        if max > saturation:
+            fiddled = True
+            im -= min
+            im *= ((saturation - min) / (max+1))
+            im += min
+            CPL.log('processCamFile', "after max-down min=%01.f max=%0.1f" % (min, max))
+        
+        if fiddled:
+            cmd.warn('debug="adjusted limits=%0.1f,%0.1f; newLimits=%01.f,%0.1f"' % \
+                     (min0, max0,
+                      im.min(), im.max()))
+
+        return im.astype('u2')
+    
+    def writeProcFile(self, cmd, procFileName, instHeader, im, masks):
+        """ Write a final procfile.
+
+        Args:
+             cmd           - the controlling Command
+             procFileName  - the name of the file to write
+             intFile       - the name of the instrument file, which might have
+                             important header info.
+             im            - a UInt16 image
+             masks         - a list of boolean masks
+        """
+        # I forget why this is here, but I don't dare remove it.
+        try:
+            os.remove(procFileName)
+        except:
+            pass
+
+        # Insist on unsigned 16-bit. 
+        im = im.astype('i2')
+        p = pyfits.PrimaryHDU(im, header=instHeader)
+        p.scale('Int16',bscale=1,bzero=32768)
+
+        pshape = im.shape
+
+        assert(len(masks) <= 8)
+
+        i = 0
+        m = numarray.zeros(im.shape, typecode='u1')
+        for mask in masks:
+            mshape = mask.shape
+            if mshape != pshape:
+                cmd.warn('error=%s' % (CPL.qstr("ignoring mask %d to %s: wrong shape: %s vs %s" % \
+                                                i, procFileName, mshape, pshape)))
+                continue
+            
+            m |= (mask != 0) << i
+            i += 1
+        
+        m = pyfits.ImageHDU(m)
+
+        hl = pyfits.HDUList()
+        hl.append(p)
+        hl.append(m)
+
+        cmd.warn('debug="procFile: %s"' % (procFileName))
+        try:
+            hl.writeto(procFileName)
+        except Exception, e:
+            CPL.tback("procfile", e)
+            CPL.log("procfile", p.header.ascardlist())
+            raise
+    
+        del hl
+        del m
+        del p
+        
     def processCamFile(self, cmd, camFile, tweaks, frame=None):
         """ Given a raw cameraFile, optionally dark-subtract or flat-field.
 
@@ -566,145 +661,86 @@ o            cb          - the callback function
              - the dark file used (or None)
              - the flat file used (or None)
 
-        Currently only generates the proper mask file. Flat-fielding and dark-subtracting
-        are both unimplemented.
         """
 
-        #t0 = time.time()
-        if not frame:
-            camFITS = pyfits.open(camFile) 
-            camBits = camFITS[0].data
-            camFITS.close()
-            size = camBits.shape
-            del camBits
+        t0 = time.time()
+
+        # Maybe camFile is not a raw file, but an already processed file. Detect this, and force
+        # the real raw file to be re-processed.
+        head, tail = os.path.split(camFile)
+        if tail.find('proc-') == 0:
+            camFile = os.path.join(head, tail[5:])
             
+        camFITS = pyfits.open(camFile) 
+        camBits = camFITS[0].data
+        camHeader = camFITS[0].header
+        camFITS.close()
+        size = camBits.shape
+            
+        if not frame:
             frame = GuideFrame.ImageFrame(self.size)
             frame.setImageFromFITSFile(camFile)
 
         maskFile, maskBits = self.mask.getMaskForFrame(cmd, camFile, frame)
 
-        darkFile = self.getDarkForCamFile(camFile, tweaks)
+        darkFile = self.getDarkForCamFile(cmd, camFile, tweaks)
             
         if tweaks.get('doFlatfield'):
             flatFile = maskFile
         else:
             flatFile = None
 
-        procFile = camFile
-        camFITS = pyfits.open(camFile)
-        camBits = camFITS[0].data
-        camBits = camBits * 1.0
-            
-        if flatFile or darkFile:
-            if darkFile:
-                darkFITS = pyfits.open(darkFile)
-                darkBits = darkFITS[0].data
-                darkFITS.close()
-
-                x0, y0, x1, y1 = frame.imgFrameAsWindow(inclusive=False)
-                darkBits = darkBits[y0:y1, x0:x1]
-
-            else:
-                darkBits = camBits * 0.0 + tweaks['bias']
-
-            try:
-                if camBits.shape != darkBits.shape:
-                    cmd.warn('debug="cam=%s dark=%s"' % (camBits.shape, darkBits.shape))
-                    
-                camBits -= darkBits
-                if flatFile:
-                    camBits *= maskBits
-
-                # Shove bias-level pixels into the mask so that displays look OK.
-                # maskBits = maskBits > 0.01
-                
-                # Add a pedestal back in.
-                # We could tell the PyGuide routines that the bias is 0, too.
-                bias = tweaks['bias'] + math.sqrt(tweaks['readNoise'])
-                camBits += bias
-
-                # If necessary, squeeze pixels back into 16-bit unsigned values.
-                min = camBits.min()
-                max = camBits.max()
-
-                CPL.log('processCamFile', "min=%01.f max=%0.1f step=%0.1f" % (min, max, bias))
-                if min < 0:
-                    camBits -= min
-                    max -= min
-                    min = 0
-                    CPL.log('processCamFile', "after min-up min=%01.f max=%0.1f step=%0.1f" % (min, max, bias))
-
-                if max > 65536:
-                    camBits -= min
-                    camBits *= ((65535 - min) / max)
-                    camBits += min
-                    CPL.log('processCamFile', "after max-down min=%01.f max=%0.1f step=%0.1f" % (min, max, bias))
-                    
-                    cmd.warn('debug="limits=%0.1f,%0.1f; newLimits=%01.f,%0.1f"' % \
-                             (min, max,
-                              camBits.min(), camBits.max()))
-
-                procFile = self.changeFileBase(camFile, "proc-", prepend=True)
-            except Exception, e:
-                cmd.warn('text="flatfielding failed: %s"' % (e))
-
-            try:
-                os.remove(procFile)
-            except:
-                pass
-            
-            camFITS[0].data = camBits
-            camFITS.writeto(procFile)
-            camFITS.close()
-
-            del darkBits
-            del camBits
-        else:
-            # If necessary, squeeze pixels back into 16-bit unsigned values.
-            min = min0 = camBits.min()
-            max = max0 = camBits.max()
-            CPL.log('processCamFile', "min=%01.f max=%0.1f" % (min, max))
-
-            fiddled = False
-            if min < 0:
-                camBits -= min
-                max -= min
-                min = 0
-                fiddled = True
-                
-            if max > 65536:
-                camBits -= min
-                camBits *= ((65535 - min) / max)
-                camBits += min
-                CPL.log('processCamFile', "after max-down min=%01.f max=%0.1f" % (min, max))
-                    
-                fiddled = True
-
-
-            if fiddled:
-                cmd.warn('debug="adjusted limits=%0.1f,%0.1f; newLimits=%01.f,%0.1f"' % \
-                         (min0, max0,
-                          camBits.min(), camBits.max()))
-                camBits = camBits.astype('u2')
-                procFile = self.changeFileBase(camFile, "proc-", prepend=True)
-                try:
-                    os.remove(procFile)
-                except:
-                    pass
-            
-                camFITS[0].data = camBits.astype(numarray.Float32)
-                camFITS.writeto(procFile)
-
-            camFITS.close()
-            del camBits
-            
-        #t1 = time.time()
-        #cmd.warn('debug="procFiles took %0.1fs"' % (t1-t0))
+        # Make blank masks
+        satMaskArray = camBits * 0
+        maskArray = camBits * 0
         
-        del maskBits
+        # Dark or bias subtraction.
+        if darkFile:
+            darkFITS = pyfits.open(darkFile)
+            darkBits = darkFITS[0].data
+            darkFITS.close()
 
+            x0, y0, x1, y1 = frame.imgFrameAsWindow(inclusive=False)
+            darkBits = darkBits[y0:y1, x0:x1]
+        else:
+            # Need to do better at figuring the bias level. These cameras don't seem
+            # to have overscan regions, though!
+            #
+            darkBits = camBits * 0.0 + tweaks['bias']
+
+        if camBits.shape != darkBits.shape:
+            cmd.warn('debug="cam=%s dark=%s"' % (camBits.shape, darkBits.shape))
+
+        # Set aside the saturated pixel mask:
+        saturation = tweaks['saturation']
+        satmaskArray = camBits >= saturation
+        camBits -= darkBits
+
+        if flatFile:
+            # The flatfile has two bits of info embedded in it:
+            #   - the flatfield, where the values are > 0
+            #   - a mask, where the flatfield values are 0
+            #
+            maskArray = maskBits == 0
+            flatArray = maskBits + maskArray
+            camBits *= flatArray
+
+        camBits = self.trimToInt16(cmd, camBits, saturation)
+        procFile = self.changeFileBase(camFile, "proc-", prepend=True)
+
+        self.writeProcFile(cmd, procFile, camHeader, camBits, (maskArray, satmaskArray))
+
+        del darkBits
+        del camBits
+        del maskBits
+            
+        t1 = time.time()
+        cmd.warn('debug="procFiles took %0.1fs"' % (t1-t0))
+
+        # ???
         if darkFile and darkFile.find('bias') > -1:
             darkFile = None
+            
         return procFile, maskFile, darkFile, flatFile
     
     def changeFileBase(self, filename, newbase, prepend=False):
@@ -728,7 +764,7 @@ o            cb          - the callback function
         return os.path.join(basedir, basefile)
 
             
-    def getDarkForCamFile(self, camFile, tweaks):
+    def getDarkForCamFile(self, cmd, camFile, tweaks):
         """ Return a dark file corresponding to the given camFile.
 
         Args:
@@ -891,6 +927,15 @@ o            cb          - the callback function
 
         return coords
         
+    def trimDict(self, d, keys):
+        """ Remove the given keys fron d, should they exist. """
+
+        for k in keys:
+            try:
+                del d[k]
+            except:
+                pass
+            
     def parseCmdTweaks(self, cmd, baseConfig):
         """ Parse all configuration tweaks in a command, and modify a copy of baseConfig.
         """
@@ -906,22 +951,32 @@ o            cb          - the callback function
                                                    ('bias', float),
                                                    ('readNoise', float),
                                                    ('ccdGain', float),
+                                                   ('saturation',int),
                                                    ('cradius', float),
                                                    ('thresh', float),
                                                    ('radMult', float),
                                                    ('retry', int),
                                                    ('restart', cmd.qstr),
                                                    ('forceFile', cmd.qstr),
+                                                   ('file', cmd.qstr),
                                                    ('cnt', int),
                                                    ('doFlatfield', int),
                                                    ('autoSubframe', self.parseSize),
                                                    ('centerOn', self.parseCoord),
+                                                   ('gstar', self.parseCoord),
+                                                   ('boresight', None),
+                                                   ('manual', None),
+                                                   ('field', None),
                                                    ('manDelay', float),
                                                    ('darkFile', cmd.qstr),
+                                                   ('imgFile', cmd.qstr),
+                                                   ('noGuide', None),
                                                    ('ds9', cmd.qstr)])
 
-        #if leftovers:
-        #    cmd.warn('text="unknown arguments: %s"' % (leftovers))
+        self.trimDict(leftovers, ('guide', 'on', 'off', 'set', 'zap', 'tweak', 'findstars', 'centroid'))
+       
+        if leftovers:
+            cmd.warn('text="unknown arguments: %s"' % (leftovers))
             
         if matched.has_key('exptime'):
             matched['time'] = matched['exptime']

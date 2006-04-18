@@ -278,15 +278,17 @@ class CmdrDict(NubDict):
     """
     
     def listSelf(self, cmd=None):
+        if not cmd:
+            cmd = g.hubcmd
         names = []
         userNames = []
         for n in self.itervalues():
             names.append(CPL.qstr(n.name))
             if n.isUser:
                 userNames.append(CPL.qstr(n.name))
-                
-        if not cmd:
-            cmd = g.hubcmd
+            CPL.log('listCommanders', 'n=%s has info=%s' % (n, n.userInfo))
+            if n.userInfo:
+                cmd.inform(n.userInfo)
 
         cmd.inform("%s=%s" % (self.name, ','.join(names)))
         cmd.inform("users=%s" % (','.join(userNames)))
@@ -589,6 +591,8 @@ def startNub(name):
 
     (Re-)Loads a module named 'name' from the Nubs folder and calls the start function.
     """
+
+    CPL.log('hub.startNub', 'trying to start %s' % (name))
 
     # First, (re-)load the entire Nubs module. Let that fail to the top
     # level.

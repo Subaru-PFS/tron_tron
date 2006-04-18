@@ -7,11 +7,11 @@ import os.path
 import client
 import Actor
 import CPL
-import GCamera
+import GCamBase
 import AltaNet
 import GuideFrame
 
-class AltaActor(GCamera.GCamera, Actor.Actor):
+class AltaActor(GCamBase.GCamBase, Actor.Actor):
     """ Use an Alta camera.
 
     Takes images and puts fleshed out versions into the given public directory.
@@ -22,7 +22,7 @@ class AltaActor(GCamera.GCamera, Actor.Actor):
         """ Use an Alta camera. """
         
         Actor.Actor.__init__(self, name, **argv)
-        GCamera.GCamera.__init__(self, name, **argv)
+        GCamBase.GCamBase.__init__(self, name, **argv)
 
         self.commands.update({'status':     self.statusCmd,
                               'expose':     self.exposeCmd,

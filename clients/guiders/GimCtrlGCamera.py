@@ -6,11 +6,11 @@ import os.path
 import pyfits
 import client
 import CPL
-import GCamera
+import GCamBase
 import GimCtrlConnection
 import GuideFrame
 
-class GimCtrlGCamera(GCamera.GCamera):
+class GimCtrlGCamBase(GCamBase.GCamBase):
     """ Use a GImCtrl-controlled camera. """
     
     def __init__(self, name, inPath, outPath, ccdSize, **argv):
@@ -24,7 +24,7 @@ class GimCtrlGCamera(GCamera.GCamera):
            host, port - socket to reach the camera.
         """
         
-        GCamera.GCamera.__init__(self, name, outPath, ccdSize, **argv)
+        GCamBase.GCamBase.__init__(self, name, outPath, ccdSize, **argv)
 
         self.inPath = inPath
 

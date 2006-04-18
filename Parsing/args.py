@@ -122,7 +122,7 @@ def parseArgs(s):
         if key == None:
             break
 
-        # CPL.log('parseKVs', 'key=%r val=%r rest=%r' % (key, values, rest))
+        CPL.log('parseKVs', 'key=%r val=%r rest=%r' % (key, values, rest))
         KVs[key] = values
 
     return KVs

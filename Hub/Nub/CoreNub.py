@@ -27,6 +27,7 @@ class CoreNub(IO.IOHandler):
         self.name = name
         self.nubType = argv.get('type', 'unknown')
         self.needsAuth = argv.get('needsAuth', False)
+        self.userInfo = None
         
         IO.IOHandler.__init__(self, poller, **argv)
 
@@ -35,6 +36,9 @@ class CoreNub(IO.IOHandler):
         self.encoder.setNub(self.ID)
         self.decoder.setNub(self.ID)
         
+        self.otherIP = argv.get('otherIP', None)
+        self.otherFQDN = argv.get('otherFQDN', None)
+
         self.inputBuffer = ""
         self.outputBuffer = ""
 

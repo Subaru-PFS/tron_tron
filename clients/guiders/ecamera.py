@@ -10,11 +10,11 @@ import shutil
 import client
 import Actor
 import CPL
-import GCamera
+import GCamBase
 import GimCtrlConnection
 import GuideFrame
 
-class GImCtrlActor(GCamera.GCamera, Actor.Actor):
+class GImCtrlActor(GCamBase.GCamBase, Actor.Actor):
     """ Use an Alta camera.
 
     Takes images and puts fleshed out versions into the given public directory.
@@ -25,7 +25,7 @@ class GImCtrlActor(GCamera.GCamera, Actor.Actor):
         """ Use an Alta camera. """
         
         Actor.Actor.__init__(self, name, **argv)
-        GCamera.GCamera.__init__(self, name, **argv)
+        GCamBase.GCamBase.__init__(self, name, **argv)
 
         self.commands.update({'status':     self.statusCmd,
                               'expose':     self.exposeCmd,

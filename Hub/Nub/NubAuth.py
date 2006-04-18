@@ -7,6 +7,7 @@ import sha
 import g
 import hub
 import CPL
+import Parsing
 
 class NubAuth(object):
     """ Intercepts and act on login and logout commands. 
@@ -18,6 +19,8 @@ class NubAuth(object):
     CONNECTING = 'connecting'
     
     def __init__(self, **argv):
+        object.__init__(self)
+        
         self.state = self.NOT_CONNECTED
         self.nonce = None
         self.passwords = {}
@@ -26,7 +29,8 @@ class NubAuth(object):
         """ Read the password file into the .passwords dictionary. """
         
         try:
-            pw_f = open("passwords", "r")
+            path = CPL.cfg.get('hub', 'passwordFile')
+            pw_f = open(path, "r")
         except Exception, e:
             g.hubcmd.inform('HubError=%s' % (CPL.qstr("Could not read the password file: %s" % e)),
                             src="hub")
@@ -56,6 +60,25 @@ class NubAuth(object):
         
         return True
     
+    def rejectClient(self, cmd, clientType, clientVersion, clientPlatform):
+        return False
+
+    def parseVersion(self, s):
+        """ Parse a comma-delimited pair of strings. Not really, though.
+
+        I'm assuming there is no comma in the two parts of the version
+        string. Oh, the shame of it. Someone should fire my sorry ass.
+
+        """
+
+        CPL.log('NubAut', 'parsing version %s' % (s))
+
+        parts = s.split(',')
+        dqparts = map(Parsing.dequote, parts)
+
+        CPL.log('NubAut', 'parsed %s' % (dqparts))
+        return dqparts
+        
     def checkLogin(self, cmd):
         """ Try to match a name and password to an entry in the password file. 
 
@@ -75,9 +98,14 @@ class NubAuth(object):
         if self.state != self.CONNECTING or self.nonce == None:
             return "unexpected login ignored."
 
-        reqFound, reqNotFound, options, leftovers = cmd.coverArgs(["program", "password"], 
-                                                                  ["username"])
-        if reqNotFound:
+        matched, unmatched, leftovers = cmd.match([('program', Parsing.dequote),
+                                                   ('password', Parsing.dequote),
+                                                   ('username', Parsing.dequote),
+                                                   ('type', Parsing.dequote),
+                                                   ('version', Parsing.dequote),
+                                                   ('platform', Parsing.dequote)])
+
+        if "program" not in matched or "password" not in matched:
             return "not all arguments to login were found."
         
         ret = self.readPasswordFile()
@@ -86,18 +114,19 @@ class NubAuth(object):
         
         # OK. Look for the full program name:
         #
-        program = reqFound["program"].upper()
+        program = matched["program"].upper()
+
         ourPW = self.passwords.get(program, None)
         if ourPW == None:
             return "unknown program"
         
         enc = sha.new(self.nonce + ourPW)
-        if enc.hexdigest() != reqFound['password']:
+        if enc.hexdigest() != matched['password']:
             return "incorrect password"
         
         # Register our IDs. 
         #
-        username = options.get("username", None)
+        username = matched.get("username", None)
         if not username:
             username = program
 
@@ -105,8 +134,41 @@ class NubAuth(object):
         self.setNames(program, username)
         hub.addCommander(self)
 
+        # Try to squirrel away some useful facts about the client.
+        self.clientType = matched.get('type', 'unknown')
+        self.clientPlatform = matched.get('platform', 'unknown')
+        self.clientVersion = matched.get('version', 'unknown')
+
+        # Check whether we don't like the version
+        #
+        reject = self.rejectClient(cmd, self.clientType, self.clientVersion, self.clientPlatform)
+        if reject:
+            return reject
+        
         return True
+
+    def setUserInfo(self):
+        """ Save a keyword describing our client.
+
+        Kinda gross for it to be here. But there is no obvious good place for it,
+        except maybe to name a TUINub.
+        """
+        
+        CPL.log('reportAuth', 'reporting on %s' % (self))
+
+        try:
+            otherIP = self.otherIP
+            otherFQDN = self.otherFQDN
+        except:
+            otherIP = otherFQDN = 'unknown'
             
+        # And tell others all about us. Well, have the 'hub' tell them.
+        self.userInfo = 'user=%s,%s,%s,%s,%s,%s' % \
+                        (CPL.qstr(self.name), CPL.qstr(self.clientType),
+                         CPL.qstr(self.clientVersion),
+                         CPL.qstr(self.clientPlatform),
+                         CPL.qstr(otherIP), CPL.qstr(otherFQDN))
+        
     def makeMyNonce(self):
         """ Generate an ASCIIfied large random number. Put it in .nonce """
         
@@ -191,6 +253,9 @@ class NubAuth(object):
                     cmd.finish(('loggedIn',
                                 'cmdrID=%s' % CPL.qstr(self.name)),
                                src='auth')
+                    CPL.log('auth', 'logged in %s' % (self))
+                    self.setUserInfo()
+                    g.hubcmd.inform(self.userInfo)
                 else:
                     self.state = self.NOT_CONNECTED
                     cmd.fail('why=%s' % CPL.qstr(ret),
