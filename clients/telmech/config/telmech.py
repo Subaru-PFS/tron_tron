@@ -29,6 +29,26 @@ m3_alt_limit = 80.0     # do not move tertiary if alt < m3_alt_limit
 m1_alt_limit = 22.0     # do not open covers if alt < m1_alt_limit
 
 #
+# Bit positions for the different devices
+#
+# NOT USED, but convenient for documentation
+#
+Enc_Enable = {'Power for enclosure rotation and axis motion':1}
+Enc_Fan = {'Telescope Venting':1, 'Enclosure Venting':2,
+           'Enclosure Pressurization':3}
+Enc_Heater = {'Circuit 4':1, 'Circuit 8':2, 'Circuit 12':3, 'Circuit 16':4,
+              'Circuit 20':5, 'Circuit 24':6}
+Enc_Light = {'Obs-Level Front Halides':1, 'Obs-Level Rear Halides':2, 
+             'Obs-Level Incandescents':3, 
+             'Secondary Exchange Platform Incandescents':4, 
+             'Catwalk Incandescents':5, 'Stairs Incandescents':6, 
+             'Intermediate Incandescents':7, 'Intermediate Flourescents':8}
+Enc_Louver = { 'Lower Left':1, 'Middle Left':2, 'Upper Left':3,
+               'Lower Right':4, 'Middle Right': 5, 'Upper Right':6,
+               'Stairs':7, 'Floor':8 }
+Enc_Shutter = {'Left Shutter':1, 'Right Shutter':2}
+
+#
 # Enclosure devices.  The order is important.  The values are arranged in
 # the bit order for the word.  For example, Heater 4 is the first bit.
 # Also, 'OFF','ON' are 0 and 1.
