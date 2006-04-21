@@ -46,9 +46,6 @@ Commands:
         fan1, fan2, ... are the fan names or ALL
         state is on or off
 
-        NOTE: pressurization and exhaust are mutually exclusive, so turning
-        on one type will turn off the other type.
-  
     louver - open/close louvers
         usage: louver louver1 [louver2 [...]] state
         louver1, louver2, ... are the louver names or ALL
