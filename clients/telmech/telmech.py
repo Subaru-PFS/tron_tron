@@ -55,6 +55,10 @@ Commands:
         device is one of the devices above, i.e. tertrot, eyelid, cover, light,
         fan, and louver
 
+    devices - return the devices that have parts and the part names.
+        The enclosure devices are the only devices that meet this condition.
+        usage: devices
+
 For example:
 
 tui> telmech ?
@@ -99,13 +103,13 @@ import m3ctrl
 import enclosure
 from match_utils import *
 
-#from traceback import print_exc
-#LOGFD = file('/home/tron/logfile', 'w')
+from traceback import print_exc
+LOGFD = file('/home/tron/logfile', 'w')
 
 def DEBUG(msg):
     '''Debug print message to a file'''
-    #LOGFD.write(msg+'\n')
-    #LOGFD.flush()
+    LOGFD.write(msg+'\n')
+    LOGFD.flush()
     pass
 
 def DEBUG_EXC():
@@ -121,6 +125,7 @@ class Telmech(Actor.Actor):
     def __init__(self, **argv):
         # devices managed by telmech, should agree with local_commands
         self.devices = CPL.cfg.get('telmech', 'devices')
+        self.devices_to_get = CPL.cfg.get('telmech', 'devices_to_get')
 
         Actor.Actor.__init__(self, 'telmech', **argv)
         # make sure the devices here agree with the devices in config/telmech.py
@@ -131,7 +136,8 @@ class Telmech(Actor.Actor):
                               'fan': self._set_fans_cmd,
                               'heater': self._set_heaters_cmd,
                               'louver': self._set_louvers_cmd,
-                              'status': self._get_status})
+                              'status': self._get_status,
+                              'devices': self._get_devices})
 
         self.ports = CPL.cfg.get('telmech', 'ports')
         self.eyelids = CPL.cfg.get('telmech', 'eyelids')
@@ -455,16 +461,40 @@ Devices are: %s"' % (parts[1], string.join(self.devices)))
 
         for device in reply:
             msg = 'device=%s' % (device.lower())
-            if device not in ['COVERS','TERTROT']:     # not a dictionary, just a value
+            # not a dictionary, just a value
+            if device not in ['COVERS', 'TERTROT']:     
                 parts = reply[device]
                 fmt = ';%s=%s'
                 for part in parts:
-                    msg = msg + fmt % (part.lower(),CPL.qstr(parts[part].lower()))
+                    msg = msg + fmt % (part.lower(), parts[part].lower())
                 cmd.respond(msg)
             else:
-                msg = msg + ';value=%s' % (CPL.qstr(reply[device].lower()))
+                msg = msg + ';value=%s' % (reply[device].lower())
                 cmd.respond(msg)
 
+        cmd.finish()
+
+    def _get_devices(self, cmd):
+        """ 
+        Return devices list
+        """
+        messages = []
+
+        DEBUG('devices to get %s' % (str(self.devices_to_get)))
+        for device in self.devices_to_get:
+            try:
+                # all but ALL
+                parts = self.enc_devices[device].parts[:-1]
+                parts = map(lambda x: x.lower(), parts)
+                msg = '%s=%s' % (device.lower(), string.join(parts,','))
+                DEBUG('msg %s' % (msg))
+                messages.append(msg)
+            except:
+                pass
+        
+        DEBUG('messages: %s' % (str(messages)))
+        DEBUG('full msg %s' % (string.join(messages,';')))
+        cmd.respond(string.join(messages,';'))
         cmd.finish()
 
 #
