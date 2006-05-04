@@ -45,7 +45,7 @@ Enc_Light = {'Obs-Level Front Halides':1, 'Obs-Level Rear Halides':2,
              'Intermediate Incandescents':7, 'Intermediate Flourescents':8}
 Enc_Louver = { 'Lower Left':1, 'Middle Left':2, 'Upper Left':3,
                'Lower Right':4, 'Middle Right': 5, 'Upper Right':6,
-               'Stairs':7, 'Floor':8 }
+               'Stairs':7, 'RPit':8, 'LPit':9 }
 Enc_Shutter = {'Left Shutter':1, 'Right Shutter':2}
 
 #
@@ -62,16 +62,17 @@ class EnclosureDevice:
 
 enc_devices = {
     'ENABLE':EnclosureDevice(0,['TELESCOPE','ALL'],['OFF','ON']),
-    'FAN':EnclosureDevice(1,['TELEXHAUST','INTEXHAUST','PRESSURIZATION','ALL'],
+    'FANS':EnclosureDevice(1,['TELEXHAUST','INTEXHAUST','PRESS','ALL'],
                             ['OFF','ON']),
-    'HEATER':EnclosureDevice(2,['4','8','12','16','20','24','ALL'],['OFF','ON']),
-    'LIGHT':EnclosureDevice(3,['FHALIDES','RHALIDES','INCANDESCENTS','PLATFORM',
-                               'CATWALK','STAIRS','INT_INCANDESCENTS',
-                               'INT_FLOURESCENTS','ALL'],['OFF','ON']),
-    'LOUVER':EnclosureDevice(4,['L1','L2','L3','R1','R2','R3','STAIRS','FLOOR',
-                                'ALL'],
+    'HEATERS':EnclosureDevice(2,['H4','H8','H12','H16','H20','H24','ALL'],
+                               ['OFF','ON']),
+    'LIGHTS':EnclosureDevice(3,['FHALIDES','RHALIDES','INCAND','PLATFORM',
+                               'CATWALK','STAIRS','INT_INCAND',
+                               'INT_FLOUR','ALL'],['OFF','ON']),
+    'LOUVERS':EnclosureDevice(4,['LLOW','LMID','LUP','RLOW','RMID','RUP','STAIRS','RPIT',
+                                'LPIT','ALL'],
                                ['CLOSE','OPEN']),
-    'SHUTTER':EnclosureDevice(5,['LEFT','RIGHT','ALL'],['CLOSE','OPEN'])
+    'SHUTTERS':EnclosureDevice(5,['LEFT','RIGHT','ALL'],['CLOSE','OPEN'])
 }
 
 #
@@ -80,4 +81,11 @@ enc_devices = {
 # Status can be gotten on all of them or individually.
 #
 
-devices = ['TERTROT', 'EYELID', 'COVERS', 'LIGHT', 'FAN', 'HEATER', 'LOUVER']
+devices = ['TERTROT', 'EYELID', 'COVERS', 'LIGHT', 'FAN', 'HEATER', 'LOUVER',
+           'SHUTTER', 'ENABLE']
+
+#
+# Devices to return in devices query.  The order is needed to
+# be fixed so TUI display is reproducible.  See telmech.py, _get_devices()
+#
+devices_to_get = ['LIGHT', 'FAN', 'SHUTTER', 'LOUVER', 'SHUTTER', 'ENABLE']
