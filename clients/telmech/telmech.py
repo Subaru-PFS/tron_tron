@@ -27,7 +27,7 @@ Commands:
         usage: tertrot portname
             portname is one of the ports or home to home the tertiary rotation
 
-    eyelid - set the eyelid state for a single eyelid or ALL eyelids
+    eyelids - set the eyelid state for a single eyelid or ALL eyelids
         usage: eyelid port state
             state is either open or close
             eyelid is one of the eyelid names or ALL
@@ -36,24 +36,29 @@ Commands:
         usage: cover state
             state is either open or close
   
-    light - turn on/off lights
-        usage: light light1 [light2 [...]] state
+    lights - turn on/off lights
+        usage: lights light1 [light2 [...]] state
         light1, light2, ... are the light names or ALL
         state is on or off
   
-    fan  - turn on/off fans
-        usage: fan fan1 [fan2 [...]] state
+    fans  - turn on/off fans
+        usage: fans fan1 [fan2 [...]] state
         fan1, fan2, ... are the fan names or ALL
         state is on or off
 
-    louver - open/close louvers
-        usage: louver louver1 [louver2 [...]] state
+    louvers - open/close louvers
+        usage: louvers louver1 [louver2 [...]] state
         louver1, louver2, ... are the louver names or ALL
+        state is open or close
+
+    heaters - on/off heaters
+        usage: heaters heater1 [heater2 [...]] state
+        heater1, heater2, ... are the heater names or ALL
         state is on or off
   
     status [device]
         device is one of the devices above, i.e. tertrot, eyelid, cover, light,
-        fan, and louver
+        fan, louver, and heater
 
     devices - return the devices that have parts and the part names.
         The enclosure devices are the only devices that meet this condition.
@@ -64,11 +69,11 @@ For example:
 tui> telmech ?
     should printout telmech commands
 
-tui> telmech eyelid
+tui> telmech eyelids
 
     should print out the usage and list the ports which can be set
 
-tui> telmech light incan on
+tui> telmech lights incan on
 
     should turn on incandescents on the observing level
 
@@ -103,13 +108,13 @@ import m3ctrl
 import enclosure
 from match_utils import *
 
-from traceback import print_exc
-LOGFD = file('/home/tron/logfile', 'w')
+#from traceback import print_exc
+#LOGFD = file('/home/tron/logfile', 'w')
 
 def DEBUG(msg):
     '''Debug print message to a file'''
-    LOGFD.write(msg+'\n')
-    LOGFD.flush()
+    #LOGFD.write(msg+'\n')
+    #LOGFD.flush()
     pass
 
 def DEBUG_EXC():
@@ -130,12 +135,12 @@ class Telmech(Actor.Actor):
         Actor.Actor.__init__(self, 'telmech', **argv)
         # make sure the devices here agree with the devices in config/telmech.py
         self.commands.update({'tertrot': self._set_tert_cmd,
-                              'eyelid': self._set_eyelids_cmd,
-                              'cover': self._set_covers_cmd,
-                              'light': self._set_lights_cmd,
+                              'eyelids': self._set_eyelids_cmd,
+                              'covers': self._set_covers_cmd,
+                              'lights': self._set_lights_cmd,
                               'fan': self._set_fans_cmd,
-                              'heater': self._set_heaters_cmd,
-                              'louver': self._set_louvers_cmd,
+                              'heaters': self._set_heaters_cmd,
+                              'louvers': self._set_louvers_cmd,
                               'status': self._get_status,
                               'devices': self._get_devices})
 
@@ -223,7 +228,7 @@ Ports are: %s''' % (string.join(self.ports.keys()))
 
         parts = cmd.raw_cmd.split()
         if len(parts) < 3:
-            msg = '''usage: eyelid port-name open/close. \
+            msg = '''usage: eyelids port-name open/close. \
 Ports are: %s''' % (string.join(self.eyelids))
             cmd.fail('errtxt="'+msg+'"')
             return
@@ -234,7 +239,7 @@ Ports are: %s''' % (string.join(self.eyelids))
         try:
             state = match_name(state, ['OPEN', 'CLOSE'])
         except:
-            msg = '''usage: eyelid port-name open|close. \
+            msg = '''usage: eyelids port-name open|close. \
 Ports are: %s''' % (string.join(self.eyelids))
             cmd.fail('errtxt="'+msg+'"')
             return
@@ -287,8 +292,8 @@ Ports are: %s''' % (string.join(self.eyelids))
         """
         parts = cmd.raw_cmd.split()
         if len(parts) < 3:
-            msg = '''usage: light [light1 [light2 ...]] [on|off]. \
-Lights are: %s''' % (string.join(self.enc_devices['LIGHT'].parts))
+            msg = '''usage: lights [light1 [light2 ...]] [on|off]. \
+Lights are: %s''' % (string.join(self.enc_devices['LIGHTS'].parts))
             cmd.fail('errtxt="'+msg+'"')
             return
 
@@ -302,9 +307,9 @@ Lights are: %s''' % (string.join(self.enc_devices['LIGHT'].parts))
         try:
             cid = self.cidForCmd(cmd)
             part_list = map(lambda x: x.upper(), parts[1:-1])
-            part_list = match_names(part_list, self.enc_devices['LIGHT'].parts)
+            part_list = match_names(part_list, self.enc_devices['LIGHTS'].parts)
             if 'ALL' in part_list:
-                part_list = all_names(self.enc_devices['LIGHT'].parts)
+                part_list = all_names(self.enc_devices['LIGHTS'].parts)
             self.enclosure.lights(part_list, state, cid)
         except:
             msg = 'errtxt=' + '"'+str(sys.exc_info()[1])+'"'
@@ -323,8 +328,8 @@ Lights are: %s''' % (string.join(self.enc_devices['LIGHT'].parts))
 
         parts = cmd.raw_cmd.split()
         if len(parts) < 3:
-            msg = '''usage: fan [fan1 [fan2 ...]] [on|off]. \
-Fans are: %s''' % (string.join(self.enc_devices['FAN'].parts))
+            msg = '''usage: fans [fan1 [fan2 ...]] [on|off]. \
+Fans are: %s''' % (string.join(self.enc_devices['FANS'].parts))
             cmd.fail('errtxt="'+msg+'"')
             return
 
@@ -338,7 +343,7 @@ Fans are: %s''' % (string.join(self.enc_devices['FAN'].parts))
         try:
             cid = self.cidForCmd(cmd)
             part_list = map(lambda x: x.upper(), parts[1:-1])
-            part_list = match_names(part_list, self.enc_devices['FAN'].parts)
+            part_list = match_names(part_list, self.enc_devices['FANS'].parts)
             if 'ALL' in part_list:
                 part_list = all_names(self.enc_devices['FAN'].parts)
             self.enclosure.fans(part_list, state, cid)
@@ -360,8 +365,8 @@ Fans are: %s''' % (string.join(self.enc_devices['FAN'].parts))
 
         parts = cmd.raw_cmd.split()
         if len(parts) < 3:
-            msg = '''usage: heater [heater1 [heater2 ...]] [on|off]. \
-Heaters are: %s''' % (string.join(self.enc_devices['HEATER'].parts))
+            msg = '''usage: heaters [heater1 [heater2 ...]] [on|off]. \
+Heaters are: %s''' % (string.join(self.enc_devices['HEATERS'].parts))
             cmd.fail('errtxt="'+msg+'"')
             return
 
@@ -376,7 +381,7 @@ Heaters are: %s''' % (string.join(self.enc_devices['HEATER'].parts))
             cid = self.cidForCmd(cmd)
             part_list = parts[1:-1]     # '1', '2', ... - no name expand
             if 'ALL' in part_list:
-                part_list = all_names(self.enc_devices['HEATER'].parts)
+                part_list = all_names(self.enc_devices['HEATERS'].parts)
             self.enclosure.heaters(part_list, state, cid)
         except:
             msg = 'errtxt=' + '"'+str(sys.exc_info()[1])+'"'
@@ -395,24 +400,26 @@ Heaters are: %s''' % (string.join(self.enc_devices['HEATER'].parts))
 
         parts = cmd.raw_cmd.split()
         if len(parts) < 3:
-            msg = '''usage: louver [louver1 [louver2 ...]] [on|off]. \
-Louvers are: %s''' % (string.join(self.enc_devices['LOUVER'].parts))
+            msg = '''usage: louvers [louver1 [louver2 ...]] [open|close]. \
+Louvers are: %s''' % (string.join(self.enc_devices['LOUVERS'].parts))
             cmd.fail('errtxt="'+msg+'"')
             return
 
         state = parts[-1].upper()
         try:
-            state = match_name(state, ['ON', 'OFF'])
+            state = match_name(state, ['OPEN', 'CLOSE'])
         except:
-            msg = '''louver state %s not uniquely 'on' or 'off'.''' % (state)
+            msg = '''louver state %s not uniquely 'open' or 'close'.''' % \
+                (state)
             cmd.fail('errtxt="'+msg+'"')
 
         try:
             cid = self.cidForCmd(cmd)
             part_list = map(lambda x: x.upper(), parts[1:-1])
-            part_list = match_names(part_list, self.enc_devices['LOUVER'].parts)
+            part_list = match_names(part_list, \
+                                    self.enc_devices['LOUVERS'].parts)
             if 'ALL' in part_list:
-                part_list = all_names(self.enc_devices['LOUVER'].parts)
+                part_list = all_names(self.enc_devices['LOUVERS'].parts)
             self.enclosure.louvers(part_list, state, cid)
         except:
             msg = 'errtxt=' + '"'+str(sys.exc_info()[1])+'"'
