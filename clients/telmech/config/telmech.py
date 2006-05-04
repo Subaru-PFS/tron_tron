@@ -81,11 +81,11 @@ enc_devices = {
 # Status can be gotten on all of them or individually.
 #
 
-devices = ['TERTROT', 'EYELID', 'COVERS', 'LIGHT', 'FAN', 'HEATER', 'LOUVER',
-           'SHUTTER', 'ENABLE']
+devices = ['TERTROT', 'EYELIDS', 'COVERS', 'LIGHTS', 'FANS', 'HEATERS', 'LOUVERS',
+           'SHUTTERS', 'ENABLE']
 
 #
 # Devices to return in devices query.  The order is needed to
 # be fixed so TUI display is reproducible.  See telmech.py, _get_devices()
 #
-devices_to_get = ['LIGHT', 'FAN', 'SHUTTER', 'LOUVER', 'SHUTTER', 'ENABLE']
+devices_to_get = ['LIGHTS', 'FANS', 'SHUTTERS', 'LOUVERS', 'SHUTTERS', 'ENABLE']

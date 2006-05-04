@@ -85,7 +85,13 @@ class Enclosure:
             t_parts = [part for part in parts]
 
         t_parts.sort()
-        msg = 'talk tcc_encl "%s.%s %s" ' % (device, state,  
+        # The preferred device names for users to see are not the same
+        # as the names used by the device controller.  Map the user
+        # names to device names.
+        device_map = {'HEATERS':'HEATER', 'FANS':'FAN', 'LOUVERS':'LOUVER',
+                    'LIGHTS':'LIGHT', 'ENABLE':'ENABLE', 'SHUTTERS':'SHUTTER'}
+        t_device = device_map[device]
+        msg = 'talk tcc_encl "%s.%s %s" ' % (t_device, state,  
             string.join(t_parts))
     
         return client.call('tcc', msg, cid=cid)
@@ -102,20 +108,21 @@ class Enclosure:
           - enclosure_cmd exceptions
         """
         DEBUG('Calling lights, names %s, state %s\n' % (str(names), state));
-        return self.enclosure_cmd('LIGHT', names, state, cid)
+        return self.enclosure_cmd('LIGHTS', names, state, cid)
     
     def louvers(self, names, state, cid):
         """
         Set the named louvers to the state
     
         names - list of lights to act on.  Can be partial names.
-        state - state is OPEN, CLOSE, or AUTOMATIC
+        state - state is OPEN or CLOSE.  AUTOMATIC is not implemented.
         cid - command id
     
         Raises:
           - enclosure_cmd exceptions
         """
-        return self.enclosure_cmd('LOUVER', names, state, cid)
+        t_state = {'OPEN':'ON', 'CLOSE':'OFF'}[state]
+        return self.enclosure_cmd('LOUVERS', names, t_state, cid)
     
     def heaters(self, names, state, cid):
         """
@@ -128,7 +135,7 @@ class Enclosure:
         Raises:
           - enclosure_cmd exceptions
         """
-        return self.enclosure_cmd('HEATER', names, state, cid, match=False)
+        return self.enclosure_cmd('HEATERS', names, state, cid, match=False)
     
     def enable(self, names, state, cid):
         """
@@ -191,7 +198,7 @@ class Enclosure:
             index = 0
             # walk through value and if bit set (open), 
             # save part name chosen by index
-            if name == 'SHUTTER':
+            if name == 'SHUTTERS':
                 if value == 40:
                     msg[parts[0]] = states[1]
                     msg[parts[1]] = states[1]
@@ -228,4 +235,4 @@ class Enclosure:
           - enclosure_cmd exceptions
           - BadFanRequest
         """
-        return self.enclosure_cmd('FAN', names, state, cid)
+        return self.enclosure_cmd('FANS', names, state, cid)

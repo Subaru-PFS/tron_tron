@@ -226,6 +226,6 @@ degrees' % (self.m1_alt_limit)
             if key != 'ALL':        # everything but ALL
                 port = self.ports[key]
                 save[key] = port.eyelid_status
-        reply['EYELID'] = save
+        reply['EYELIDS'] = save
 
         return reply
