@@ -68,7 +68,7 @@ enc_devices = {
                                ['OFF','ON']),
     'LIGHTS':EnclosureDevice(3,['FHALIDES','RHALIDES','INCAND','PLATFORM',
                                'CATWALK','STAIRS','INT_INCAND',
-                               'INT_FLOUR','ALL'],['OFF','ON']),
+                               'INT_FLUOR','ALL'],['OFF','ON']),
     'LOUVERS':EnclosureDevice(4,['LLOW','LMID','LUP','RLOW','RMID','RUP','STAIRS','RPIT',
                                 'LPIT','ALL'],
                                ['CLOSE','OPEN']),

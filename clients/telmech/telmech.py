@@ -138,7 +138,7 @@ class Telmech(Actor.Actor):
                               'eyelids': self._set_eyelids_cmd,
                               'covers': self._set_covers_cmd,
                               'lights': self._set_lights_cmd,
-                              'fan': self._set_fans_cmd,
+                              'fans': self._set_fans_cmd,
                               'heaters': self._set_heaters_cmd,
                               'louvers': self._set_louvers_cmd,
                               'status': self._get_status,
