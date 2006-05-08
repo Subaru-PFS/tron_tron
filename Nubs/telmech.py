@@ -17,6 +17,7 @@ def start(poller):
                                 'PYTHONPATH=%s/Client:%s' % (g.home, g.home),
                                 'clients/%s/%s.py' % (name, name)],
                        name=name, encoder=e, decoder=d,
+                       needsAuth=True,
                        logDir=os.path.join(g.logDir, name),
                        debug=0)
     hub.addActor(nub)
