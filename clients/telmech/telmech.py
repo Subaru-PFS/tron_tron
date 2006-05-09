@@ -99,6 +99,7 @@ To Be Done:
 
 import sys
 import string
+import time
 
 import client
 import CPL
@@ -213,6 +214,9 @@ Ports are: %s''' % (string.join(self.ports.keys()))
             cmd.fail(msg)
             return
 
+        time.sleep(1)
+        self._get_status_common(cmd)
+
         cmd.finish()
 
     def _set_eyelids_cmd(self, cmd):
@@ -256,6 +260,9 @@ Ports are: %s''' % (string.join(self.eyelids))
             cmd.fail(msg)
             return
 
+        time.sleep(1)
+        self._get_status_common(cmd)
+
         cmd.finish()
 
     def _set_covers_cmd(self, cmd):
@@ -280,6 +287,9 @@ Ports are: %s''' % (string.join(self.eyelids))
             msg = 'errtxt=' + '"'+str(sys.exc_info()[1])+'"'
             cmd.fail(msg)
             return;
+
+        time.sleep(1)
+        self._get_status_common(cmd, 'COVERS')
 
         cmd.finish()
 
@@ -315,6 +325,9 @@ Lights are: %s''' % (string.join(self.enc_devices['LIGHTS'].parts))
             msg = 'errtxt=' + '"'+str(sys.exc_info()[1])+'"'
             cmd.fail(msg)
             return;
+
+        time.sleep(1)
+        self._get_status_common(cmd)
 
         cmd.finish()
 
@@ -353,6 +366,9 @@ Fans are: %s''' % (string.join(self.enc_devices['FANS'].parts))
             cmd.fail(msg)
             return;
 
+        time.sleep(1)
+        self._get_status_common(cmd)
+
         cmd.finish()
 
     def _set_heaters_cmd(self, cmd):
@@ -387,6 +403,9 @@ Heaters are: %s''' % (string.join(self.enc_devices['HEATERS'].parts))
             msg = 'errtxt=' + '"'+str(sys.exc_info()[1])+'"'
             cmd.fail(msg)
             return;
+
+        time.sleep(1)
+        self._get_status_common(cmd)
 
         cmd.finish()
 
@@ -425,6 +444,9 @@ Louvers are: %s''' % (string.join(self.enc_devices['LOUVERS'].parts))
             msg = 'errtxt=' + '"'+str(sys.exc_info()[1])+'"'
             cmd.fail(msg)
             return;
+        
+        time.sleep(1)
+        self._get_status_common(cmd)
 
         cmd.finish()
 
@@ -450,6 +472,15 @@ Devices are: %s"' % (parts[1], string.join(self.devices)))
                     return
         except:
             DEBUG_EXC()
+
+        self._get_status_common(cmd, device)
+
+        cmd.finish()
+
+    def _get_status_common(self, cmd, device=''):
+        '''
+        Low-level common command used by other commands
+        '''
 
         try:
             cid = self.cidForCmd(cmd)
@@ -478,8 +509,6 @@ Devices are: %s"' % (parts[1], string.join(self.devices)))
             else:
                 msg = msg + ';value=%s' % (reply[device].lower())
                 cmd.respond(msg)
-
-        cmd.finish()
 
     def _get_devices(self, cmd):
         """ 
