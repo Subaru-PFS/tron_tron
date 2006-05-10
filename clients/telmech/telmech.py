@@ -395,7 +395,10 @@ Heaters are: %s''' % (string.join(self.enc_devices['HEATERS'].parts))
 
         try:
             cid = self.cidForCmd(cmd)
-            part_list = parts[1:-1]     # '1', '2', ... - no name expand
+            # 'h4', 'h8', ... - no name expand, toss 'h'
+            #part_list = map(lambda x: x[1:], parts[1:-1])
+            part_list = map(lambda x: x.upper(), parts[1:-1])
+            part_list = match_names(part_list, self.enc_devices['HEATERS'].parts)
             if 'ALL' in part_list:
                 part_list = all_names(self.enc_devices['HEATERS'].parts)
             self.enclosure.heaters(part_list, state, cid)
