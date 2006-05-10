@@ -15,6 +15,21 @@ import CameraShim
 
 sys.stderr.write("done imports\n")
 
+#from traceback import print_exc
+#LOGFD = file('/home/tron/logfile', 'w')
+
+def DEBUG(msg):
+    '''Debug print message to a file'''
+    #LOGFD.write(msg+'\n')
+    #LOGFD.flush()
+    pass
+
+def DEBUG_EXC():
+    '''Debug print stack trace to a file'''
+    #print_exc(file=LOGFD)
+    #LOGFD.flush()
+    pass
+
 class dcam(Guider.Guider, TCCGcam.TCCGcam):
     def __init__(self, **argv):
         ccdSize = CPL.cfg.get('dcam', 'ccdSize')
@@ -23,12 +38,14 @@ class dcam(Guider.Guider, TCCGcam.TCCGcam):
         cameraShim = CameraShim.CameraShim('dcamera', ccdSize, self)
         Guider.Guider.__init__(self, cameraShim, 'dcam', **argv)
         TCCGcam.TCCGcam.__init__(self, **argv)
-        
-        # Additional commands for the DIS slitviewer.
-        #
-        self.commands.update({'setTemp':    self.setTempCmd,
-                              'setFan':     self.setFanCmd})
 
+    def _setDefaults(self):
+
+        Guider.Guider._setDefaults(self)
+
+        self.GImName = "Apogee"
+        self.GImCamID = 1
+        
     def run(self):
         client.listenFor('dis', ['maskName'], self.listenToMaskName)
         client.call('dis', 'status')
@@ -52,60 +69,9 @@ class dcam(Guider.Guider, TCCGcam.TCCGcam):
 
         self._setMask(None, maskfileName)
         
-        
     def genFilename(self):
         return self._getFilename()
     
-    def setTempCmd(self, cmd):
-        """ Handle setTemp command.
-
-        CmdArgs:
-           float    - the new setpoint. Or "off" to turn the loop off. 
-        """
-
-        parts = cmd.raw_cmd.split()
-        if len(parts) != 2:
-            cmd.fail('%sTxt="usage: setTemp value."')
-            return
-
-        if parts[1] == 'off':
-            self.camera.setTemp(cmd, None)
-        else:
-            try:
-                t = float(parts[1])
-            except:
-                cmd.fail('%sTxt="setTemp value must be \'off\' or a number"')
-                return
-
-            self.camera.setTemp(cmd, t)
-
-        self.camera.coolerStatus(cmd)
-        cmd.finish()
-            
-    def setFanCmd(self, cmd):
-        """ Handle setFan command.
-
-        CmdArgs:
-           int    - the new fan level. 0-3
-        """
-
-        parts = cmd.raw_cmd.split()
-        if len(parts) != 2:
-            cmd.fail('%sTxt="usage: setFan value."')
-            return
-
-        try:
-            t = int(parts[1])
-            assert t in (0,1,2,3)
-        except:
-            cmd.fail('%sTxt="setFan value must be 0..3"')
-            return
-
-        self.camera.setFan(cmd, t)
-
-        self.camera.coolerStatus(cmd)
-        cmd.finish()
-
 # Start it all up.
 #
 def main(name, eHandler=None, debug=0, test=False):
