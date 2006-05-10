@@ -9,13 +9,13 @@ import CPL
 import client
 import string
 
-#LOGFD = file('/home/tron/logfile1','w')
+LOGFD = file('/home/tron/logfile1','w')
 
 def DEBUG(msg):
     '''Print messages to a file for debugging'''
-    #LOGFD.write(msg+'\n')
-    #LOGFD.flush()
-    pass
+    LOGFD.write(msg+'\n')
+    LOGFD.flush()
+    #pass
 
 class BadFanRequest(Exception):
     """
@@ -61,14 +61,13 @@ class Enclosure:
             self.order[index] = key
         DEBUG("done, order: %s" % (str(self.order)))
     
-    def enclosure_cmd(self, device, parts, state, cid, match=True):
+    def enclosure_cmd(self, device, parts, state, cid):
         """ Send a command to the enclosure.
     
         Args:
            device - one of FAN, HEATER, LIGHT, and LOUVER
            parts - parts to turn on
            cmd	- the command string to send to the device. Should be one line.
-           match - True, match partial names; False use name as is
     
         Returns:
            - the entire command response.
@@ -79,10 +78,7 @@ class Enclosure:
         part_list = self.devices[device].parts
     
         # map names to hardware names?
-        if match:
-            t_parts = hardware_names(parts, part_list)
-        else:
-            t_parts = [part for part in parts]
+        t_parts = hardware_names(parts, part_list)
 
         t_parts.sort()
         # The preferred device names for users to see are not the same
@@ -135,7 +131,7 @@ class Enclosure:
         Raises:
           - enclosure_cmd exceptions
         """
-        return self.enclosure_cmd('HEATERS', names, state, cid, match=False)
+        return self.enclosure_cmd('HEATERS', names, state, cid)
     
     def enable(self, names, state, cid):
         """
@@ -206,7 +202,7 @@ class Enclosure:
                     msg[parts[0]] = states[0]
                     msg[parts[1]] = states[0]
             else:
-                count = len(parts) - 1 # remember ALL is 1 extra
+                count = len(parts) - 1      # remember that ALL is 1 extra
                 while count > 0:
                     if value & 1:
                         msg[parts[index]] = states[1]
