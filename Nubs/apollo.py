@@ -16,7 +16,7 @@ def start(poller):
 
     d = Hub.ASCIIReplyDecoder(EOL='\n', CIDfirst=True, debug=1)
     e = Hub.ASCIICmdEncoder(EOL='\n', debug=1)
-    dis = Hub.SocketActorNub(poller, 'houston', 9879,
+    dis = Hub.SocketActorNub(poller, 'cocoa', 9879,
                              name=name, encoder=e, decoder=d,
                              needsAuth=True,
                              grabCID='ping',
