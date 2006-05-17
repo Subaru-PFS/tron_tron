@@ -358,7 +358,7 @@ def genStarKeys(cmd, stars, keyName='star', caller='x', cnt=None):
             break
         i += 1
         
-def genStarKey(cmd, s, idx=1, keyName='star', caller='x'):
+def genStarKey(cmd, s, idx=1, keyName='star', caller='x', predPos=None):
     """ Generate the canonical star keys.
 
     Args:
@@ -367,9 +367,15 @@ def genStarKey(cmd, s, idx=1, keyName='star', caller='x'):
         s       - the StarInfo
         keyName ? the key name to use. Defaults to 'star'
         caller  ? the 'reason' field.
+        predPos ? the predicted position. If set, appended to the output.
     """
 
-    cmd.respond('%s=%s,%d,%0.2f,%0.2f, %0.2f,%0.2f,%0.2f,%0.2f, %0.2f,%0.2f,%0.2f,%0.2f, %d,%0.1f,%0.1f' % \
+    if predPos:
+        predPosStr = ",%0.2f,%0.2f" % (predPos[0], predPos[1])
+    else:
+        predPosStr = ""
+
+    cmd.respond('%s=%s,%d,%0.2f,%0.2f, %0.2f,%0.2f,%0.2f,%0.2f, %0.2f,%0.2f,%0.2f,%0.2f, %d,%0.1f,%0.1f%s' % \
                 (keyName,
                  CPL.qstr(caller),
                  idx,
@@ -379,7 +385,8 @@ def genStarKey(cmd, s, idx=1, keyName='star', caller='x'):
                  s.asymm,
                  s.fwhm[0], s.fwhm[1], s.angle,
                  s.chiSq,
-                 s.counts, s.bkgnd, s.ampl))
+                 s.counts, s.bkgnd, s.ampl,
+                 predPosStr))
 
     
     

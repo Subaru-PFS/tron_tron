@@ -1101,7 +1101,7 @@ class GuideLoop(object):
                 
                 MyPyGuide.genStarKey(cmd, star, caller='c')
                 if self.mode != "manual":
-                    MyPyGuide.genStarKey(cmd, star, caller='g')
+                    MyPyGuide.genStarKey(cmd, star, caller='g', predPos=refPos)
 
             # In any case, find all stars in the field.
             try:
