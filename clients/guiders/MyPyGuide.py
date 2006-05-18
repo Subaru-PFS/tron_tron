@@ -375,18 +375,25 @@ def genStarKey(cmd, s, idx=1, keyName='star', caller='x', predPos=None):
     else:
         predPosStr = ""
 
-    cmd.respond('%s=%s,%d,%0.2f,%0.2f, %0.2f,%0.2f,%0.2f,%0.2f, %0.2f,%0.2f,%0.2f,%0.2f, %d,%0.1f,%0.1f%s' % \
-                (keyName,
-                 CPL.qstr(caller),
-                 idx,
-                 s.ctr[0], s.ctr[1],
-                 s.err[0], s.err[1],
-                 s.radius,
-                 s.asymm,
-                 s.fwhm[0], s.fwhm[1], s.angle,
-                 s.chiSq,
-                 s.counts, s.bkgnd, s.ampl,
-                 predPosStr))
-
+    if s:
+        cmd.respond('%s=%s,%d,%0.2f,%0.2f, %0.2f,%0.2f,%0.2f,%0.2f, %0.2f,%0.2f,%0.2f,%0.2f, %d,%0.1f,%0.1f%s' % \
+                    (keyName,
+                     CPL.qstr(caller),
+                     idx,
+                     s.ctr[0], s.ctr[1],
+                     s.err[0], s.err[1],
+                     s.radius,
+                     s.asymm,
+                     s.fwhm[0], s.fwhm[1], s.angle,
+                     s.chiSq,
+                     s.counts, s.bkgnd, s.ampl,
+                     predPosStr))
+    else:
+        cmd.respond('%s=%s,%d,NaN,NaN, NaN,NaN,NaN,NaN, NaN,NaN,NaN,NaN, NaN,NaN,NaN%s' % \
+                    (keyName,
+                     CPL.qstr(caller),
+                     idx,
+                     predPosStr))
+    
     
     

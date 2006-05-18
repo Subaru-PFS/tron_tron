@@ -1096,10 +1096,11 @@ class GuideLoop(object):
                     CPL.tback('guideloop._handleGuideFrame', e)
                     self.failGuiding(e)
                     return
-            if star:
-                # We can move the 'c' line into an "else" after TUI 1.2 is the old limit.
-                
-                MyPyGuide.genStarKey(cmd, star, caller='c')
+
+                if star:
+                    # We can move the 'c' line into an "else" after TUI 1.2 is the old limit.
+                    MyPyGuide.genStarKey(cmd, star, caller='c')
+
                 if self.mode != "manual":
                     MyPyGuide.genStarKey(cmd, star, caller='g', predPos=refPos)
 
