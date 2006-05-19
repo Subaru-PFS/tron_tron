@@ -114,12 +114,12 @@ class TCCState(object):
         
         if reply.KVs.has_key('Inst'):
             inst = reply.KVs.get('Inst', 'None')
-            inst = Parsing.dequote(mi)
+            inst = Parsing.dequote(inst)
             if inst != self.instName:
                 oinst = self.instName
                 self.instName = inst
                 if oinst != None:
-                    self.interestedParty.telescopeHasMoved(True, newField=newField, how="Instrument changed")
+                    self.interestedParty.telescopeHasMoved(True, newField=True, how="Instrument changed")
                     return
 
         # Has an uncomputed offset just been issued?
