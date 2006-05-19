@@ -87,6 +87,8 @@ class GuideLoop(object):
 
         self.tcc.connectToMe(self)
 
+    def __del__(self):
+        pass
         
     def __str__(self):
         return "GuideLoop(guiding=%s)" % (self.state)
@@ -192,7 +194,7 @@ class GuideLoop(object):
             
             # Check this -- CPL
             if newField:
-                self.cmd.warn('text="Object has been changed. Stopping or restarting guide loop."')
+                self.cmd.warn('text="Object or instrument has been changed. Stopping guide loop."')
                 self.restartGuiding()
             else:
                 self.waitingForSlewEnd = True
@@ -257,6 +259,7 @@ class GuideLoop(object):
         This must only be called when the loop has stopped.
         """
 
+        self.invalidLoop = True
         self.cmd.respond('debug="in stopGuiding"')
         self.cleanup()
         self.cmd.finish()
@@ -845,6 +848,7 @@ class GuideLoop(object):
             self._guideLoopTop()
             return
 
+        cmd.warn('debug="state at centerUp: %s"' % self.state)
         cmdTxt, mustWait = self._genOffsetCmd(cmd, star, frame, refGpos,
                                               offsetType, doScale, fname=fname)
         if not cmdTxt:
@@ -1020,6 +1024,13 @@ class GuideLoop(object):
             self.failGuiding('text=%s' % (failure))
             return
 
+        # If we are reading off disk, override camFile, which will be static. 
+        # Improve -- CPL
+        if self.cmd.argDict.has_key('file'):
+            camFile = self.getNextTrackedFilename(self.cmd.argDict['file'])
+        elif self.tweaks.has_key('forceFile'):
+            camFile = self.getNextTrackedFilename(tweaks['forceFile'])
+
         # This is a callback, so we need to catch all exceptions.
         try:
             if self.state == 'off':
@@ -1028,13 +1039,6 @@ class GuideLoop(object):
                 self.stopGuiding()
                 return
         
-            # If we are reading off disk, override camFile, which will be static. 
-            # Improve -- CPL
-            if self.cmd.argDict.has_key('file'):
-                camFile = self.getNextTrackedFilename(self.cmd.argDict['file'])
-            elif self.tweaks.has_key('forceFile'):
-                camFile = self.getNextTrackedFilename(tweaks['forceFile'])
-
             # Optionally dark-subtract and/or flat-field
             procFile, maskFile, darkFile, flatFile = \
                       self.controller.processCamFile(cmd, camFile, tweaks)
@@ -1080,6 +1084,19 @@ class GuideLoop(object):
                     self.failGuiding(e)
                     return
 
+            # In all cases, find all stars in the field.
+            try:
+                stars = MyPyGuide.findstars(self.cmd, procFile,
+                                            frame, tweaks=self.tweaks)
+            except RuntimeError, e:
+                stars = []
+            except Exception, e:
+                CPL.tback('guideloop._handleGuideFrame', e)
+                self.failGuiding(e)
+                return
+            if stars:
+                MyPyGuide.genStarKeys(cmd, stars, caller='f')
+
             # Only try for a centroid if we expect to know where we want to be.
             if self.mode == 'acquire' or \
                self.mode == 'manual' and (self.controller.guiderType == 'gimage' or not refPos):
@@ -1104,19 +1121,6 @@ class GuideLoop(object):
                 if self.mode != "manual":
                     MyPyGuide.genStarKey(cmd, star, caller='g', predPos=refPos)
 
-            # In any case, find all stars in the field.
-            try:
-                stars = MyPyGuide.findstars(self.cmd, procFile,
-                                            frame, tweaks=self.tweaks)
-            except RuntimeError, e:
-                stars = []
-            except Exception, e:
-                CPL.tback('guideloop._handleGuideFrame', e)
-                self.failGuiding(e)
-                return
-            if stars:
-                MyPyGuide.genStarKeys(cmd, stars, caller='f')
-
             if self.mode in ('acquire', 'centerUp'):
                 self.stopGuiding()
                 return
@@ -1127,7 +1131,6 @@ class GuideLoop(object):
                     time.sleep(delay)
                 
                 self.genStateKey(action='exposing')
-                #self._doExpose(self._handleGuiderFrame)
                 self._guideLoopTop()
                 return
 
