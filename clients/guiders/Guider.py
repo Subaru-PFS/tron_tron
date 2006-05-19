@@ -584,9 +584,9 @@ o            cb          - the callback function
             CPL.log('processCamFile', "after max-down min=%01.f max=%0.1f" % (min, max))
         
         if fiddled:
-            cmd.warn('debug="adjusted limits=%0.1f,%0.1f; newLimits=%01.f,%0.1f"' % \
-                     (min0, max0,
-                      im.min(), im.max()))
+            CPL.log('processCamFile', "adjusted limits=%0.1f,%0.1f; newLimits=%01.f,%0.1f" % \
+                    (min0, max0,
+                     im.min(), im.max()))
 
         return im.astype('u2')
     
@@ -634,7 +634,7 @@ o            cb          - the callback function
         hl.append(p)
         hl.append(m)
 
-        cmd.warn('debug="procFile: %s"' % (procFileName))
+        # cmd.warn('debug="procFile: %s"' % (procFileName))
         try:
             hl.writeto(procFileName)
         except Exception, e:
@@ -735,7 +735,6 @@ o            cb          - the callback function
         del maskBits
             
         t1 = time.time()
-        cmd.warn('debug="procFiles took %0.1fs"' % (t1-t0))
 
         # ???
         if darkFile and darkFile.find('bias') > -1:
