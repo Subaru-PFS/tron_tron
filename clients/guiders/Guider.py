@@ -437,6 +437,31 @@ class Guider(Actor.Actor):
             
 	cmd.finish('')
 
+    def checkImageInst(self, cmd, imagefile):
+        """ Check whether the given image file was taken by us.
+
+        Args:
+           imagefile      - name of FITS file
+
+        Returns:
+           - bool, whether the image INSTRUME card is ours.
+        """
+
+        try:
+            f = pyfits.open(imagefile)
+            h = f[0].header
+            f.close()
+        except Exception, e:
+            cmd.warn('text=%s', CPL.qstr('could not open FITS file %s: %s' % (imagefile, e)))
+            return False
+
+        try:
+            return h['INSTRUME'] == self.name
+        except:
+            cmd.warn('text=%s', CPL.qstr('FITS file %s has no INSTRUME card' % (imagefile)))
+            return False
+            
+        
     def doCmdExpose(self, cmd, cb, type, tweaks):
         """ Parse the exposure arguments and act on them.
 
@@ -475,6 +500,10 @@ class Guider(Actor.Actor):
                 cmd.fail('text=%s' % (CPL.qstr("No such file: %s" % (filename))))
                 return False
 
+            if not self.checkImageInst(cmd, imgFile):
+                cmd.fail('text=%s' % (CPL.qstr("FITS file %s is not a %s file" % (filename, self.name))))
+                return False
+            
             frame = GuideFrame.ImageFrame(self.size)
             frame.setImageFromFITSFile(imgFile)
 
