@@ -22,6 +22,7 @@ def start(poller):
                                 'clients/%s/%s.py' % (name, name)],
                        name=name, encoder=e, decoder=d,
                        needsAuth=True,
+                       grabCID=True,
                        initCmds=initCmds, safeCmds=safeCmds,
                        logDir=os.path.join(g.logDir, name),
                        debug=1)

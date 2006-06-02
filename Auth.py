@@ -84,6 +84,10 @@ class Auth(CPL.Object):
         if safeCmds != None and cmd.cmd != None:
             if safeCmds.search(cmd.cmd):
                 return True
+
+        # Let the hub command anything. This is for initialization commands, etc.
+        if program == 'hub':
+            return True
         
         # But if we don't know about a _program_, block the command.
         #
