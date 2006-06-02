@@ -20,6 +20,7 @@ class nfocus(Guider.Guider):
         sys.stderr.write("in nfocus.__init__\n")
 
         cameraShim = CameraShim.CameraShim('nfake', [1,1], self)
+        argv['instName'] = 'nicfps'     # Override what we expect to see in the fits INSTRUME card.
         Guider.Guider.__init__(self, cameraShim, 'nfocus', **argv)
         
     def _setDefaults(self):
