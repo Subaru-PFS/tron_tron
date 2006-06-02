@@ -65,6 +65,8 @@ class Guider(Actor.Actor):
         self.mask = None
         self.exposureInfo = None
         self.darks = {}
+
+        self.camInstName = argv.get('instName', self.name)
         
         self._setDefaults()
         self.config = self.defaults.copy()
@@ -456,7 +458,7 @@ class Guider(Actor.Actor):
             return False
 
         try:
-            return h['INSTRUME'] == self.name
+            return h['INSTRUME'] == self.camInstName
         except:
             cmd.warn('text=%s', CPL.qstr('FITS file %s has no INSTRUME card' % (imagefile)))
             return False
@@ -501,7 +503,7 @@ class Guider(Actor.Actor):
                 return False
 
             if not self.checkImageInst(cmd, imgFile):
-                cmd.fail('text=%s' % (CPL.qstr("FITS file %s is not a %s file" % (filename, self.name))))
+                cmd.fail('text=%s' % (CPL.qstr("FITS file %s is not a %s file" % (filename, self.camInstName))))
                 return False
             
             frame = GuideFrame.ImageFrame(self.size)
@@ -514,14 +516,15 @@ class Guider(Actor.Actor):
                     cmd.respond('darkFile=%s'% (CPL.qstr(filename)))
 
                 # Annotate the headers with all sorts of goodness.
-                if not failure:
-                    client.call('fits', 'finish %s infile=%s outfile=%s' % \
-                                (self.name, filename, filename))
+                #if not failure and self.name == self.camInstName:
+                #    client.call('fits', 'finish %s infile=%s outfile=%s' % \
+                #                (self.name, filename, filename))
                 time.sleep(3)
                 cb(cmd, filename, frame, tweaks=tweaks, warning=warning, failure=failure)
-                
-            client.call('fits', 'start %s' % \
-                        (self.name))
+
+            #if self.name == self.camInstName:
+            #    client.call('fits', 'start %s' % \
+            #                (self.name))
             self.camera.cbFakefile(cmd, _cb, imgFile)
             return True
         
