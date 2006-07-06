@@ -181,7 +181,7 @@ class GuideLoop(object):
                  (self.mode, computed, newField, how))
         
         # If we are just exposing, ignore motion.
-        if self.mode in ('manual', 'centerUp'):
+        if self.mode == 'centerUp':
             return
 
         # Alert any other threads that they should bail out.
