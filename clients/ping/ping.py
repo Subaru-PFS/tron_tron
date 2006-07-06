@@ -27,7 +27,7 @@ class Ping(Actor.Actor):
         keys = []
         keyN = 1
         doQuote = 'noquote' not in matches
-        if doQuote:
+        if not doQuote:
             del matches['noquote']
 
         for s in leftovers:
