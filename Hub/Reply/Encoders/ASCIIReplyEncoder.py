@@ -102,7 +102,7 @@ class ASCIIReplyEncoder(ReplyEncoder):
             if self.debug > 5:
                 CPL.log("ASCIIReplyEnc.encode", "encoding %r=%r" % (k, v))
 
-            keylist.append(kvAsASCII(k, v))
+            keylist.append(kvAsASCII(k, v, escape=self.EOL))
             
         return "; ".join(keylist)
     
