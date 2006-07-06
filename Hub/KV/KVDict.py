@@ -15,7 +15,24 @@ from Misc.cdict import cdict
   and also to flush all such keys when the source disconnects.
 """
 
-def kvAsASCII(key, val):
+knownEscapes = { '\r' : '\\r',
+                 '\n' : '\\n' }
+
+def _doEscape(s, escape):
+    """ If it exists in the string s, replace the escape string by an escaped version of itself. """
+
+    if not escape:
+        return s
+    
+    i = s.find(escape)
+    while i >= 0:
+        repl = ''.join([knownEscapes[c] for c in escape])
+        s = s[:i] + repl + s[i+len(escape):]
+        i = s.find(escape)
+
+    return s
+    
+def kvAsASCII(key, val, escape=None):
     """ Return a canonical form of a keyword + value.
     """
     
@@ -27,7 +44,7 @@ def kvAsASCII(key, val):
         val = val.val
         
     if type(val) not in (list, tuple):
-        return "%s=%s" % (key, val)
+        return "%s=%s" % (key, _doEscape(val, escape))
         # raise Exception("type(%s) for key(%s) value is not legit: %r" % (type(val), key, val))
 
     values = []
@@ -35,7 +52,7 @@ def kvAsASCII(key, val):
         if v == None:
             values.append('')
         else:
-            values.append(v)
+            values.append(_doEscape(v, escape))
 
     return "%s=%s" % (key, ','.join(values))
 
