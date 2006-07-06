@@ -21,12 +21,17 @@ class Ping(Actor.Actor):
         """ We do our own parsing. """
         
         matches, unmatched, leftovers = cmd.match([('count', int),
-                                                   ('delay', float)])
+                                                   ('delay', float),
+                                                   ('noquote', None)])
 
         keys = []
         keyN = 1
+        doQuote = 'noquote' not in matches
         for s in leftovers:
-            keys.append("key%03d=%s" % (keyN, CPL.qstr(s)))
+            if doQuote:
+                keys.append("key%03d=%s" % (keyN, CPL.qstr(s)))
+            else:
+                keys.append("key%03d=%s" % (keyN, s))
             keyN += 1
 
         matches['keyString'] = '; '.join(keys)
