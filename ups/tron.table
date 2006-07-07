@@ -8,5 +8,5 @@ Common:
     setupenv()
     setupRequired("PyGuide 2006-05-03_V2.1.1")
     pathAppend(PATH, ${UPS_PROD_DIR}/bin)
-    pathAppend(PYTHONPATH, ${UPS_PROD_DIR}/lib/python2.4/site-packages)
+    pathAppend(PYTHONPATH, ${UPS_PROD_DIR})
 End:
