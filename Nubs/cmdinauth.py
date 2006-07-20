@@ -3,7 +3,7 @@ import g
 import hub
 
 name = 'cmdinauth'
-listenPort = 6097
+listenPort = 9880
 
 def acceptStdin(in_f, out_f, addr=None):
     """ Create a command source with the given fds as input and output. """
@@ -14,13 +14,21 @@ def acceptStdin(in_f, out_f, addr=None):
     
     nubID = g.nubIDs.gimme()
 
-    d = Hub.ASCIICmdDecoder(needCID=False, needMID=False, 
-                            EOL='\r\n', name=name, debug=1)
-    e = Hub.ASCIIReplyEncoder(name=name, simple=True, debug=1)
+    otherIP, otherPort = in_f.getpeername()
+    try:
+        otherFQDN = socket.getfqdn(otherIP)
+    except:
+        otherFQDN = "unknown"
+        
+    d = Hub.ASCIICmdDecoder(needCID=False, 
+                            EOL='\n', name=name, debug=1)
+    e = Hub.ASCIIReplyEncoder(name=name, simple=True, debug=1, needCID=False)
     c = Hub.AuthStdinNub(g.poller, in_f, out_f,
                          name='%s-%d' % (name, nubID),
-                         encoder=e, decoder=d, debug=1)
-    c.taster.addToFilter(('tcc', 'dis', 'hub'), ())
+                         encoder=e, decoder=d, debug=1,
+                         type='cmdin', isUser=True, needsAuth=True,
+                         otherIP=otherIP, otherFQDN=otherFQDN)
+
     hub.addCommander(c)
     
 def start(poller):
