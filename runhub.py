@@ -17,7 +17,7 @@ def startAllConnections(names):
 hub.init()
 startAllConnections(['client',
                      'ping',
-                     'TUI',
+                     'TUI','cmdinauth',
                      'tcc', 
                      'dcamera','dcam',
                      'gcamera','gcam',

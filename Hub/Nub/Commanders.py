@@ -28,7 +28,7 @@ class CommanderNub(CoreNub.CoreNub):
         # is to accept only responses to our own commands.
         #
         self.taster = Hub.ReplyTaster()
-        self.taster.setFilter((), (self.name,), (self.name, "hub"))
+        self.taster.setFilter((), (self.name,), (self.name,))
 
         self.isUser = argv.get('isUser', False)
 
