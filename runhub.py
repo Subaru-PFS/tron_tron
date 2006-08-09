@@ -33,6 +33,7 @@ startAllConnections(['client',
 
 # Manually add ZA01 as an always-active commander of apollo.
 g.perms.addPrograms(['ZA01'])
+g.perms.addActors(['apollo'])
 g.perms.addActorsToProgram('ZA01', ['apollo'])
 
 hub.run()
