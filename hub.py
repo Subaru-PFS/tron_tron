@@ -130,7 +130,7 @@ def loadKeys():
 
     g.KVs.setKV('hub', 'httpRoot', [host, rootDir], None)
 
-    version = svnVersion.svnTagOrRevision()
+    version = CPL.qstr(svnVersion.svnTagOrRevision())
     g.KVs.setKV('hub', 'version', version, None)
 
 def loadWords(words=None):
