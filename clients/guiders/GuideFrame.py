@@ -252,11 +252,11 @@ class ImageFrame(object):
 
         return self.frameBinning, self.frameOffset, self.frameSize
 
-    def imgFrameAsCtrAndSize(self):
+    def imgFrameAsCtrAndSize(self, binned=True):
         """ Return the image frame (offset & size) as a window (x0,y0,x1,y1)
 
         Args:
-          inclusive   - if true, x1 = 0 includes pixel 0
+          binned      - if True, return binned pixels
 
         Returns:
           [ctrX, ctrY]    - frame center, in _floating point_ binned pixels
@@ -264,26 +264,41 @@ class ImageFrame(object):
 
         """
 
+        if binned:
+            binx = self.frameBinning[0]
+            biny = self.frameBinning[1]
+        else:
+            binx = 1
+            biny = 1
+            
         x = self.frameOffset[0] + self.frameSize[0]/2.0
         y = self.frameOffset[1] + self.frameSize[1]/2.0
 
-        return (x, y), \
-               (float(self.frameSize[0]), \
-                float(self.frameSize[1]))
+        return (x*binx, y*biny), \
+               (float(self.frameSize[0])*binx, \
+                float(self.frameSize[1])*biny)
 
-    def imgFrameAsCornerAndSize(self):
+    def imgFrameAsCornerAndSize(self, binned=True):
         """ Return the image frame (offset & size) as a window (x0,y0,x1,y1)
 
         Args:
           inclusive   - if true, x1 = 0 includes pixel 0
-
+          binned      - if True, return binned pixels
+          
         Returns:
           [offsetx, offsety] - frame center, in binned pixels
           [w, h]             - frame size, in binned pixels
 
         """
 
-        return (self.frameOffset[0], self.frameOffset[0]),\
+        if binned:
+            binx = self.frameBinning[0]
+            biny = self.frameBinning[1]
+        else:
+            binx = 1
+            biny = 1
+            
+        return (self.frameOffset[0]*binx, self.frameOffset[1]*biny),\
                (self.frameSize[0], self.frameSize[1])
 
     def imgFrameAsWindow(self, inclusive=True):
