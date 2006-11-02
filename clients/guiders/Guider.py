@@ -151,6 +151,12 @@ class Guider(Actor.Actor):
                 cmd.warn('text=%s' % (CPL.qstr(warning)))
             if failure:
                 cmd.fail('text=%s' % (CPL.qstr(failure)))
+                return
+
+            procFile, maskFile, darkFile, flatFile = self.processCamFile(cmd, camFile,
+                                                                         tweaks)
+            self.genFilesKey(cmd, 'f', tweaks['newFile'],
+                             procFile, maskFile, camFile, darkFile, flatFile)
             cmd.finish()
             
         self.doCmdExpose(cmd, cb, 'expose', tweaks)
@@ -165,7 +171,12 @@ class Guider(Actor.Actor):
 
         tweaks = self.parseCmdTweaks(cmd, self.config)
 
-        def cb(cmd, fname, frame, tweaks=None):
+        def cb(cmd, fname, frame, tweaks=None, warning=None, failure=None):
+            if warning:
+                cmd.warn('text=%s' % (CPL.qstr(warning)))
+            if failure:
+                cmd.fail('text=%s' % (CPL.qstr(failure)))
+                return
             cmd.finish()
             
         self.doCmdExpose(cmd, cb, 'dark', tweaks)
