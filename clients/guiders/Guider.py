@@ -153,10 +153,10 @@ class Guider(Actor.Actor):
                 cmd.fail('text=%s' % (CPL.qstr(failure)))
                 return
 
-            procFile, maskFile, darkFile, flatFile = self.processCamFile(cmd, camFile,
+            procFile, maskFile, darkFile, flatFile = self.processCamFile(cmd, fname,
                                                                          tweaks)
             self.genFilesKey(cmd, 'f', tweaks['newFile'],
-                             procFile, maskFile, camFile, darkFile, flatFile)
+                             procFile, maskFile, fname, darkFile, flatFile)
             cmd.finish()
             
         self.doCmdExpose(cmd, cb, 'expose', tweaks)
@@ -1015,7 +1015,8 @@ o            cb          - the callback function
                                                    ('noGuide', None),
                                                    ('ds9', cmd.qstr)])
 
-        self.trimDict(leftovers, ('guide', 'on', 'off', 'set', 'zap', 'tweak', 'findstars', 'centroid'))
+        self.trimDict(leftovers, ('guide', 'on', 'off', 'set', 'zap', 'tweak', 'findstars', 'centroid',
+                                  'expose', 'doread', 'dodark'))
        
         if leftovers:
             cmd.warn('text="unknown arguments: %s"' % (leftovers))

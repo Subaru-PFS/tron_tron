@@ -182,13 +182,13 @@ class ImageFrame(object):
         size = self.frameSize[0] * self.frameBinning[0]
         if size == 0:
             self.frameSize[0] = self.ccdSize[0] / self.frameBinning[0]
-        if self.frameOffset[0] + size > self.ccdSize[0]:
+        if self.frameOffset[0] * self.frameBinning[0] + size >= self.ccdSize[0]:
             self.frameSize[0] = (self.ccdSize[0] / self.frameBinning[0]) - self.frameOffset[0]
 
         size = self.frameSize[1] * self.frameBinning[1]
         if size == 0:
             self.frameSize[1] = self.ccdSize[1] / self.frameBinning[1]
-        if self.frameOffset[1] + size > self.ccdSize[1]:
+        if self.frameOffset[1] * self.frameBinning[1] + size >= self.ccdSize[1]:
             self.frameSize[1] = (self.ccdSize[1] / self.frameBinning[1]) - self.frameOffset[1]
 
         self.frameOffset = tuple(self.frameOffset)
@@ -283,7 +283,7 @@ class ImageFrame(object):
 
         """
 
-        return (self.frameOffset[0], self.frameOffset[0]),\
+        return (self.frameOffset[0], self.frameOffset[1]),\
                (self.frameSize[0], self.frameSize[1])
 
     def imgFrameAsWindow(self, inclusive=True):

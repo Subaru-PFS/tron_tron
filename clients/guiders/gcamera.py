@@ -223,8 +223,8 @@ class AltaActor(GCamBase.GCamBase, Actor.Actor):
                  "FILENAME= '%s'" % (basename),
                  "FULLX   = %d" % (self.ccdSize[0]),
                  "FULLY   = %d" % (self.ccdSize[1]),
-                 "BEGX    = %d" % (1 + corner[0] * binning[0]),
-                 "BEGY    = %d" % (1 + corner[1] * binning[1]),
+                 "BEGX    = %d" % (1 + corner[0]),
+                 "BEGY    = %d" % (1 + corner[1]),
                  "BINX    = %d" % (binning[0]),
                  "BINY    = %d" % (binning[1]),
                  'END']
