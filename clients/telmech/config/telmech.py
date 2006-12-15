@@ -25,7 +25,7 @@ ports = { 'BC1' : PortDef(782900, 1),
 # eyelids
 eyelids = [ 'BC1', 'TR2', 'NA2', 'TR3', 'BC2', 'TR4', 'NA1', 'TR1', 'ALL' ]
 
-m3_alt_limit = 80.0     # do not move tertiary if alt < m3_alt_limit
+m3_alt_limit = 70.0     # do not move tertiary if alt < m3_alt_limit
 m1_alt_limit =  0.0     # do not open covers if alt < m1_alt_limit
 
 #
