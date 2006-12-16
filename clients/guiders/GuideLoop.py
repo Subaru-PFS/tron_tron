@@ -229,10 +229,6 @@ class GuideLoop(object):
         else:
             self.cmd.warn('debug="possibly unexpected SlewEnd"')
 
-        # We don't care about any telescope motion.
-        if self.mode == 'manual':
-            return
-
         self._guideLoopTop()
     
     def cleanup(self):
