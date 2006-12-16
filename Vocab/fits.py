@@ -257,6 +257,7 @@ class InstFITS(object):
         self.allowOverwrite = argv.get('alwaysAllowOverwrite', False)
         
         self.isImager = False
+        self.WCS = None
         
         if self.outfileName:
             self.createOutfile(cmd, self.outfileName)
@@ -406,8 +407,8 @@ class InstFITS(object):
         self.fetchCardAs(cmd, 'BOREOFFX', 'tcc', 'Boresight', asFloat, RealCard, 'TCC boresight offset X', idx=0)
         self.fetchCardAs(cmd, 'BOREOFFY', 'tcc', 'Boresight', asFloat, RealCard, 'TCC boresight offset Y', idx=3)
 
-    def fetchWCSCards(self, cmd):
-        """ Add WCS cards to ourselves. Requires that we be tracking.
+    def fetchWCSInfo(self, cmd):
+        """ Gather TCC inputs for WCS cards. Requires that we be tracking.
         """
 
         # fetch instrument scale
@@ -435,6 +436,37 @@ class InstFITS(object):
         k = g.KVs.getKey('tcc', 'ObjNetPos', [0.0,0.0,0.0,0.0,0.0,0.0])
         k = map(float, k)
         ra, dec = k[0], k[3]
+
+        self.WCS = { 'imScale'   : imScale,
+                     'imCtr'     : imCtr,
+                     'instAng'   : instAng,
+                     'boresight' : boresight,
+                     'ra'        : ra,
+                     'dec'       : dec }
+        
+    def addWCSCards(self, cmd, fits):
+        """ Add WCS cards to ourselves. Requires that we be tracking.
+        """
+
+        if not self.WCS:
+            return
+
+        # Convert from unbinned full-frame to binned subframe
+        #
+        binx = fits.cards.get('BINX', 1)
+        biny = fits.cards.get('BINY', 1)
+        begx = fits.cards.get('BEGX', 1.0)
+        begy = fits.cards.get('BEGY', 1.0)
+
+        imCtr = self.WCS['imCtr']
+        imScale = self.WCS['imScale']
+        boresight = self.WCS['boresight']
+        instAng = self.WCS['instAng']
+
+        imScale[0] /= binx
+        imScale[1] /= biny
+        imCtr[0] = imCtr[0] / binx - (begx-1)
+        imCtr[1] = imCtr[1] / biny - (begy-1)
         
         self.appendCard(cmd, StringCard('CTYPE1', 'RA---TAN', 'WCS projection'))
         self.appendCard(cmd, StringCard('CTYPE2', 'DEC--TAN', 'WCS projection'))
@@ -442,8 +474,8 @@ class InstFITS(object):
         self.appendCard(cmd, RealCard('CRPIX1', imCtr[0] + boresight[0] * imScale[0], 'WCS reference pixel'))
         self.appendCard(cmd, RealCard('CRPIX2', imCtr[1] + boresight[1] * imScale[1], 'WCS reference pixel'))
                         
-        self.appendCard(cmd, RealCard('CRVAL1', ra, 'WCS reference sky pos.'))
-        self.appendCard(cmd, RealCard('CRVAL2', dec, 'WCS reference sky pos.'))
+        self.appendCard(cmd, RealCard('CRVAL1', self.WCS['ra'], 'WCS reference sky pos.'))
+        self.appendCard(cmd, RealCard('CRVAL2', self.WCS['dec'], 'WCS reference sky pos.'))
                         
         self.appendCard(cmd, RealCard('CD1_1', (1.0 / imScale[0]) * math.cos(instAng),
                                       'WCS (1/InstScaleX)*cos(InstAng)'))
@@ -502,11 +534,10 @@ class InstFITS(object):
                              asFloat, RealCard, 'TCC calibration offset X', idx=0)
             self.fetchCardAs(cmd, 'CALOFFY', 'tcc', 'CalibOff',
                              asFloat, RealCard, 'TCC calibration offset Y', idx=3)
-            if self.isImager:
-                try:
-                    self.fetchWCSCards(cmd)
-                except Exception, e:
-                    cmd.warn('errorTxt=%s' % (CPL.qstr("Failed to generate WCS cards: %s" % (e))))
+            self.fetchCardAs(cmd, 'BOREOFFX', 'tcc', 'Boresight',
+                             asFloat, RealCard, 'TCC boresight offset X', idx=0)
+            self.fetchCardAs(cmd, 'BOREOFFY', 'tcc', 'Boresight',
+                             asFloat, RealCard, 'TCC boresight offset Y', idx=3)
             
 
     def _setUTC_TAI(self, cmd):
@@ -521,6 +552,11 @@ class InstFITS(object):
         
     def start(self, cmd, inFile=None):
         self._setUTC_TAI(cmd)
+        if self.isImager:
+            try:
+                self.fetchWCSInfo(cmd)
+            except Exception, e:
+                cmd.warn('errorTxt=%s' % (CPL.qstr("Failed to get WCS info: %s" % (e))))
         self.fetchObjectCards(cmd)
         self.fetchWeatherCards(cmd)
         self.fetchTelescopeCards(cmd)
@@ -566,6 +602,10 @@ class InstFITS(object):
         
         siteCards = self.fetchSiteCards(cmd)
         timeCards = self.fetchTimeCards(cmd)
+        try:
+            self.addWCSCards(cmd, fits)
+        except Exception, e:
+            cmd.warn('errorTxt=%s' % (CPL.qstr("Failed to generate WCS cards: %s" % (e))))
 
         cmd.inform('fitsDebug=%s' % (CPL.qstr("Generating fits file %s" % (self.outfileName))))
 

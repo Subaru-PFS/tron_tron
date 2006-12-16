@@ -262,4 +262,4 @@ def main(name, debug=0, test=False):
     CPL.log('gcamera.main', 'DONE')
 
 if __name__ == "__main__":
-    main('gcamera', debug=6)
+    main('gcamera', debug=3)
