@@ -36,4 +36,4 @@ def main(name, eHandler=None, debug=0, test=False):
     CPL.log('nfocus.main', 'DONE')
 
 if __name__ == "__main__":
-    main('nfocus', debug=6)
+    main('nfocus', debug=3)

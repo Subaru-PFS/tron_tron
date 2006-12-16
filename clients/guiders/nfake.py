@@ -70,4 +70,4 @@ def main(name, debug=0, test=False):
     CPL.log('ncamera.main', 'DONE')
 
 if __name__ == "__main__":
-    main('ncamera', debug=6)
+    main('ncamera', debug=3)

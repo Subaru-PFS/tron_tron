@@ -83,4 +83,4 @@ def main(name, eHandler=None, debug=0, test=False):
     CPL.log('dcam.main', 'DONE')
 
 if __name__ == "__main__":
-    main('dcam', debug=6)
+    main('dcam', debug=3)

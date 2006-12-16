@@ -67,7 +67,8 @@ class GuideLoop(object):
         # The 'reference' PVT that we guiding on or to.
         self.refPVT = None
         self.newRefStars = None
-
+        self.currentFrame = None
+        
         # If we are "guiding" on a file sequence, track the sequence here.
         self.trackFilename = None
         
@@ -223,14 +224,15 @@ class GuideLoop(object):
         self.cmd.warn('debug="telescopeSlewIsDone mode=%s waiting=%s"' % \
                  (self.mode, self.waitingForSlewEnd))
 
-        # We don't care about any telescope motion.
-        if self.mode == 'manual':
-            return
-
         if self.waitingForSlewEnd:
             self.waitingForSlewEnd = False
         else:
             self.cmd.warn('debug="possibly unexpected SlewEnd"')
+
+        # We don't care about any telescope motion.
+        if self.mode == 'manual':
+            return
+
         self._guideLoopTop()
     
     def cleanup(self):
@@ -552,8 +554,19 @@ class GuideLoop(object):
                          (seedPos[0], seedPos[1]))
         try:
             refpos = self.tcc.getBoresight()
-            frame = GuideFrame.ImageFrame(self.controller.size)
+            try:
+                imgFile = os.path.join('/export/images', self.tweaks['imgFile'])
+                frame = GuideFrame.ImageFrame(self.controller.size)
+                frame.setImageFromFITSFile(imgFile)
+            except Exception, e:
+                self.cmd.warn('text="%s"' % (CPL.qstr("could not read imgFile %s: %s" % \
+                                                      (imgFile, e))))
+                frame = GuideFrame.ImageFrame(self.controller.size)
+            
             CCDstar = MyPyGuide.imgPos2CCDXY(seedPos, frame)
+            self.cmd.warn('debug="CCDstar: (%0.1f, %0.1f) to refpos: (%0.1f, %0.1f); frame=%s"' %
+                          (CCDstar.ctr[0], CCDstar.ctr[1], refpos[0], refpos[1], frame))
+            
             cmdTxt, mustWait = self._genOffsetCmd(self.cmd, CCDstar,
                                                   frame, refpos,
                                                   offsetType='guide',
@@ -750,7 +763,7 @@ class GuideLoop(object):
             - whether the offset is uncomputed
         """
 
-        # We know the boresight pixel .boresightPixel and the source pixel fromPixel.
+        # We know the boresight pixel .boresightPixel and the source pixel fromixel.
         #  - Convert each to Observed positions
         #
         now = time.time()
@@ -1063,7 +1076,8 @@ class GuideLoop(object):
             self.genStateKey(action='analysing')
             frame = GuideFrame.ImageFrame(self.controller.size)
             frame.setImageFromFITSFile(procFile)
-
+            self.currentFrame = frame
+            
             # A tweak command may have changed the gstar. Incorporate that now.
             # Note that the test should be against None, as an empty list indictates
             # that we should search for good stars.

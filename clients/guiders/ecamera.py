@@ -229,4 +229,4 @@ def main(name, eHandler=None, debug=0, test=False):
     CPL.log('ecamera.main', 'DONE')
 
 if __name__ == "__main__":
-    main('ecamera', debug=6)
+    main('ecamera', debug=3)

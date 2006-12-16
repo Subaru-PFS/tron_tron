@@ -97,4 +97,4 @@ def main(name, eHandler=None, debug=0, test=False):
     CPL.log('gcam.main', 'DONE')
 
 if __name__ == "__main__":
-    main('gcam', debug=6)
+    main('gcam', debug=3)
