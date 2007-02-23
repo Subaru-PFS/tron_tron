@@ -1,0 +1,7 @@
+#!/bin/bash
+
+setup tron
+IDL_PATH=$TRON_DIR/pro:$IDL_PATH
+
+echo "mkcammask,['$1','$2','$3'],'$4',$5,[512,512]" | idl
+
