@@ -39,6 +39,7 @@ g.perms.addActorsToProgram('ZA01', ['apollo'])
 # Instrument monitoring, echelle
 g.perms.addPrograms(['MN01'])
 g.perms.addActors(['echelle'])
-g.perms.addActorsToProgram('MN01', ['echelle'])
+g.perms.addActors(['telmech'])
+g.perms.addActorsToProgram('MN01', ['tcc', 'echelle', 'telmech'])
 
 hub.run()
