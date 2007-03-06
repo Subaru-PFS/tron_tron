@@ -109,20 +109,20 @@ import m3ctrl
 import enclosure
 from match_utils import *
 
-#from traceback import print_exc
-#LOGFD = file('/home/tron/logfile', 'w')
+from traceback import print_exc
+LOGFD = file('/home/tron/logfile', 'w')
 
 def DEBUG(msg):
     '''Debug print message to a file'''
-    #LOGFD.write(msg+'\n')
-    #LOGFD.flush()
-    pass
+    LOGFD.write(msg+'\n')
+    LOGFD.flush()
+    #pass
 
 def DEBUG_EXC():
     '''Debug print stack trace to a file'''
-    #print_exc(file=LOGFD)
-    #LOGFD.flush()
-    pass
+    print_exc(file=LOGFD)
+    LOGFD.flush()
+    #pass
 
 class Telmech(Actor.Actor):
     """ 
@@ -210,6 +210,7 @@ Ports are: %s''' % (string.join(self.ports.keys()))
             part = match_name(part, self.ports.keys())
             self.m3_ctrl.tertrot(part, cid)
         except:
+            DEBUG_EXC()
             msg = 'errtxt=' + '"'+str(sys.exc_info()[1])+'"'
             cmd.fail(msg)
             return
@@ -243,6 +244,7 @@ Ports are: %s''' % (string.join(self.eyelids))
         try:
             state = match_name(state, ['OPEN', 'CLOSE'])
         except:
+            DEBUG_EXC()
             msg = '''usage: eyelids port-name open|close. \
 Ports are: %s''' % (string.join(self.eyelids))
             cmd.fail('errtxt="'+msg+'"')
@@ -311,17 +313,22 @@ Lights are: %s''' % (string.join(self.enc_devices['LIGHTS'].parts))
         try:
             state = match_name(state, ['ON', 'OFF'])
         except:
+            DEBUG_EXC()
             msg = '''light state %s not uniquely 'on' or 'off'.''' % (state)
             cmd.fail('errtxt="'+msg+'"')
 
         try:
             cid = self.cidForCmd(cmd)
+            DEBUG("set lights: parts are: %s" % (parts))
             part_list = map(lambda x: x.upper(), parts[1:-1])
             part_list = match_names(part_list, self.enc_devices['LIGHTS'].parts)
             if 'ALL' in part_list:
                 part_list = all_names(self.enc_devices['LIGHTS'].parts)
+            DEBUG("set lights: call enclosure command")
             self.enclosure.lights(part_list, state, cid)
+            DEBUG("set lights: call enclosure command DONE")
         except:
+            DEBUG_EXC()
             msg = 'errtxt=' + '"'+str(sys.exc_info()[1])+'"'
             cmd.fail(msg)
             return;
@@ -350,6 +357,7 @@ Fans are: %s''' % (string.join(self.enc_devices['FANS'].parts))
         try:
             state = match_name(state, ['ON', 'OFF'])
         except:
+            DEBUG_EXC()
             msg = '''fan state %s not uniquely 'on' or 'off'.''' % (state)
             cmd.fail('errtxt="'+msg+'"')
 
@@ -403,6 +411,7 @@ Heaters are: %s''' % (string.join(self.enc_devices['HEATERS'].parts))
                 part_list = all_names(self.enc_devices['HEATERS'].parts)
             self.enclosure.heaters(part_list, state, cid)
         except:
+            DEBUG_EXC()
             msg = 'errtxt=' + '"'+str(sys.exc_info()[1])+'"'
             cmd.fail(msg)
             return;
@@ -485,10 +494,13 @@ Devices are: %s"' % (parts[1], string.join(self.devices)))
         Low-level common command used by other commands
         '''
 
+        DEBUG('get_status_common')
         try:
             cid = self.cidForCmd(cmd)
             reply = self.enclosure.status(cid)
+            DEBUG('reply is: %s' % (str(reply)))
             reply.update(self.m3_ctrl.status())
+            DEBUG('reply is: %s' % (str(reply)))
 
             if device != '':        # select just this one
                 new_reply = {}

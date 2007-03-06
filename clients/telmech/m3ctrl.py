@@ -7,6 +7,7 @@ are assumed to be all upper case.
 
 import CPL
 import client
+import call
 
 #LOGFD = file('/home/tron/logfile2','w')
 
@@ -19,25 +20,6 @@ def DEBUG(msg):
 # The port rotations and the IDs of their eyelids.
 # Counter-clockwise from the top; no port on the bottom (BC2).
 #
-def tcctalk(device, cmd, cid, timeout=60):
-    """ 
-    Send a command to a device connected to the TCC, using the TCC's 
-    TALK command.
-
-    Args:
-       device	- the name of the device to command. e.g. TCC_TERT
-       cmd	- the command string to send to the device. Should be one line.
-       timeout	- control the TALK command's timout.
-
-    Returns:
-       - the entire command response.
-
-    Raises:
-       - whatever call() raises.
-    """
-    return client.call('tcc', 'TALK %s %s /TIMEOUT=%d' % \
-        (device, CPL.qstr(cmd), timeout), cid=cid)
-
 def alt_status():
     """ 
     Ask the TCC the altitude status.
@@ -122,7 +104,8 @@ class M3ctrl:
             DEBUG('got EPos %d' % (pos))
             cmd = 'E=%d; XQ#MOVE' % (pos)
 
-        reply = tcctalk('TCC_TERT', cmd, cid, timeout=90)
+        reply = call.call(cmd)
+        #reply = tcctalk('TCC_TERT', cmd, cid, timeout=90)
         # Assume it completed.  
         self.m3_select = port
         return reply
@@ -155,7 +138,8 @@ degrees' % (self.m1_alt_limit)
         # if covers are opened.
         self.eyelids(['ALL'], 'CLOSE', cid)
     
-        tcctalk('TCC_TERT', cmd, cid, timeout=30.0)
+        call.call(cmd)
+        #tcctalk('TCC_TERT', cmd, cid, timeout=30.0)
         # Assume covers did their thing
         self.cover_status = state
     
@@ -177,7 +161,8 @@ degrees' % (self.m1_alt_limit)
             # it must be a close command because incomplete open command caught
             # in telmech.py
             if state == 'CLOSE':
-                tcctalk('TCC_TERT', 'XQ#LCLEYE', cid, timeout=30.0)
+                call.call('XQ#LCLEYE')
+                #tcctalk('TCC_TERT', 'XQ#LCLEYE', cid, timeout=30.0)
                 for eyelid in self._eyelids:
                     if eyelid != 'ALL':
                         port = self.ports[eyelid]
@@ -212,7 +197,8 @@ degrees' % (self.m1_alt_limit)
         port.eyelid_status = state
             
         DEBUG('full cmd %s' % (full_cmd));
-        return tcctalk('TCC_TERT', full_cmd, cid, timeout=30.0)
+        return call.call(full_cmd)
+        #return tcctalk('TCC_TERT', full_cmd, cid, timeout=30.0)
     
     def status(self):
         '''
