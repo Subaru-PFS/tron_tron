@@ -20,8 +20,7 @@ def start(poller):
                 'show axisconfig',
                 'show focus',
                 'axis status',
-                'mir status',
-                'encl status')
+                'mir status')
 
     safeCmds = r"(^show )|(status$)"
     
