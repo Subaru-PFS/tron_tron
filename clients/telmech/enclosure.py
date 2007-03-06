@@ -7,6 +7,7 @@ are assumed to be all upper case.
 
 import CPL
 import client
+import call
 import string
 
 LOGFD = file('/home/tron/logfile1','w')
@@ -87,10 +88,13 @@ class Enclosure:
         device_map = {'HEATERS':'HEATER', 'FANS':'FAN', 'LOUVERS':'LOUVER',
                     'LIGHTS':'LIGHT', 'ENABLE':'ENABLE', 'SHUTTERS':'SHUTTER'}
         t_device = device_map[device]
-        msg = 'talk tcc_encl "%s.%s %s" ' % (t_device, state,  
+        #msg = 'talk tcc_encl "%s.%s %s" ' % (t_device, state,  
+        #    string.join(t_parts))
+        msg = '%s.%s %s' % (t_device, state,  
             string.join(t_parts))
     
-        return client.call('tcc', msg, cid=cid)
+        #return client.call('tcc', msg, cid=cid)
+        return call.call(msg)
     
     def lights(self, names, state, cid):
         """
@@ -156,19 +160,15 @@ class Enclosure:
         DEBUG("inside enclosure status")
 
         # read status
-        msg = 'talk tcc_encl "STATUS"'
+        msg = 'STATUS'
         DEBUG("get status from tcc_encl")
-        stuff = client.call('tcc', msg, cid=cid)
+        received = call.call(msg)
         DEBUG("got status from tcc_encl")
-        DEBUG("KVs: %s" % (str(stuff.KVs)))
-        received = stuff.KVs['Received']
-        DEBUG("pulled Received KV")
         # sometimes the received status gets confused
         # try a few times and see if you can get a repeatable value
         count = 3
         while received != self.last_status and count > 0:
-            stuff = client.call('tcc', msg, cid=cid)
-            received1 = stuff.KVs['Received']
+            received1 = call.call(msg)
             if received1 == received:   # seen it twice, must be good
                 self.last_status = received
                 break
@@ -195,7 +195,7 @@ class Enclosure:
             # walk through value and if bit set (open), 
             # save part name chosen by index
             if name == 'SHUTTERS':
-                if value == 40:
+                if value == 0x40:       # 64
                     msg[parts[0]] = states[1]
                     msg[parts[1]] = states[1]
                 else:
