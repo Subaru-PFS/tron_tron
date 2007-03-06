@@ -14,6 +14,7 @@ from Hub.KV.KVDict import *
 import Misc.FITS
 from Misc.FITS.Cards import *
 import Vocab.InternalCmd as InternalCmd
+import pyfits
 
 class fits(InternalCmd.InternalCmd):
     """ All the commands that the "fits" package provides. To wit:
@@ -443,7 +444,7 @@ class InstFITS(object):
                      'boresight' : boresight,
                      'ra'        : ra,
                      'dec'       : dec }
-        
+
     def addWCSCards(self, cmd, fits):
         """ Add WCS cards to ourselves. Requires that we be tracking.
         """
@@ -452,11 +453,19 @@ class InstFITS(object):
             return
 
         # Convert from unbinned full-frame to binned subframe
+        # OK, this is bad -- we need to switch to pyfits ASAP.
         #
-        binx = fits.cards.get('BINX', 1)
-        biny = fits.cards.get('BINY', 1)
-        begx = fits.cards.get('BEGX', 1.0)
-        begy = fits.cards.get('BEGY', 1.0)
+        try:
+            h = fits[0].header
+            binx = h.get('BINX', 1)
+            biny = h.get('BINY', 1)
+            begx = h.get('BEGX', 1.0)
+            begy = h.get('BEGY', 1.0)
+        except Exception, e:
+            cmd.warn('debug="%s"' % (CPL.str('Could not read geometry cards: %s', (e))))
+            binx = biny = 1
+            begx = begy = 1.0
+            
 
         imCtr = self.WCS['imCtr']
         imScale = self.WCS['imScale']
@@ -572,6 +581,7 @@ class InstFITS(object):
             return
         try:
             inFITS = Misc.FITS.FITS(inputFile=inFile, alwaysAllowOverwrite=self.allowOverwrite)
+            pyInFITS = pyfits.open(inFile)
         except Exception, e:
             cmd.fail('fitsTxt=%s' % (CPL.qstr("Could not read FITS file %s: %s" % (inFile, e))))
             return False
@@ -580,7 +590,7 @@ class InstFITS(object):
             self.outfileName = outFile
             self.outfile = open(self.outfileName, "w+")
             
-        self.finishHeader(cmd, inFITS)
+        self.finishHeader(cmd, inFITS, pyInFITS=pyInFITS)
 
     def prepFITS(self, cmd, fits):
         """ Hook to let us fiddle with the header directly. """
@@ -590,7 +600,7 @@ class InstFITS(object):
         """ Hook to let us fiddle with the instrument cards directly. """
         pass
     
-    def finishHeader(self, cmd, fits):
+    def finishHeader(self, cmd, fits, pyInFITS=None):
         """ Finish off a given FITS header by adding our keys, then writing out a new file.
 
         Args:
@@ -603,7 +613,7 @@ class InstFITS(object):
         siteCards = self.fetchSiteCards(cmd)
         timeCards = self.fetchTimeCards(cmd)
         try:
-            self.addWCSCards(cmd, fits)
+            self.addWCSCards(cmd, pyInFITS)
         except Exception, e:
             cmd.warn('errorTxt=%s' % (CPL.qstr("Failed to generate WCS cards: %s" % (e))))
 
