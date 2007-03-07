@@ -26,33 +26,35 @@
 ;   pixels are slighty dilated to smooth around marginal areas.
 ;
 ;-
-pro mkcammask,innames,outname,thresh,reqsize,pad=pad
+pro mkcammask,innames,outname,thresh,reqsize,dopad=dopad
  
                                 ; Median the input masks.
     n = n_elements(innames)
     for i=0,n-1 do begin
-        f = mrdfits(innames[i], /unsigned)
+        f = mrdfits(innames[i], /unsigned, status=status)
+        if status ne 0 then message, string("file not found: ", innames[i])
+
         s = size(f, /dimensions)
         w = s[0]
         h = s[1]
                                 ; The GImg controller undersizes full frame images. Grrr.
-        if keyword_set(pad) then begin
-            s[0] = s[0] + pad
-            s[1] = s[1] + pad
+        if keyword_set(dopad) then begin
+            s[0] = s[0] + 1
+            s[1] = s[1] + 1
         end
         
-        if s ne reqsize then $
+        if s[0] ne reqsize[0] or s[1] ne reqsize[1] then $
           message, string('input images must be ', reqsize, ' not ', s, ' : ', innames[i], $
-                          format='(a,2f,a,2f,a,a)')
+                          format='(a,2i,a,2i,a,a)')
 
         if i eq 0 then begin
             files = fltarr([n,s])
         endif
 
-        if keyword_set(pad) then begin
+        if keyword_set(dopad) then begin
             files[i,w,*] = median(f)
             files[i,*,h] = median(f)
-            files[i,0:w-pad,0:h-pad] = f
+            files[i,0:w-1,0:h-1] = f
         end else begin
             files[i,*,*] = f
         end
@@ -79,11 +81,11 @@ pro mkcammask,innames,outname,thresh,reqsize,pad=pad
                                 ; the image file by the mask/flat file.
     image = (1.0 / flat_image) * (1 - mask)
 
-    sxaddpar, h, 'THRESH', tresh, 'Pixels below this were set to 0'
+    sxaddpar, hdr, 'THRESH', thresh, 'Pixels below this were set to 0'
     for i=0,n_elements(innames)-1 do $
-      sxaddpar, h, string('INFILE',i,format('a6,i02')), innames[i], 'Input file name.')
-    sxaddpar, h, 'OUTFILE', outname, 'Original output file name'
-    sxaddpar, h, 'MASKDATE', systime(), 'Mask file creation date, local time'
+      sxaddpar, hdr, string('INFILE',i,format='(a6,i02)'), innames[i], 'Input file name.'
+    sxaddpar, hdr, 'OUTFILE', outname, 'Original output file name'
+    sxaddpar, hdr, 'MASKDATE', systime(), 'Mask file creation date, local time'
 
-    mwrfits, image, outname, h, /create
+    mwrfits, image, outname, hdr, /create
 end
