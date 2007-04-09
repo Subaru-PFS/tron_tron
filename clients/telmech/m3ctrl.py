@@ -176,6 +176,16 @@ degrees' % (self.m1_alt_limit)
         if name == 'ALL':
             # it must be a close command because incomplete open command caught
             # in telmech.py
+            # check if already all closed
+            doit = False
+            for eyelid in self._eyelids:
+                if eyelid != 'ALL':
+                    port = self.ports[eyelid]
+                    if port.eyelid_status != state:
+                        doit = True
+            if not doit:
+                return
+
             if state == 'CLOSE':
                 tcctalk('TCC_TERT', 'XQ#LCLEYE', cid, timeout=30.0)
                 for eyelid in self._eyelids:
@@ -198,10 +208,14 @@ degrees' % (self.m1_alt_limit)
            name     - port names.
            state	- 'open' or 'close'
         """
+        port = self.ports[name]
+        # already set to state?
+        if port.eyelid_status == state:
+            return
+
         valid_states = {'OPEN' : "XQ#LOPEYE",
                         'CLOSE' : "XQ#LCLEYE" }
         cmd = valid_states.get(state)
-        port = self.ports[name]
         full_cmd = "A=%s; %s" % (port.port_id, cmd)
     
         DEBUG("Command eyelid %s" % (name))
