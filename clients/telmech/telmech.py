@@ -114,15 +114,14 @@ LOGFD = file('/home/tron/logfile', 'w')
 
 def DEBUG(msg):
     '''Debug print message to a file'''
-    LOGFD.write(msg+'\n')
-    LOGFD.flush()
-    #pass
+    #LOGFD.write(msg+'\n')
+    #LOGFD.flush()
+    pass
 
 def DEBUG_EXC():
     '''Debug print stack trace to a file'''
     print_exc(file=LOGFD)
     LOGFD.flush()
-    #pass
 
 class Telmech(Actor.Actor):
     """ 
@@ -238,9 +237,9 @@ Ports are: %s''' % (string.join(self.eyelids))
             cmd.fail('errtxt="'+msg+'"')
             return
 
-        DEBUG("Parts are: %s" % (str(parts)))
+        #DEBUG("Parts are: %s" % (str(parts)))
         state = parts[-1].upper()
-        DEBUG("State is: %s" % (state))
+        #DEBUG("State is: %s" % (state))
         try:
             state = match_name(state, ['OPEN', 'CLOSE'])
         except:
@@ -252,7 +251,10 @@ Ports are: %s''' % (string.join(self.eyelids))
 
         try:
             cid = self.cidForCmd(cmd)
-            DEBUG("parts are: %s" % str(parts[1:-1]))
+            self.m3_ctrl.read_status(cid)
+
+            cid = self.cidForCmd(cmd)
+            #DEBUG("parts are: %s" % str(parts[1:-1]))
             part_list = map(lambda x: x.upper(), parts[1:-1])
             part_list = match_names(part_list, self.eyelids)
             self.m3_ctrl.eyelids(part_list, state, cid)
@@ -319,14 +321,14 @@ Lights are: %s''' % (string.join(self.enc_devices['LIGHTS'].parts))
 
         try:
             cid = self.cidForCmd(cmd)
-            DEBUG("set lights: parts are: %s" % (parts))
+            #DEBUG("set lights: parts are: %s" % (parts))
             part_list = map(lambda x: x.upper(), parts[1:-1])
             part_list = match_names(part_list, self.enc_devices['LIGHTS'].parts)
             if 'ALL' in part_list:
                 part_list = all_names(self.enc_devices['LIGHTS'].parts)
-            DEBUG("set lights: call enclosure command")
+            #DEBUG("set lights: call enclosure command")
             self.enclosure.lights(part_list, state, cid)
-            DEBUG("set lights: call enclosure command DONE")
+            #DEBUG("set lights: call enclosure command DONE")
         except:
             DEBUG_EXC()
             msg = 'errtxt=' + '"'+str(sys.exc_info()[1])+'"'
@@ -485,6 +487,10 @@ Devices are: %s"' % (parts[1], string.join(self.devices)))
         except:
             DEBUG_EXC()
 
+        if device in ['','eyelids']:
+            cid = self.cidForCmd(cmd)
+            self.m3_ctrl.read_status(cid)
+
         self._get_status_common(cmd, device)
 
         cmd.finish()
@@ -494,13 +500,13 @@ Devices are: %s"' % (parts[1], string.join(self.devices)))
         Low-level common command used by other commands
         '''
 
-        DEBUG('get_status_common')
+        #DEBUG('get_status_common')
         try:
             cid = self.cidForCmd(cmd)
             reply = self.enclosure.status(cid)
-            DEBUG('reply is: %s' % (str(reply)))
+            #DEBUG('reply is: %s' % (str(reply)))
             reply.update(self.m3_ctrl.status())
-            DEBUG('reply is: %s' % (str(reply)))
+            #DEBUG('reply is: %s' % (str(reply)))
 
             if device != '':        # select just this one
                 new_reply = {}
@@ -531,20 +537,20 @@ Devices are: %s"' % (parts[1], string.join(self.devices)))
         """
         messages = []
 
-        DEBUG('devices to get %s' % (str(self.devices_to_get)))
+        #DEBUG('devices to get %s' % (str(self.devices_to_get)))
         for device in self.devices_to_get:
             try:
                 # all but ALL
                 parts = self.enc_devices[device].parts[:-1]
                 parts = map(lambda x: x.lower(), parts)
                 msg = '%s=%s' % (device.lower(), string.join(parts,','))
-                DEBUG('msg %s' % (msg))
+                #DEBUG('msg %s' % (msg))
                 messages.append(msg)
             except:
                 pass
         
-        DEBUG('messages: %s' % (str(messages)))
-        DEBUG('full msg %s' % (string.join(messages,';')))
+        #DEBUG('messages: %s' % (str(messages)))
+        #DEBUG('full msg %s' % (string.join(messages,';')))
         cmd.respond(string.join(messages,';'))
         cmd.finish()
 

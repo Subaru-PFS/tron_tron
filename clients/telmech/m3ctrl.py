@@ -7,13 +7,21 @@ are assumed to be all upper case.
 
 import CPL
 import client
+import re
+from traceback import print_exc
 
-#LOGFD = file('/home/tron/logfile2','w')
+LOGFD = file('/home/tron/logfile2','w')
 
 def DEBUG(msg):
     '''Print a message to a file'''
     #LOGFD.write(msg+'\n')
     #LOGFD.flush()
+    pass
+
+def DEBUG_EXC():
+    '''Debug print stack trace to a file'''
+    print_exc(file=LOGFD)
+    LOGFD.flush()
     pass
 
 # The port rotations and the IDs of their eyelids.
@@ -90,6 +98,7 @@ class M3ctrl:
         self.m3_alt_limit = m3_alt_limit
         self.m3_select = "?"
         self.cover_status = "?"
+        self.eye_test=re.compile('(\d)\s(\d)\s(\d)\s(\d)\s(\d)\s(\d)\s(\d)\s(\d)\s*eyelids\s.*')
         
     def tertrot(self, port, cid):
         """ Rotate the tertiary to one of the ports defined in .ports.
@@ -106,20 +115,20 @@ class M3ctrl:
                 % (self.m3_alt_limit)
             raise AltitudeToLow(msg)
 
-        DEBUG('looking for port %s' % (port));
+        #DEBUG('looking for port %s' % (port));
         port_info = self.ports.get(port, None)
         if not port_info:
-            DEBUG('did not find port_info');
+            #DEBUG('did not find port_info');
             raise Exception("tertrot: no port named %s. Try %s" \
                 % (port, ','.join(self.ports.keys())))
     
-        DEBUG('found port_info');
+        #DEBUG('found port_info');
         if port == "HOME":
-            DEBUG('Home tertiary')
+            #DEBUG('Home tertiary')
             cmd = 'E=0; XQ#HOME'
         else:
             pos = port_info.epos
-            DEBUG('got EPos %d' % (pos))
+            #DEBUG('got EPos %d' % (pos))
             cmd = 'E=%d; XQ#MOVE' % (pos)
 
         reply = tcctalk('TCC_TERT', cmd, cid, timeout=90)
@@ -166,7 +175,7 @@ degrees' % (self.m1_alt_limit)
            names    - port names.
            state	- 'open' or 'close'
         """
-        DEBUG('looking for states %s' % (state));
+        #DEBUG('looking for states %s' % (state));
 
         name = names[0]
         if name not in self._eyelids:
@@ -218,16 +227,42 @@ degrees' % (self.m1_alt_limit)
         cmd = valid_states.get(state)
         full_cmd = "A=%s; %s" % (port.port_id, cmd)
     
-        DEBUG("Command eyelid %s" % (name))
-        DEBUG("Command eyelid command %s" % (full_cmd))
-        DEBUG("eyelid status is %s" % (str(port.eyelid_status)))
+        #DEBUG("Command eyelid %s" % (name))
+        #DEBUG("Command eyelid command %s" % (full_cmd))
+        #DEBUG("eyelid status is %s" % (str(port.eyelid_status)))
 
         # assume it happened - To Be Done: read status and set this
         port.eyelid_status = state
             
-        DEBUG('full cmd %s' % (full_cmd));
+        #DEBUG('full cmd %s' % (full_cmd));
         return tcctalk('TCC_TERT', full_cmd, cid, timeout=30.0)
-    
+
+    def read_status(self, cid):
+        reply = tcctalk('TCC_TERT', "XQ#STATUS", cid, timeout=30.0)
+
+        eye_valid_states = ['CLOSE','OPEN']
+        for line in reply.lines:
+            #DEBUG(str(line.KVs))
+            try:
+                #{'Received': '" 1 0 0 0 0 0 0 0 eyelids 1-7 asked to open, all eyelids closed"'}
+                received = line.KVs['Received']
+
+                # get the eyelids
+                match = self.eye_test.search(received)
+                if match:
+                    statuses = match.groups()
+                    for index in range(7):
+                        eyelid = self._eyelids[index]
+                        port = self.ports[eyelid]
+                        state = int(statuses[index])
+                        if port.port_id != index+1:
+                            raise Exception("eyelid status: invalid port id: %d, should be %d." %\
+                                (index+1, port.port_id))
+                        port.eyelid_status = eye_valid_states[state]
+            except:
+                DEBUG_EXC()
+                pass
+
     def status(self):
         '''
         Return the M3 status as a series of keywords.

@@ -138,6 +138,8 @@ class NubAuth(object):
         self.clientType = matched.get('type', 'unknown')
         self.clientPlatform = matched.get('platform', 'unknown')
         self.clientVersion = matched.get('version', 'unknown')
+        CPL.log('NubAuth', 'checkLogin version %s, platform %s' % \
+            (self.clientVersion, self.clientPlatform))
 
         # Check whether we don't like the version
         #
