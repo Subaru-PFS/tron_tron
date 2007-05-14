@@ -14,8 +14,8 @@ LOGFD = file('/home/tron/logfile2','w')
 
 def DEBUG(msg):
     '''Print a message to a file'''
-    #LOGFD.write(msg+'\n')
-    #LOGFD.flush()
+    LOGFD.write(msg+'\n')
+    LOGFD.flush()
     pass
 
 def DEBUG_EXC():
@@ -99,6 +99,7 @@ class M3ctrl:
         self.m3_select = "?"
         self.cover_status = "?"
         self.eye_test=re.compile('(\d)\s(\d)\s(\d)\s(\d)\s(\d)\s(\d)\s(\d)\s(\d)\s*eyelids\s.*')
+        self.cover_test=re.compile('(\d)\s(\d)\s(\d)\s(\d)\s+mirror\s+cover\s+group')
         
     def tertrot(self, port, cid):
         """ Rotate the tertiary to one of the ports defined in .ports.
@@ -259,6 +260,19 @@ degrees' % (self.m1_alt_limit)
                             raise Exception("eyelid status: invalid port id: %d, should be %d." %\
                                 (index+1, port.port_id))
                         port.eyelid_status = eye_valid_states[state]
+
+                # get the mirror covers
+                match = self.cover_test.search(received)
+                DEBUG("covers: %s" % (str(match)))
+                if match:
+                    statuses = match.groups()
+                    DEBUG("cover statuses: %s" % (str(statuses)))
+                    if statuses[0] == '0' and statuses[1] == '0' and statuses[2] == '1' and statuses[3] == '1':
+                        self.cover_status = "CLOSE"
+                    elif statuses[0] == '1' and statuses[1] == '1' and statuses[2] == '0' and statuses[3] == '0':
+                        self.cover_status = "OPEN"
+                    else:
+                        self.cover_status = "?"
             except:
                 DEBUG_EXC()
                 pass
