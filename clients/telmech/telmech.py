@@ -283,6 +283,9 @@ Ports are: %s''' % (string.join(self.eyelids))
 
         try:
             cid = self.cidForCmd(cmd)
+            self.m3_ctrl.read_status(cid)
+
+            cid = self.cidForCmd(cmd)
             part = parts[1].upper()
             part = match_name(part, ['OPEN', 'CLOSE'])
             self.m3_ctrl.covers(part, cid)
@@ -487,7 +490,7 @@ Devices are: %s"' % (parts[1], string.join(self.devices)))
         except:
             DEBUG_EXC()
 
-        if device in ['','eyelids']:
+        if device in ['','eyelids','covers']:
             cid = self.cidForCmd(cmd)
             self.m3_ctrl.read_status(cid)
 
