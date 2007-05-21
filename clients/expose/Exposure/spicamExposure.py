@@ -1,5 +1,6 @@
 import os
 import socket
+import time
 
 import CPL
 import Parsing
@@ -28,29 +29,37 @@ class spicamCB(Exposure.CB):
             CPL.log("spicamCB.cbDribble", "res=%s" % (res))
         try:
             # Check for new exposureState:
-            newState = res.KVs.get('exposureState', None)
-            
-            # Guess at their length (this is for SPICAM only)
-            if newState != None:
-                newState = eval(newState, {}, {})
-                length = 0.0
-                if newState == 'reading':
-                    # Use the instrument's length guess if it is available.
-                    length = 45.0
-                    t = res.KVs.get('readoutTime', None)
-                    if t != None:
-                        try:
-                            length = float(t)
-                        except:
-                            pass
+            newStateRaw = res.KVs.get('exposureState', None)
+            if not newStateRaw:
+                Exposure.CB.cbDribble(self, res)
+                return
+            try:
+                self.exposure.cmd.warn('debug=%s' % (CPL.qstr("newstateRaw:%s:" % (newStateRaw))))
+                newState,t = newStateRaw
+                length = float(t)
+                self.exposure.cmd.warn('debug=%s' % (CPL.qstr("newstate:%s,%0.2f" % (newState,length))))
+            except:
+                CPL.log('dribble', 'exposureState barf1 = %s' % (e))
                 
-                CPL.log('spicamCB.cbDribble', "newstate=%s seq=%s" % (newState, self.sequence))
-                self.exposure.setState(newState, length)
+            if newState == 'integrating':
+                # TRAP PAUSE XXXXXXX
+                self.exposure.integrationStarted()
+            elif newState == 'aborted':
+                CPL.log("nicfps.dribble", "aborted what=%s newState=%s" % (self.what, newState))
+                if self.exposure.aborting:
+                    newState = "aborted"
+                else:
+                    newState = "done"
+                self.exposure.finishUp()
+            elif newState == 'done':
+                self.exposure.finishUp()
+                    
+            CPL.log('spicamCB.cbDribble', "newstate=%s seq=%s" % (newState, self.sequence))
+            self.exposure.setState(newState, length)
         except Exception, e:
             CPL.log('dribble', 'exposureState barf = %s' % (e))
         
         Exposure.CB.cbDribble(self, res)
-        
 
 class spicamExposure(Exposure.Exposure):
     def __init__(self, actor, seq, cmd, path, expType, **argv):
@@ -76,6 +85,7 @@ class spicamExposure(Exposure.Exposure):
             except:
                 raise Exception("%s exposures require a time argument" % (expType))
 
+        self.rawDir = ('/export/images/forTron/spicam')
         self.reserveFilenames()
 
     def reserveFilenames(self):
@@ -88,6 +98,59 @@ class spicamExposure(Exposure.Exposure):
     def _basename(self):
         return os.path.join(*self.pathParts)
 
+    def integrationStarted(self):
+        """ Called when the integration is _known_ to have started. """
+
+        outfile = self._basename()
+        if self.debug > 1:
+            CPL.log("spicamExposure", "starting spicam FITS header to %s" % (outfile))
+
+        cmdStr = 'start spicam outfile=%s' % (outfile)
+        if self.comment:
+            cmdStr += ' comment=%s' % (CPL.qstr(self.comment))
+        self.callback('fits', cmdStr)
+        self.cmd.warn('debug="fits %s"' % (cmdStr))
+        
+    def finishUp(self):
+        """ Clean up and close out the FITS files.
+
+        This is HORRIBLE! -- we are blocking at the worst time for the exposure. FIX THIS!!!
+        
+        """
+
+        CPL.log("spicam.finishUp", "state=%s" % (self.state))
+
+        CPL.log('spicamExposure', "finishing from rawfile=%s" % (self.rawpath))
+        
+        if self.state != "aborted":
+            self.callback('fits', 'finish spicam infile=%s' % (self.rawpath))
+        else:
+            self.callback('fits', 'abort spicam')
+            
+    def genRawfileName(self, cmd):
+        """ Generate a filename for the ICC to write to.
+
+        Returns:
+           filename  - a filename which is known not to exist now.
+        """
+
+        n = 1
+        timestamp = time.strftime('%Y%m%dT%H%M%SZ', time.gmtime())
+        while 1:
+            filename = "%s%02d.fits" % (timestamp, n)
+            pathname = os.path.join(self.rawDir, filename)
+            if os.path.exists(filename):
+                n += 1
+                cmd.warn('debug="raw filename %s existed"' % pathname)
+            else:
+                break
+
+            if n > 98:
+                raise RuntimeException("Could not create a scratch file for spicam. Last tried %s" % (pathname))
+
+        cmd.warn('debug="scratch file: %s"' % (pathname))
+        return pathname
+    
     def lastFilesKey(self):
         return self.filesKey(keyName="spicamFiles")
     
@@ -116,37 +179,39 @@ class spicamExposure(Exposure.Exposure):
                 CPL.qstr(userDir),
                 filebase)
         
+    def _expose(self, type, exptime=None, extra=''):
+        """ Start a single exposure. Requires several self. variables. """
+         
+        self.rawpath = self.genRawfileName(self.cmd)
+        cb = spicamCB(None, self.sequence, self, type, debug=2)
+        if exptime != None:
+            exptimeArg = "time=%s" % (exptime)
+        else:
+            exptimeArg = ''
+            
+        self.cmd.warn('debug=%s' % (CPL.qstr('firing off exposure callback to %s' % (self.rawpath))))
+        r = self.callback("spicam", "expose %s %s basename=%s %s" % \
+                          (type, exptimeArg, self.rawpath, self.commentArg),
+                          callback=cb.cbDribble, responseTo=self.cmd, dribble=True)
     def bias(self):
         """ Start a single bias. Requires several self. variables. """
-         
-        cb = spicamCB(None, self.sequence, self, "bias", debug=2)
-        r = self.callback("spicam", "expose bias basename=%s %s" % \
-                          (self._basename(), self.commentArg),
-                          callback=cb.cbDribble, responseTo=self.cmd, dribble=True)
+
+        self._expose('bias')
         
     def object(self):
         """ Start a single object exposure. Requires several self. variables. """
 
-        cb = spicamCB(None, self.sequence, self, "object", debug=2)
-        r = self.callback("spicam", "expose object time=%s basename=%s %s" % \
-                          (self.expTime, self._basename(), self.commentArg),
-                          callback=cb.cbDribble, responseTo=self.cmd, dribble=True)
+        self._expose('object', self.expTime)
         
     def flat(self):
         """ Start a single flat exposure. Requires several self. variables. """
 
-        cb = spicamCB(None, self.sequence, self, "flat", debug=2)
-        r = self.callback("spicam", "expose flat time=%s basename=%s %s" % \
-                          (self.expTime, self._basename(), self.commentArg),
-                          callback=cb.cbDribble, responseTo=self.cmd, dribble=True)
+        self._expose('flat', self.expTime)
         
     def dark(self):
         """ Start a single dark. Requires several self. variables. """
 
-        cb = spicamCB(None, self.sequence, self, "dark", debug=2)
-        r = self.callback("spicam", "expose dark time=%s basename=%s %s" % \
-                          (self.expTime, self._basename(), self.commentArg),
-                          callback=cb.cbDribble, responseTo=self.cmd, dribble=True)
+        self._expose('dark', self.expTime)
         
     def stop(self, cmd, **argv):
         """ Stop the current exposure: cause it to read out immediately, and save the data. """
