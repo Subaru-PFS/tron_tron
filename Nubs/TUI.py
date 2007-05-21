@@ -20,8 +20,8 @@ def acceptTUI(in_f, out_f, addr=None):
     # specifies that, instead of enumerating all the acceptable ones. Ugh.
     all = ('dcam', 'ecam', 'gcam',
            'dcamera', 'ecamera', 'gcamera',
-           'disExpose', 'echelleExpose', 'nicfpsExpose',
-           'nicfps', 'dis', 'echelle',
+           'disExpose', 'echelleExpose', 'nicfpsExpose','spicamExpose',
+           'nicfps', 'dis', 'echelle','spicam',
            'tcc', 'tlamps', 'hub', 'msg',
            'perms', 'auth', 'fits',
            'cm', 'nfocus', 'telmech')
