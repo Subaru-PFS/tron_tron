@@ -37,8 +37,10 @@ class fits(InternalCmd.InternalCmd):
         self.headers = {}
 
         self.instClasses = { 'echelle' : echelleFITS,
-                             'dis' : disFITS,
+                             'disred' : disFITS,
+                             'disblue' : disFITS,
                              'nicfps' : nicfpsFITS,
+                             'spicam' : spicamFITS,
                              'ecam' : guiderFITS,
                              'gcam' : guiderFITS,
                              'dcam' : guiderFITS,
@@ -739,6 +741,37 @@ class InstFITS(object):
     
 class nicfpsFITS(InstFITS):
     """ The NICFPS-specific FITS routines.
+    """
+
+    def __init__(self, instName, cmd, **argv):
+        argv['alwaysAllowOverwrite'] = True
+        InstFITS.__init__(self, instName, cmd, **argv)
+
+        # Request WCS cards.
+        self.isImager = True
+        
+    def start(self, cmd, inFile=None):
+        InstFITS.start(self, cmd, inFile=inFile)
+        
+        self.fetchInstCards(cmd)
+
+    def baseTimeCards(self, cmd, expStart, expLength, goodTo=0.1):
+        """ Return the core time cards.
+
+        Args:
+           cmd       - the controlling Command.
+           expStart  - the start of the exposure, TAI
+           expLength - the length of the exposure, seconds.
+           goodTo    - the precision of the timestamps.
+        """
+
+        cards = []
+        cards.append(RealCard('UTC-TAI', self.UTC_TAI, 'UTC offset from TAI, seconds.'))
+
+        return cards
+    
+class spicamFITS(InstFITS):
+    """ The spicam-specific FITS routines.
     """
 
     def __init__(self, instName, cmd, **argv):
