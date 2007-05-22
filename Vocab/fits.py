@@ -254,16 +254,17 @@ class InstFITS(object):
         self.comment = argv.get('comment', None)
         # cmd.warn('debug=%s' % (CPL.qstr('InstFITS args = %s; comment=%s' % (argv, self.comment))))
         
-        self.outfileName = argv.get('outfile', None)
+        self.outfileName = None 
         self.infile = None
         self.outfile = None
         self.allowOverwrite = argv.get('alwaysAllowOverwrite', False)
         
         self.isImager = False
         self.WCS = None
-        
-        if self.outfileName:
-            self.createOutfile(cmd, self.outfileName)
+
+        outname = argv.get('outfile', None)
+        if outname:
+            self.createOutfile(cmd, outname)
             
     def TS(self, t, format="%Y-%m-%d %H:%M:%S", zone="", goodTo=2):
         """ Return a formatted timestamp for t
