@@ -28,19 +28,33 @@ def stripKeyword(s):
     return m.group(1)
     
 
-def svnRevision():
-    """ Return the revision number, as a string. Or an empty string. """
+def svnRevision(dir):
+    """ Return the revision number, as a string. Or an empty string.
+    Since the Revison keyword only track the revision of this file, we
+    need to use the svnversion program output. The trick thing there is
+    deciding which file/path to examine. """
 
-    return stripKeyword(svnInfo['Revision'])
-                       
-def svnTagOrRevision():
+    import commands
+
+    status, version = commands.getstatusoutput('svnversion %s' % (dir))
+    if status != 0:
+        return "unknown"
+    return version
+    
+def svnTagOrRevision(dir='.'):
     """ If this is a tagged version, return a string indicating the tag name. Otherwise
     return a string indicating the revision number.
+
+    The directory passed in _MUST_ be the top level directory of the project.
     """
+
+    revision = self.svnRevision(dir)
+    if revision not in ('unknown', 'exported'):
+        return "UNTAGGED_REVISION: %s" % (revision)
 
     fullURL = stripKeyword(svnInfo['HeadURL'])
     if not fullURL:
-        return "UNTAGGED_REVISION: %s" % (svnRevision())
+        return "NO_TAG_OR_REVISION"
 
     # Try to pull the tag apart a bit.
     #
@@ -51,22 +65,22 @@ def svnTagOrRevision():
     # Assume we are in the top directory.
     parts = fullPath.split('/')
     if len(parts) < 2:
-        return "BADTAG_REVISION: %s" % (svnRevision())
+        return "BADTAG_REVISION: %s" % (fullURL)
 
     ourDir, ourName = parts[-2], parts[-1]
     if ourDir == 'trunk':
-        return "UNTAGGED_REVISION: %s" % (svnRevision())
+        return "UNTAGGED_REVISION: %s" % (fullURL)
 
     # Double check for conventional "/tags/" dir name. We could, I
     # suppose, be informative if this fails, but it is all gross
     # enough to want to skip.
     if len(parts) < 3:
-        return "BADTAG_REVISION: %s" % (svnRevision())
+        return "BADTAG_REVISION: %s" % (fullURL)
     baseDir = parts[-3]
     if baseDir == 'tags':
         return "Tag: %s" % (ourDir)
     else:
-        return "BADTAG_REVISION: %s" % (svnRevision())
+        return "BADTAG_REVISION: %s" % (fullURL)
 
 def test():
     print svnTagOrRevision()
