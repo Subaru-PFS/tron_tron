@@ -34,18 +34,17 @@ class spicamCB(Exposure.CB):
                 Exposure.CB.cbDribble(self, res)
                 return
             try:
-                self.exposure.cmd.warn('debug=%s' % (CPL.qstr("newstateRaw:%s:" % (newStateRaw))))
+                #self.exposure.cmd.warn('debug=%s' % (CPL.qstr("newstateRaw:%s:" % (newStateRaw))))
                 newState,t = newStateRaw
                 length = float(t)
-                self.exposure.cmd.warn('debug=%s' % (CPL.qstr("newstate:%s,%0.2f" % (newState,length))))
+                #self.exposure.cmd.warn('debug=%s' % (CPL.qstr("newstate:%s,%0.2f" % (newState,length))))
             except:
                 CPL.log('dribble', 'exposureState barf1 = %s' % (e))
                 
-            if newState == 'integrating':
-                # TRAP PAUSE XXXXXXX
+            if newState == 'integrating' or (newState == 'reading' and self.what == 'bias'):
                 self.exposure.integrationStarted()
             elif newState == 'aborted':
-                CPL.log("nicfps.dribble", "aborted what=%s newState=%s" % (self.what, newState))
+                CPL.log("spicamCB.dribble", "aborted what=%s newState=%s" % (self.what, newState))
                 if self.exposure.aborting:
                     newState = "aborted"
                 else:
@@ -54,7 +53,7 @@ class spicamCB(Exposure.CB):
             elif newState == 'done':
                 self.exposure.finishUp()
                     
-            CPL.log('spicamCB.cbDribble', "newstate=%s seq=%s" % (newState, self.sequence))
+            CPL.log('spicamCB.cbDribble', "newstate=%s seq=%s what=%s" % (newState, self.sequence,self.what))
             self.exposure.setState(newState, length)
         except Exception, e:
             CPL.log('dribble', 'exposureState barf = %s' % (e))
@@ -102,14 +101,13 @@ class spicamExposure(Exposure.Exposure):
         """ Called when the integration is _known_ to have started. """
 
         outfile = self._basename()
-        if self.debug > 1:
-            CPL.log("spicamExposure", "starting spicam FITS header to %s" % (outfile))
+        if self.debug > 2:
+            self.cmd.warn("debug='starting spicam FITS header to %s'" % (outfile))
 
         cmdStr = 'start spicam outfile=%s' % (outfile)
         if self.comment:
             cmdStr += ' comment=%s' % (CPL.qstr(self.comment))
         self.callback('fits', cmdStr)
-        self.cmd.warn('debug="fits %s"' % (cmdStr))
         
     def finishUp(self):
         """ Clean up and close out the FITS files.
@@ -148,7 +146,6 @@ class spicamExposure(Exposure.Exposure):
             if n > 98:
                 raise RuntimeException("Could not create a scratch file for spicam. Last tried %s" % (pathname))
 
-        cmd.warn('debug="scratch file: %s"' % (pathname))
         return pathname
     
     def lastFilesKey(self):
@@ -189,7 +186,7 @@ class spicamExposure(Exposure.Exposure):
         else:
             exptimeArg = ''
             
-        self.cmd.warn('debug=%s' % (CPL.qstr('firing off exposure callback to %s' % (self.rawpath))))
+        # self.cmd.warn('debug=%s' % (CPL.qstr('firing off exposure callback to %s' % (self.rawpath))))
         r = self.callback("spicam", "expose %s %s basename=%s %s" % \
                           (type, exptimeArg, self.rawpath, self.commentArg),
                           callback=cb.cbDribble, responseTo=self.cmd, dribble=True)
