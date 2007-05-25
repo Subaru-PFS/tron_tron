@@ -123,16 +123,21 @@ def handleSIGHUP(signal, frame):
     
 def handleSIGTERM(signal, frame):
     shutdown()
-    
+
+def getSetHubVersion():
+    """ Put the uncached svn version info into the hub.version keyword. """
+
+    version = CPL.qstr(svnVersion.svnTagOrRevision())
+    g.KVs.setKV('hub', 'version', version, None)
+
 def loadKeys():
     rootDir = CPL.cfg.get('hub', 'httpRoot')
     host = CPL.cfg.get('hub', 'httpHost')
 
     g.KVs.setKV('hub', 'httpRoot', [host, rootDir], None)
 
-    version = CPL.qstr(svnVersion.svnTagOrRevision())
-    g.KVs.setKV('hub', 'version', version, None)
-
+    getSetHubVersion()
+    
 def loadWords(words=None):
     if words == None:
         words = CPL.cfg.get('hub', 'vocabulary')

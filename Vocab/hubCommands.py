@@ -34,6 +34,8 @@ class hubCommands(InternalCmd.InternalCmd):
     def version(self, cmd, finish=True):
         """ Return the hub's version number. """
 
+        hub.getSetHubVersion()
+
         vString = 'hubVersion=%s' % (g.KVs.getKV('hub', 'version', default='Unknown'))
         if finish:
             cmd.finish(vString)
