@@ -31,6 +31,7 @@ class Exposure(Actor.Acting):
         self.stateLength = 0.0
         self.expTime = 0.0
         self.expLeft = self.expTime
+        self.alreadyStarted = False
         
         self.setState('idle')
         

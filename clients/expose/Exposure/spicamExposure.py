@@ -37,23 +37,19 @@ class spicamCB(Exposure.CB):
                 #self.exposure.cmd.warn('debug=%s' % (CPL.qstr("newstateRaw:%s:" % (newStateRaw))))
                 newState,t = newStateRaw
                 length = float(t)
-                #self.exposure.cmd.warn('debug=%s' % (CPL.qstr("newstate:%s,%0.2f" % (newState,length))))
+                # self.exposure.cmd.warn('debug=%s' % (CPL.qstr("newstate:%s,%0.2f" % (newState,length))))
             except:
                 CPL.log('dribble', 'exposureState barf1 = %s' % (e))
                 
             if newState == 'integrating' or (newState == 'reading' and self.what == 'bias'):
                 self.exposure.integrationStarted()
             elif newState == 'aborted':
-                CPL.log("spicamCB.dribble", "aborted what=%s newState=%s" % (self.what, newState))
-                if self.exposure.aborting:
-                    newState = "aborted"
-                else:
-                    newState = "done"
-                self.exposure.finishUp()
+                self.exposure.finishUp(aborting=True)
             elif newState == 'done':
                 self.exposure.finishUp()
                     
             CPL.log('spicamCB.cbDribble', "newstate=%s seq=%s what=%s" % (newState, self.sequence,self.what))
+            # self.exposure.cmd.warn('debug=%s' % (CPL.qstr("setting newstate:%s,%0.2f" % (newState,length))))
             self.exposure.setState(newState, length)
         except Exception, e:
             CPL.log('dribble', 'exposureState barf = %s' % (e))
@@ -100,6 +96,10 @@ class spicamExposure(Exposure.Exposure):
     def integrationStarted(self):
         """ Called when the integration is _known_ to have started. """
 
+        if self.alreadyStarted:
+            return
+        self.alreadyStarted = True
+        
         outfile = self._basename()
         if self.debug > 2:
             self.cmd.warn("debug='starting spicam FITS header to %s'" % (outfile))
@@ -109,7 +109,7 @@ class spicamExposure(Exposure.Exposure):
             cmdStr += ' comment=%s' % (CPL.qstr(self.comment))
         self.callback('fits', cmdStr)
         
-    def finishUp(self):
+    def finishUp(self, aborting=False):
         """ Clean up and close out the FITS files.
 
         This is HORRIBLE! -- we are blocking at the worst time for the exposure. FIX THIS!!!
@@ -120,10 +120,11 @@ class spicamExposure(Exposure.Exposure):
 
         CPL.log('spicamExposure', "finishing from rawfile=%s" % (self.rawpath))
         
-        if self.state != "aborted":
-            self.callback('fits', 'finish spicam infile=%s' % (self.rawpath))
-        else:
+        if aborting:
             self.callback('fits', 'abort spicam')
+        else:
+            self.callback('fits', 'finish spicam infile=%s' % (self.rawpath))
+
             
     def genRawfileName(self, cmd):
         """ Generate a filename for the ICC to write to.
