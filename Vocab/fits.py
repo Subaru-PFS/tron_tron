@@ -781,7 +781,15 @@ class spicamFITS(InstFITS):
 
         # Request WCS cards.
         self.isImager = True
-        
+
+    def fetchInstCards(self, cmd):
+        if self.outfileName:
+            try:
+                basename = os.path.basename(self.outfileName)
+                self.cards['FILENAME'] = StringCard('FILENAME', basename, 'original filename')
+            except Exception, ex:
+                CPL.log('spicam.fetchInstCards', CPL.qstr('FILENAME barf: %s' % (ex)))
+                
     def start(self, cmd, inFile=None):
         InstFITS.start(self, cmd, inFile=inFile)
         
