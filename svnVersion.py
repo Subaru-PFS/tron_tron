@@ -48,7 +48,7 @@ def svnTagOrRevision(dir='.'):
     The directory passed in _MUST_ be the top level directory of the project.
     """
 
-    revision = self.svnRevision(dir)
+    revision = svnRevision(dir)
     if revision not in ('unknown', 'exported'):
         return "UNTAGGED_REVISION: %s" % (revision)
 
