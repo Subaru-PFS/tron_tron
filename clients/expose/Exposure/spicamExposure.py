@@ -236,7 +236,7 @@ class spicamExposure(Exposure.Exposure):
         """ Resume the current exposure. """
 
         if self.state != "paused":
-            cmd.fail("spicamTxt", "can only resume paused exposures")
+            cmd.fail("text='can only resume paused exposures'")
             return
 
         cb = spicamCB(cmd, None, self, "resume", failOnFail=False, debug=2)
