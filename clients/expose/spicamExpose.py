@@ -157,16 +157,20 @@ class SpicamExposureActor(InstExposure.InstExposure):
             if exp == None:
                 cmd.fail('exposeTxt="no %s exposure is active"' % (self.instName))
                 return
-            else:
-                # Only let the exposure owner or any APO user control an active exposure.
-                #
-                if exp.cmd.program() != cmd.program() and cmd.program() != 'APO':
-                    cmd.fail('exposeTxt="the %s exposure belongs to "' % (self.instName,
-                                                                            cmd.cmdrName))
-                    return
 
-                exec("exp.%s(cmd)" % (command))
+            # Only let the exposure owner or any APO user control an active exposure.
+            #
+            if exp.cmd.program() != cmd.program() and cmd.program() != 'APO':
+                cmd.fail('exposeTxt="the %s exposure belongs to %s"' % (self.instName,
+                                                                      cmd.cmdrName))
                 return
+
+            if command in ('pause', 'resume') and exp.expType in ('bias', 'dark'):
+                cmd.warn("text='it makes no sense to pause a %s; command ignored'" % (exp.expType))
+                return
+            
+            exec("exp.%s(cmd)" % (command))
+            return
 
         elif command in ('object', 'flat', 'bias', 'dark'):
             if exp != None:
