@@ -172,7 +172,7 @@ class FITS:
         while 1:
             cardData = f.read(80)
             if len(cardData) != 80:
-                raise RuntimeError("Could not completely read the imput FITS file")
+                raise RuntimeError("Could not completely read the input FITS file: %d %d %s" % (idx, len(cardData), cardData))
             idx += 1
             if cardData[0] == ' ':
                 continue

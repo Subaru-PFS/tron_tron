@@ -841,6 +841,19 @@ class disFITS(InstFITS):
         argv['alwaysAllowOverwrite'] = True
         InstFITS.__init__(self, instName, cmd, **argv)
         
+    def fetchInstCards(self, cmd):
+        if self.outfileName:
+            try:
+                basename = os.path.basename(self.outfileName)
+                self.cards['FILENAME'] = StringCard('FILENAME', basename, 'original filename')
+            except Exception, ex:
+                CPL.log('dis.fetchInstCards', CPL.qstr('FILENAME barf: %s' % (ex)))
+                
+    def start(self, cmd, inFile=None):
+        InstFITS.start(self, cmd, inFile=inFile)
+        
+        self.fetchInstCards(cmd)
+
     def baseTimeCards(self, cmd, expStart, expLength, goodTo=0.1):
         """ Return the core time cards.
 
