@@ -1,5 +1,6 @@
 import os
 import socket
+import time
 
 import CPL
 import Parsing
@@ -28,26 +29,30 @@ class disCB(Exposure.CB):
             CPL.log("disCB.cbDribble", "res=%s" % (res))
         try:
             # Check for new exposureState:
-            newState = res.KVs.get('exposureState', None)
-            
-            # Guess at their length (this is for DIS only)
-            if newState != None:
-                newState = eval(newState, {}, {})
-                length = 0.0
-                if newState == 'reading':
-                    # Use the instrument's length guess if it is available.
-                    length = 45.0
-                    t = res.KVs.get('readoutTime', None)
-                    if t != None:
-                        try:
-                            length = float(t)
-                        except:
-                            pass
-                
-                CPL.log('disCB.cbDribble', "newstate=%s seq=%s" % (newState, self.sequence))
-                self.exposure.setState(newState, length)
+            newStateRaw = res.KVs.get('exposureState', None)
+            if not newStateRaw:
+                Exposure.CB.cbDribble(self, res)
+                return
+            try:
+                #self.exposure.cmd.warn('debug=%s' % (CPL.qstr("newstateRaw:%s:" % (newStateRaw))))
+                newState,t = newStateRaw
+                length = float(t)
+            except:
+                self.exposure.cmd.warn('text=%s' % (CPL.qstr('exposureState barf = %s' % (e))))
+                CPL.log('dribble', 'exposureState barf1 = %s' % (e))
+
+            self.exposure.cmd.warn('debug=%s' % (CPL.qstr("newstate:%s,%0.2f" % (newState,length))))
+            if newState == 'integrating' or (newState == 'reading' and self.what == 'bias'):
+                self.exposure.integrationStarted()
+            elif newState == 'aborted':
+                self.exposure.finishUp(aborting=True)
+            elif newState == 'done':
+                self.exposure.finishUp()
+                    
+            CPL.log('disCB.cbDribble', "newstate=%s seq=%s what=%s" % (newState, self.sequence,self.what))
+            self.exposure.setState(newState, length)
         except Exception, e:
-            CPL.log('dribble', 'exposureState barf = %s' % (e))
+            self.exposure.cmd.warn('text=%s' % (CPL.qstr('exposureState barf = %s' % (e))))
         
         Exposure.CB.cbDribble(self, res)
         
@@ -83,7 +88,37 @@ class disExposure(Exposure.Exposure):
             except:
                 raise Exception("%s exposures require a time argument" % (expType))
 
+        self.rawDir = ('/export/images/forTron/dis')
         self.reserveFilenames()
+
+    def genScratchNames(self):
+        """ Generate a filename for the ICC to write to.
+
+        Returns:
+           filename  - a filename which is known not to exist now.
+        """
+
+        n = 1
+        timestamp = time.strftime('%Y%m%dT%H%M%SZ', time.gmtime())
+        while 1:
+            basename = "%s%02d" % (timestamp, n)
+            filenameb = basename + "b.fits"
+            filenamer = basename + "r.fits"
+            pathnameb = os.path.join(self.rawDir, filenameb)
+            pathnamer = os.path.join(self.rawDir, filenamer)
+            if os.path.exists(filenameb) or os.path.exists(filenamer):
+                n += 1
+                self.cmd.warn('debug="raw filename %s existed"' % pathname)
+            else:
+                break
+
+            if n > 98:
+                raise RuntimeException("Could not create a scratch file for dis. Last tried %s" % (pathname))
+
+        self.scratchNames = {}
+        self.scratchNames['base'] = os.path.join(self.rawDir, basename)
+        self.scratchNames['red'] = self.scratchNames['base'] + "r.fits"
+        self.scratchNames['blue'] = self.scratchNames['base'] + "b.fits"
 
     def reserveFilenames(self):
         """ Reserve filenames, and set .basename.
@@ -92,12 +127,18 @@ class disExposure(Exposure.Exposure):
         
         """
 
+        self.genScratchNames()
         parts = list(self.path.getFilenameInParts(keepPath=True))
         basename = os.path.splitext(parts[-1])[0]
         parts[-1] = basename
         
         self.pathParts = parts
-
+        self.outfiles = {}
+        if self.cameras in ('', 'red '):
+            self.outfiles['red'] = self._basename() + "r.fits"
+        if self.cameras in ('', 'blue '):
+            self.outfiles['blue'] = self._basename() + "b.fits"
+            
     def _basename(self):
         return os.path.join(*self.pathParts)
 
@@ -139,37 +180,83 @@ class disExposure(Exposure.Exposure):
                 CPL.qstr(userDir),
                 blueFile, redFile)
         
+    def integrationStarted(self):
+        """ Called when the integration is _known_ to have started. """
+
+        # self.cmd.warn("debug='starting DIS FITS header with %s'" % (self.cameras))
+
+        if self.alreadyStarted:
+            return
+        self.alreadyStarted = True
+        
+
+        if self.cameras in ('', 'red '):
+            cmdStr = 'start disred outfile=%s' % (self.outfiles['red'])
+            if self.comment:
+                cmdStr += ' comment=%s' % (CPL.qstr(self.comment))
+            self.callback('fits', cmdStr)
+        if self.cameras in ('', 'blue '):
+            cmdStr = 'start disblue outfile=%s' % (self.outfiles['blue'])
+            if self.comment:
+                cmdStr += ' comment=%s' % (CPL.qstr(self.comment))
+            self.callback('fits', cmdStr)
+
+    def finishUp(self, aborting=False):
+        """ Clean up and close out the FITS files.
+
+        This is HORRIBLE! -- we are blocking at the worst time for the exposure. FIX THIS!!!
+        
+        """
+
+        CPL.log("dis.finishUp", "state=%s" % (self.state))
+
+        CPL.log('disExposure', "finishing from rawfile=%s" % (self.scratchNames['base']))
+        
+        if self.cameras in ('', 'red '):
+            if aborting:
+                self.callback('fits', 'abort disred')
+            else:
+                self.callback('fits', 'finish disred infile=%s' % (self.scratchNames['red']))
+        if self.cameras in ('', 'blue '):
+            if aborting:
+                self.callback('fits', 'abort disblue')
+            else:
+                self.callback('fits', 'finish disblue infile=%s' % (self.scratchNames['blue']))
+
+        
+    def _expose(self, type, exptime=None, extra=''):
+        """ Start a single exposure. Requires several self. variables. """
+         
+        cb = disCB(None, self.sequence, self, type, debug=2)
+        if exptime != None:
+            exptimeArg = "time=%s" % (exptime)
+        else:
+            exptimeArg = ''
+            
+        # self.cmd.warn('debug=%s' % (CPL.qstr('firing off exposure callback to %s' % (self.rawpath))))
+        r = self.callback("dis", "expose %s %s basename=%s %s %s" % \
+                          (type, exptimeArg, self.scratchNames['base'], self.cameras, self.commentArg),
+                          callback=cb.cbDribble, responseTo=self.cmd, dribble=True)
+
     def bias(self):
         """ Start a single bias. Requires several self. variables. """
-         
-        cb = disCB(None, self.sequence, self, "bias", debug=2)
-        r = self.callback("dis", "expose bias basename=%s %s %s" % \
-                          (self._basename(), self.cameras, self.commentArg),
-                          callback=cb.cbDribble, responseTo=self.cmd, dribble=True)
+
+        self._expose('bias')
         
     def object(self):
         """ Start a single object exposure. Requires several self. variables. """
 
-        cb = disCB(None, self.sequence, self, "object", debug=2)
-        r = self.callback("dis", "expose object time=%s basename=%s %s %s" % \
-                          (self.expTime, self._basename(), self.cameras, self.commentArg),
-                          callback=cb.cbDribble, responseTo=self.cmd, dribble=True)
+        self._expose('object', self.expTime)
         
     def flat(self):
         """ Start a single flat exposure. Requires several self. variables. """
 
-        cb = disCB(None, self.sequence, self, "flat", debug=2)
-        r = self.callback("dis", "expose flat time=%s basename=%s %s %s" % \
-                          (self.expTime, self._basename(), self.cameras, self.commentArg),
-                          callback=cb.cbDribble, responseTo=self.cmd, dribble=True)
+        self._expose('flat', self.expTime)
         
     def dark(self):
         """ Start a single dark. Requires several self. variables. """
 
-        cb = disCB(None, self.sequence, self, "dark", debug=2)
-        r = self.callback("dis", "expose dark time=%s basename=%s %s %s" % \
-                          (self.expTime, self._basename(), self.cameras, self.commentArg),
-                          callback=cb.cbDribble, responseTo=self.cmd, dribble=True)
+        self._expose('dark', self.expTime)
         
     def stop(self, cmd, **argv):
         """ Stop the current exposure: cause it to read out immediately, and save the data. """
