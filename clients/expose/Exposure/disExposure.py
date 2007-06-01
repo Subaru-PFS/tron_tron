@@ -41,7 +41,7 @@ class disCB(Exposure.CB):
                 self.exposure.cmd.warn('text=%s' % (CPL.qstr('exposureState barf = %s' % (e))))
                 CPL.log('dribble', 'exposureState barf1 = %s' % (e))
 
-            self.exposure.cmd.warn('debug=%s' % (CPL.qstr("newstate:%s,%0.2f" % (newState,length))))
+            #self.exposure.cmd.warn('debug=%s' % (CPL.qstr("newstate:%s,%0.2f" % (newState,length))))
             if newState == 'integrating' or (newState == 'reading' and self.what == 'bias'):
                 self.exposure.integrationStarted()
             elif newState == 'aborted':

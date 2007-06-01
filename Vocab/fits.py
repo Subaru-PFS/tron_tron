@@ -265,7 +265,10 @@ class InstFITS(object):
         outname = argv.get('outfile', None)
         if outname:
             self.createOutfile(cmd, outname)
-            
+
+    def INSTRUME(self):
+        return self.instName
+    
     def TS(self, t, format="%Y-%m-%d %H:%M:%S", zone="", goodTo=2):
         """ Return a formatted timestamp for t
 
@@ -381,7 +384,7 @@ class InstFITS(object):
         cards = []
         cards.append(StringCard('OBSERVAT', 'APO', 'Per the IRAF observatory list.'))
         cards.append(StringCard('TELESCOP', '3.5m'))
-        cards.append(StringCard('INSTRUME', self.instName, 'Instrument name'))
+        cards.append(StringCard('INSTRUME', self.INSTRUME(), 'Instrument name'))
         cards.append(RealCard('LATITUDE', 32.780361, 'Latitude of telescope base'))
         cards.append(RealCard('LONGITUD', -105.820417, 'Longitude of telescope base'))
 
@@ -841,6 +844,9 @@ class disFITS(InstFITS):
         argv['alwaysAllowOverwrite'] = True
         InstFITS.__init__(self, instName, cmd, **argv)
         
+    def INSTRUME(self):
+        return "DIS"
+
     def fetchInstCards(self, cmd):
         if self.outfileName:
             try:
