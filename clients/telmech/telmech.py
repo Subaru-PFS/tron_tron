@@ -523,7 +523,7 @@ Devices are: %s"' % (parts[1], string.join(self.devices)))
             if device not in ['COVERS', 'TERTROT']:
                 parts = reply[device]
                 partStrs = ["%s=%s" % (p.lower(), parts[p].lower()) for p in parts]
-                msg = msg + "; ".join(partDataStrs)
+                msg = msg + "; ".join(partStrs)
                 cmd.respond(msg)
             else:
                 msg = msg + "; %s=%s" % (device.lower(), reply[device].lower())
