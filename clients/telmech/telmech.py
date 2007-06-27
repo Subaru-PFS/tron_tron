@@ -83,10 +83,6 @@ To Be Done:
     move was successful or not.  A lot more work is needed to make this
     more robust.
 
-    The commands are going through the tcc.  In future versions, the tcc
-    should be taken out of the middle and the commands should go directly
-    to the controllers.
-
     Identify missing commands.  One that comes to mind is to be able
     to have status as one of the options to a device command.  For example,
 
@@ -524,14 +520,13 @@ Devices are: %s"' % (parts[1], string.join(self.devices)))
         for device in reply:
             msg = 'device=%s' % (device.lower())
             # not a dictionary, just a value
-            if device not in ['COVERS', 'TERTROT']:     
+            if device not in ['COVERS', 'TERTROT']:
                 parts = reply[device]
-                fmt = ';%s=%s'
-                for part in parts:
-                    msg = msg + fmt % (part.lower(), parts[part].lower())
+                partStrs = ["%s=%s" % (p.lower(), parts[p].lower()) for p in parts]
+                msg = msg + "; ".join(partDataStrs)
                 cmd.respond(msg)
             else:
-                msg = msg + ';value=%s' % (reply[device].lower())
+                msg = msg + "; %s=%s" % (device.lower(), reply[device].lower())
                 cmd.respond(msg)
 
     def _get_devices(self, cmd):
