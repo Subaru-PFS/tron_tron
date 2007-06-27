@@ -518,15 +518,15 @@ Devices are: %s"' % (parts[1], string.join(self.devices)))
             return;
 
         for device in reply:
-            msg = 'device=%s' % (device.lower())
+            devStr = 'device=%s' % (device.lower())
             # not a dictionary, just a value
             if device not in ['COVERS', 'TERTROT']:
                 parts = reply[device]
-                partStrs = ["%s=%s" % (p.lower(), parts[p].lower()) for p in parts]
-                msg = msg + "; ".join(partStrs)
+                partDataStrs = ["%s=%s" % (p.lower(), parts[p].lower()) for p in parts]
+                msg = "%s; %s" % (devStr, "; ".join(partDataStrs))
                 cmd.respond(msg)
             else:
-                msg = msg + "; %s=%s" % (device.lower(), reply[device].lower())
+                msg = devStr + "; %s=%s" % (device.lower(), reply[device].lower())
                 cmd.respond(msg)
 
     def _get_devices(self, cmd):
