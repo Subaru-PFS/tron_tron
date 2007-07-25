@@ -18,6 +18,10 @@
        - res = registerWord(word, function, help)
        - res = registerWords(list of above triples)
 
+   Timers:
+       - sleep(secs)
+       - timer(secs, callback)
+       
    The dirty work is done with, horrors, threading. I hate and fear threading. The problems are
    mitigated by splitting communications into upper and lower layers, with the two connected by
    Queues.

@@ -63,12 +63,11 @@ class spicamExposure(Exposure.Exposure):
         # Look for SPICAM-specific options & arguments.
         #
         opts, notMatched, leftovers = cmd.match([('time', float),
-                                                 ('comment', Parsing.dequote)])
+                                                 ('comment', Parsing.dequote),
+                                                 ('window',str),
+                                                 ('bin',str),
+                                                 ('overscan',str)])
 
-        # Fetch the camera list. Default to empty, which means both cameras.
-        #
-        self.cameras = ""
-            
         self.comment = opts.get('comment', None)
         self.commentArg = ""
         if self.comment != None:
@@ -80,9 +79,23 @@ class spicamExposure(Exposure.Exposure):
             except:
                 raise Exception("%s exposures require a time argument" % (expType))
 
+        self.geometry = self.parseGeometry(opts)
         self.rawDir = ('/export/images/forTron/spicam')
         self.reserveFilenames()
 
+    def parseGeometry(self, opts):
+        """ """
+
+        geometryOpts = []
+        if 'window' in opts:
+            geometryOpts.append("window=%s" % (opts['window']))
+        if 'bin' in opts:
+            geometryOpts.append("bin=%s" % (opts['bin']))
+        if 'overscan' in opts:
+            geometryOpts.append("overscan=%s" % (opts['overscan']))
+
+        return " ".join(geometryOpts)
+    
     def reserveFilenames(self):
         """ Reserve filenames, and set .basename.
 
@@ -110,14 +123,9 @@ class spicamExposure(Exposure.Exposure):
         self.callback('fits', cmdStr)
         
     def finishUp(self, aborting=False):
-        """ Clean up and close out the FITS files.
-
-        This is HORRIBLE! -- we are blocking at the worst time for the exposure. FIX THIS!!!
-        
-        """
+        """ Clean up and close out the FITS files. """
 
         CPL.log("spicam.finishUp", "state=%s" % (self.state))
-
         CPL.log('spicamExposure', "finishing from rawfile=%s" % (self.rawpath))
         
         if aborting:
@@ -125,7 +133,6 @@ class spicamExposure(Exposure.Exposure):
         else:
             self.callback('fits', 'finish spicam infile=%s' % (self.rawpath))
 
-            
     def genRawfileName(self, cmd):
         """ Generate a filename for the ICC to write to.
 
@@ -188,8 +195,8 @@ class spicamExposure(Exposure.Exposure):
             exptimeArg = ''
             
         # self.cmd.warn('debug=%s' % (CPL.qstr('firing off exposure callback to %s' % (self.rawpath))))
-        r = self.callback("spicam", "expose %s %s basename=%s %s" % \
-                          (type, exptimeArg, self.rawpath, self.commentArg),
+        r = self.callback("spicam", "expose %s %s basename=%s %s %s" % \
+                          (type, exptimeArg, self.rawpath, self.commentArg, self.geometryString),
                           callback=cb.cbDribble, responseTo=self.cmd, dribble=True)
     def bias(self):
         """ Start a single bias. Requires several self. variables. """

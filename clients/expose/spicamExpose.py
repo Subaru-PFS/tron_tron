@@ -180,7 +180,10 @@ class SpicamExposureActor(InstExposure.InstExposure):
             # req, notMatched, opt, leftovers = cmd.coverArgs(['n'])
             req, notMatched, leftovers = cmd.match([('n', int),
                                                     ('startNum', int),
-                                                    ('totNum', int)])
+                                                    ('totNum', int),
+                                                    ('window',str),
+                                                    ('bin',str),
+                                                    ('overscan',str)])
             
             cnt = req.get('n', 1)
             if not cnt > 0:

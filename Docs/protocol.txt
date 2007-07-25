@@ -35,3 +35,23 @@ src       - the name of the actor which actually generated the
             reply. Almost always the actorName, but can be a few other
             things; most obviously 'hub' when the hub rejects a
             command or otherwise injects itself.
+
+========================
+
+  The ID protocol between the hub and actors and between the hub and
+  commanders is slightly different. In general, for actors, 
+
+hub sends a sequence of commands:
+  MID commandText
+
+For each such command, actors reply with:
+  CID MID flag KVs
+
+  CID - a numeric ID indicating the source of the command. The hub
+connection is assigned a positive integer when the connection between
+the hub and the actor is established. A CID of 0 indicates that
+the reply was internally generated (controller resets, temperature
+monitoring output, etc, etc). 
+  MID - a numeric ID unique to a given command for a given CID, and
+  assigned by the command sender (the hub, say). The hub sends
+  sequential, positive IDs, and might treat an ID of 0 specially.
