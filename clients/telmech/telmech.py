@@ -110,9 +110,9 @@ LOGFD = file('/home/tron/logfile', 'w')
 
 def DEBUG(msg):
     '''Debug print message to a file'''
-    #LOGFD.write(msg+'\n')
-    #LOGFD.flush()
-    pass
+    LOGFD.write(msg+'\n')
+    LOGFD.flush()
+    #pass
 
 def DEBUG_EXC():
     '''Debug print stack trace to a file'''
@@ -138,7 +138,8 @@ class Telmech(Actor.Actor):
                               'heaters': self._set_heaters_cmd,
                               'louvers': self._set_louvers_cmd,
                               'status': self._get_status,
-                              'devices': self._get_devices})
+                              'devices': self._get_devices,     # IS THIS USED ANYMORE?
+                              'cancel': self._cancel})
 
         self.ports = CPL.cfg.get('telmech', 'ports')
         self.eyelids = CPL.cfg.get('telmech', 'eyelids')
@@ -148,6 +149,7 @@ class Telmech(Actor.Actor):
                                      self.m1_alt_limit, self.m3_alt_limit)
         self.enc_devices = CPL.cfg.get('telmech', 'enc_devices')
         self.enclosure = enclosure.Enclosure(self.enc_devices)
+        self._cancel_init()     # setup cancel commands
 
     def _parse(self, cmd):
         """ Default parsing behavior. Simply calls a Command's handler.
@@ -293,6 +295,7 @@ Ports are: %s''' % (string.join(self.eyelids))
 
         time.sleep(1)
         self._get_status_common(cmd, 'COVERS')
+        self._get_status_common(cmd, 'EYELIDS')
 
         cmd.finish()
 
@@ -539,7 +542,11 @@ Devices are: %s"' % (parts[1], string.join(self.devices)))
         for device in self.devices_to_get:
             try:
                 # all but ALL
-                parts = self.enc_devices[device].parts[:-1]
+                if device == 'LOUVERS':
+                    # include ALL
+                    parts = self.enc_devices[device].parts
+                else:
+                    parts = self.enc_devices[device].parts[:-1]
                 parts = map(lambda x: x.lower(), parts)
                 msg = '%s=%s' % (device.lower(), string.join(parts,','))
                 #DEBUG('msg %s' % (msg))
@@ -552,9 +559,39 @@ Devices are: %s"' % (parts[1], string.join(self.devices)))
         cmd.respond(string.join(messages,';'))
         cmd.finish()
 
-#
-# Start it all up.
-#
+    def _cancel_init(self):
+        """
+        Setup _cancel function.
+        """
+        self.cancel_commands = {"tertrot": self.m3_ctrl.cancel_tertrot}
+        
+
+    def _cancel(self, cmd):
+        """
+        Cancel a device command.  Currently, only tertrot makes sense.
+        """
+        DEBUG("cancel device: %s" % (cmd.raw_cmd))
+        parts = cmd.raw_cmd.split()
+        if len(parts) != 2:
+            msg = 'usage: cancel device'
+            cmd.fail('errtxt="'+msg+'"')
+            return
+
+        device = parts[1]
+
+        def no_op(cmd):
+            pass
+
+        try:
+            cid = self.cidForCmd(cmd)
+            #DEBUG("cancel device: %s" % ())
+            command = self.cancel_commands.get(device.lower(), no_op)
+            command(cid)
+        except:
+            DEBUG_EXC()
+            msg = 'errtxt=' + '"'+str(sys.exc_info()[1])+'"'
+            cmd.fail(msg)
+            return;
 
 #
 # Start it all up.
