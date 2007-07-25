@@ -136,6 +136,20 @@ class M3ctrl:
         # Assume it completed.  
         self.m3_select = port
         return reply
+        
+    def cancel_tertrot(self, cid):
+        """ Cancel tertiary rotation.
+
+        Args:
+            cid - command id
+
+        Raises:
+            - whatever call() raises.
+        """
+        cmd = 'XQ#STOP'
+        reply = tcctalk('TCC_TERT', cmd, cid, timeout=10)
+        # Assume it completed.  
+        return reply
     
     def covers(self, state, cid):
         """ Open or close the mirror covers.
