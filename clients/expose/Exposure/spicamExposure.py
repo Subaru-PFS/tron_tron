@@ -79,7 +79,7 @@ class spicamExposure(Exposure.Exposure):
             except:
                 raise Exception("%s exposures require a time argument" % (expType))
 
-        self.geometry = self.parseGeometry(opts)
+        self.geometryString = self.parseGeometry(opts)
         self.rawDir = ('/export/images/forTron/spicam')
         self.reserveFilenames()
 
