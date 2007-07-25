@@ -26,7 +26,7 @@ startAllConnections(['client',
                      'disExpose', 'dis',
                      'nicfpsExpose', 'nicfps',
                      'echelleExpose', 'echelle',
-                     'spicam','spicamExpose',
+                     'spicam','spicamExpose', "sfocus",
                      'nfake', 'nfocus',
                      'cmiccServer', 'cm',
                      'telmech'
