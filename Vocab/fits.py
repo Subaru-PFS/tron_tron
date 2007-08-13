@@ -598,7 +598,7 @@ class InstFITS(object):
             
         self.finishHeader(cmd, inFITS, pyInFITS=pyInFITS)
 
-    def prepFITS(self, cmd, fits):
+    def prepFITS(self, cmd, fits, pyInFITS=None):
         """ Hook to let us fiddle with the header directly. """
         pass
     
@@ -614,7 +614,7 @@ class InstFITS(object):
             fits    - a FITS object.
         """
 
-        self.prepFITS(cmd, fits)
+        self.prepFITS(cmd, fits, pyInFITS=pyInFITS)
         
         siteCards = self.fetchSiteCards(cmd)
         timeCards = self.fetchTimeCards(cmd)
@@ -847,6 +847,75 @@ class disFITS(InstFITS):
     def INSTRUME(self):
         return "DIS"
 
+    def lampInfo(self):
+        """ Return a nicely formatted LAMP card and functional description,
+        based on the tlamps keywords
+
+        Returns:
+           - a string with all on lamp names joined with '+'
+           - a string describing what the lamps mean to an exposure. To wit:
+              . if any quartz bulb is lit, "flat"
+              . if any other bulb is lit, "arc",
+              . otherwise "object".
+        """
+
+        names = g.KVs.getKey('tlamps', 'lampNames', None)
+        states = g.KVs.getKey('tlamps', 'lampStates', None)
+
+        on = []
+        isFlat = False
+        try:
+            for i in range(len(names)):
+                name = names[i]
+                if states[i] == 'On':
+                    on += name
+                name = name.upper()
+                if name.find('qtz') != -1 or \
+                   name.find('quartz') != -1 or \
+                   name.find('qrtz') != -1:
+                    isFlat = True
+        except:
+            pass
+
+        lampString = "+".join(on)
+        if isFlat:
+            lampState = 'flat'
+        elif len(lampString) != 0:
+            lampState = 'comp'
+        else:
+            lampState = 'object'
+
+        return lampString, lampState
+    
+    def prepFITS(self, cmd, fits, pyInFITS=None):
+        """ Hook to let us fiddle with the header directly.
+
+        In the DIS case, we add a LAMPS card and possibly fiddle the IMAGETYP card
+        depending on the value of LAMPS.
+        
+        """
+
+        try:
+            h = pyInFITS[0].header
+            IMAGETYP = h.get('IMAGETYP', 'unknown')
+        except Exception, e:
+            cmd.warn('debug="%s"' % (CPL.str('Could not read IMAGETYP card: %s', (e))))
+            IMAGETYP = 'unknown'
+
+        try:
+            lampString, lampState = self.lampInfo()
+            fits.addCard(StringCard('LAMP', lampString, 'Calibration lamps'))
+        
+            if IMAGETYP in ('object', 'comp') and lampState == 'flat':
+                fits.addCard(StringCard('IMAGETYP', 'flat', 'overwritten due to LAMPS'),
+                             allowOverwrite=True)
+            elif IMAGETYP == 'object' and lampState == 'comp':
+                fits.addCard(StringCard('IMAGETYP', 'comp', 'overwritten due to LAMPS'),
+                             allowOverwrite=True)
+                
+        except Exception, e:
+            cmd.warn('debug="%s"' % (CPL.str('Failed to handle truss LAMPs', (e))))
+        
     def fetchInstCards(self, cmd):
         if self.outfileName:
             try:
