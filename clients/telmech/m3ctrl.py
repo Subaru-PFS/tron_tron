@@ -133,7 +133,34 @@ class M3ctrl:
             cmd = 'E=%d; XQ#MOVE' % (pos)
 
         reply = tcctalk('TCC_TERT', cmd, cid, timeout=90)
-        # Assume it completed.  
+        #
+        # reply has four lines, the command, time to execute the move,
+        # the initial positions, and final position
+        #
+        # There are two failures that I know about, LMSTOP and CHKMV
+        # The LMSTOP failure is the 4th line with a 5th line that is a status
+        # The CHKMV failure has the normal first four lines, and then a 4th
+        # line with a CHKMV word.  The actual position is grossly wrong from the
+        # target.
+        #
+        # To handle the errors, there are three conditions.  1) reply has 4 lines,
+        # so this is okay.  2) reply has 5 lines.  The 4th line is LMSTOP with a
+        # failure message, or the 5th line is CHKMOV
+        #
+
+        # pull out the received lines
+        failure_message = None
+        for line in reply.lines:
+            if 'Received' in line.KVs:
+                line = line.KVs['Received']
+                if line.find('?') > -1:
+                    failure_message = line
+                    break
+
+        if failure_message:
+            self.m3_select = '?'
+            raise Exception(failure_message)
+
         self.m3_select = port
         return reply
         
@@ -277,10 +304,10 @@ degrees' % (self.m1_alt_limit)
 
                 # get the mirror covers
                 match = self.cover_test.search(received)
-                DEBUG("covers: %s" % (str(match)))
+                #DEBUG("covers: %s" % (str(match)))
                 if match:
                     statuses = match.groups()
-                    DEBUG("cover statuses: %s" % (str(statuses)))
+                    #DEBUG("cover statuses: %s" % (str(statuses)))
                     if statuses[0] == '0' and statuses[1] == '0' and statuses[2] == '1' and statuses[3] == '1':
                         self.cover_status = "CLOSE"
                     elif statuses[0] == '1' and statuses[1] == '1' and statuses[2] == '0' and statuses[3] == '0':
