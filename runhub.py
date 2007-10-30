@@ -24,10 +24,10 @@ startAllConnections(['client',
                      'ecamera','ecam',
                      'tcc2gcam','tcc2ecam',
                      'disExpose', 'dis',
-                     'nicfpsExpose', 'nicfps',
+#                     'nicfpsExpose', 'nicfps',
                      'echelleExpose', 'echelle',
                      'spicam','spicamExpose', "sfocus",
-                     'nfake', 'nfocus',
+                     'nfake', # 'nfocus',
                      'cmiccServer', 'cm',
                      'telmech'
                      ])
