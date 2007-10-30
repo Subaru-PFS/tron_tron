@@ -163,18 +163,29 @@ class Enclosure:
         msg = 'STATUS'
         DEBUG("get status from tcc_encl")
         received = call.call(msg)
-        DEBUG("got status from tcc_encl")
+        DEBUG("got status from tcc_encl, ...%s..." % (received))
         # sometimes the received status gets confused
         # try a few times and see if you can get a repeatable value
         count = 3
+        error = 0
         while received != self.last_status and count > 0:
             received1 = call.call(msg)
+            if not received1:
+                error += 1
+                if error == 5:
+                    break
+                continue
             if received1 == received:   # seen it twice, must be good
                 self.last_status = received
                 break
             count = count - 1
 
         # if count == 0: raise an exception?
+        DEBUG("after receive check, got status from tcc_encl, ...%s..." % (received))
+
+        if error == 5 or not received:
+            DEBUG("status from tcc_encl errored out")
+            raise Exception('failed to get enclosure status')
 
         # hopefully we now have a good status
         # received string is: "1 4  0 128     0 136", toss " with slice

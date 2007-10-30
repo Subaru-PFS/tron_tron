@@ -100,6 +100,7 @@ class M3ctrl:
         self.cover_status = "?"
         self.eye_test=re.compile('(\d)\s(\d)\s(\d)\s(\d)\s(\d)\s(\d)\s(\d)\s(\d)\s*eyelids\s.*')
         self.cover_test=re.compile('(\d)\s(\d)\s(\d)\s(\d)\s+mirror\s+cover\s+group')
+        self.tert_test=re.compile('([\-0-9]+)\s+([\-0-9]+)\s+commanded, measured tertiary rotation')
         
     def tertrot(self, port, cid):
         """ Rotate the tertiary to one of the ports defined in .ports.
@@ -301,6 +302,7 @@ degrees' % (self.m1_alt_limit)
                             raise Exception("eyelid status: invalid port id: %d, should be %d." %\
                                 (index+1, port.port_id))
                         port.eyelid_status = eye_valid_states[state]
+                        continue
 
                 # get the mirror covers
                 match = self.cover_test.search(received)
@@ -314,6 +316,22 @@ degrees' % (self.m1_alt_limit)
                         self.cover_status = "OPEN"
                     else:
                         self.cover_status = "?"
+                    continue
+
+                # get the tertiary position
+                match = self.tert_test.search(received)
+                if match:
+                    try:
+                        commanded = int(match.groups()[0])
+                        actual = int(match.groups()[1])
+                        for port in self.ports:
+                            port_def = self.ports[port]
+                            if abs(port_def.epos-actual) < 2000:
+                                self.m3_select = port
+                                break
+                    except:
+                        DEBUG_EXC()
+                        pass
             except:
                 DEBUG_EXC()
                 pass
