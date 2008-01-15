@@ -1,5 +1,4 @@
-<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01//EN"
-        "http://www.w3.org/TR/1999/REC-html401-19991224/loose.dtd">
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01//EN" "http://www.w3.org/TR/html4/strict.dtd">
 <html>
 <head>
 	<title>TclActor</title>
@@ -37,7 +36,7 @@ where:
 
 <p>Write one actor as a sublcass of TclActor.Actor. This contains the list of devices your actor controls and code to execute various commands. These commands fall into several categories:
 <ul>
-    <li>Local commands: these are commands implemented as methods of your actor class. Each such method must be named cmd_<verb> where <verb> is the command verb. The first line of the doc string for that method is the help for that command (as printed by the command "help"). Note that TclActor.Actor implements several local commands; do not override these unless you are sure you know what you are doing. These include:
+    <li>Local commands: these are commands implemented as methods of your actor class. Each such method must be named cmd_<i>verb</i> where <i>verb</i> is the command verb. The first line of the doc string for that method is the help for that command (as printed by the command "help"). Note that TclActor.Actor implements several local commands; do not override these unless you are sure you know what you are doing. These include:
     <ul>
         <li>help
         <li>connDev/disconnDev: connect or disconnect a device (all devices by default)
@@ -68,7 +67,7 @@ where:
 
     <li>Execute the command
 
-    <p>For a local command this is in a method called cmd_<verb> where <verb> is the command verb. This code should:
+    <p>For a local command this is in a method called cmd_<i>verb</i> where <i>verb</i> is the command verb. This code should:
     <ul>
         <li>parse the arguments (if any)
         <li>check for conditions that would prevent it from being executed (though this is usually done in checkLocalCmd)
