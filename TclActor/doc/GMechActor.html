@@ -1,0 +1,100 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01//EN" "http://www.w3.org/TR/html4/strict.dtd">
+<html>
+<head>
+	<title>gmech Actor</title>
+</head>
+<body>
+<h1>gmech Actor</h1>
+
+<p>Contents
+<ul>
+    <li> <a href= "#Overview">Overview</a>
+    <li> <a href= "#Commands">Commands</a>
+    <ul>
+        <li><a href="#filter">filter <i>filter_number</i></a>
+        <li><a href="#init">init</a>
+        <li><a href="#piston">piston <i>piston</i></a>
+        <li><a href="#remap">remap</a>
+        <li><a href="#status">status</a>
+    </ul>
+    <li><a href="#Keywords">Keywords</a>
+    <ul>
+        <li><a href="#BadDevStatus">Bad<i>Dev</i>Status</a>
+        <li><a href="#Dev"><i>Dev</i></a>
+        <li><a href="#DevElapsedSec"><i>Dev</i>ElapsedSec</a>
+        <li><a href="#DevError"><i>Dev</i>Error</a>
+        <li><a href="#DevStatus"><i>Dev</i>Status</a>
+    </ul>
+</ul>
+
+<h2><a name= "Overview">Overview</a></h2>
+
+<p>gmech Actor is an interface to the NA2 <a href="http://www.apo.nmsu.edu/Telescopes/HardwareControllers/GuiderMechCommands.html">guide camera mechanical controller</a>, which sets the filter number and focus position of the NA2 off-axis guider. The following commands are supported:
+
+<h2><a name= "Commands">Commands</a></h2>
+
+<p>Commands are not case-sensitive.
+
+<h3><a name="filter"><code> filter <i>filter_number</i> </code></a></h3>
+
+<p>Set the specified filter. Filters numbers are integers, starting at 0.
+
+<h3><a name="init"><code>init</code></a></h3>
+
+<p>Stop all motion and initializes the controller. This is the only command that can interrupt the <a href="#remap">remap</a> command.
+
+<h3><a name="piston"><code>piston <i>piston</i> </code></a></h3>
+
+<p>Set the piston of the guider to the specified value in &mu;m.
+
+<h3><a name="remap"><code>remap</code></a></h3>
+
+<p>Remap the actuators. This commands takes a long time to finish, but if necesary you can interrupt it using the <a href="#init">init</a> command.
+
+<h3><a name="status"><code>status</code></a></h3>
+
+<p>Returns the state of the piston and filter actuators. The output is described in the <a href="#Keywords">Keywords</a> section.
+
+<h2><a name="Keywords"></a>Keywords</h2>
+
+<p>Note: <p><i>Dev</i> may be either Piston or Filter.
+<ul>
+    <li>Piston position is in &mu;m.
+    <li>Filter "position" is the filter number (an integer starting from 0).
+</ul>
+
+<h3><a name="BadDevStatus"></a>Bad<i>Dev</i>Status</h3>
+
+<p>Indicates that <a href="#DevStatus"><i>Dev</i>Status</a> is bad (one or more bad bits are set).
+
+<h3><a name="Dev"></a><i>Dev</i></h3>
+
+<p>Position of the of the device.
+
+<h3><a name="DevElapsedSec"></a><i>Dev</i>ElapsedSec</h3>
+
+<p>Elapsed time (in seconds) for the current move (only reported if moving). See also <a href="#DevPredTotalSec"><i>Dev</i>PredTotalSec</a>
+
+<h3><a name="DevError"></a><i>Dev</i>Error</h3>
+
+<p>Position error for the device (only reported if not moving).
+
+<h3><a name="DevPredTotalSec"></a><i>Dev</i>PredTotalSec</h3>
+
+<p>Predicted total time (in seconds) to perform the current move (only reported if moving). See also <a href="#DevElapsedSec"><i>Dev</i>ElapsedSec</a>
+
+<h3><a name="DevStatus"></a><i>Dev</i>Status</h3>
+
+<p>Device status word. The bits are as follows:
+
+<table border=1>
+<tr><td>Bit</td><td>Hex</td><td>Meaning</td></tr>
+<tr><td>0</td><td>0x01</td><td>Limit switch 1 engaged</td></tr>
+<tr><td>1</td><td>0x02</td><td>Limit switch 2 engaged</td></tr>
+<tr><td>2</td><td>0x04</td><td>At maximum position</td></tr>
+<tr><td>3</td><td>0x08</td><td>At minimum position</td></tr>
+<tr><td>4</td><td>0x10</td><td>At requested position</td></tr>
+<tr><td>5</td><td>0x20</td><td>Actuator powered down</td></tr>
+</table>
+</body>
+</html>

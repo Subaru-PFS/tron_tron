@@ -44,7 +44,6 @@ class Device(RO.AddCallback.BaseMixin):
         self.connReq = (False, None)
         self.conn = conn
         self.pendCmdDict = {} # key=locCmdID, value=cmd
-        self.writeToUsersFunc = None
         self.sendLocID = sendLocID
         if callFunc:
             self.addCallback(callFunc, callNow=False)        
@@ -83,8 +82,6 @@ class Device(RO.AddCallback.BaseMixin):
         except Exception, e:
             quotedErr = quoteStr(str(e))
             quotedCmd = quoteStr(cmdStr)
-            self.writeToUsers(cmd.cmdID, cmd.userID, "f",
-                "Exception=%s; Text=%s; CmdStr=%s" % (e.__class__.__name__, quotedErr, quotedCmd))
             cmd.setState(isDone=True, isOK=False, reason=str(e))
 
 

@@ -9,6 +9,22 @@ TO DO:
   (e.g. it's not obvious to me that special code in the actor is required;
   it might make more sense to be able to send information through a command;
   if so then the background status commands can be high-level commands with userID=cmdID=0)
+  
+  It would be handy for a device to be able to write to users,
+  but it's not a very natural paradigm. For instance a device probably should not
+  directly know about what user commands are running, so a device can most easily write
+  untagged unsolicited data. Of course some such data is crucial. On the other hand
+  that is mostly stateful information which is already easily handled using a device callback.
+  
+  To put it another way, the basic issues are:
+  - How to handle unsolicited replies from the controller. gmech doesn't have these.
+    If the reply contains state data then one way is to update state and issue a callback
+    to the actor and let the actor process state and output information. This is a lot of steps
+    but has the benefits of the device keeping a model and the  reporting on changes to it.
+    Also it allows the actor to tag state data -- which is nice, though not required.
+  - How to handle solicited informational replies? Commands alreay allow changing state
+    and reporting that way. It would be easy to add the ability to report information
+    and warnings via the same mechanism.
 """
 import math
 import re
@@ -90,8 +106,6 @@ class ActuatorBasicInfo(object):
             strItems.append("%sStatus=0x%x" % (self.name, self.status))
         if not self.isOK():
             strItems.append("Bad%sStatus" % (self.name,))
-        if not self.isMoving():
-            strItems.append("Final%s=%s" % (self.name, self._fmt(self.pos)))
 
         return "; ".join(strItems)
     
@@ -363,6 +377,7 @@ class GMechDev(TclActor.TCPDevice):
                 timeLimitMS = 2000
             self.setCurrCmd(cmd, timeLimitMS)
             cmd.addCallback(self.cmdDone)
+            # self._tk.call('puts', self.conn._sock, cmd.cmdStr)
             self.conn.writeLine(cmd.cmdStr)
 
 
