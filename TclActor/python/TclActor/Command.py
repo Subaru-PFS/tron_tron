@@ -1,7 +1,7 @@
 #!/usr/local/bin/python
 """Command objects for the Tcl Actor
 """
-__all__ = ["BaseCmd", "DevCmd", "UserCmd"]
+__all__ = ["BaseCmd", "DevCmd", "UserCmd", "NullCmd"]
 
 import re
 #import sys
@@ -87,7 +87,7 @@ class DevCmd(BaseCmd):
         Inputs:
         - cmdStr: command string (see module doc string for format)
         """
-        cmdMatch = self._UserCmdRE.match(cmdStr)
+        cmdMatch = self._DevCmdRE.match(cmdStr)
         if not cmdMatch:
             raise RuntimeError("Could not parse command %r" % cmdStr)
         
@@ -146,7 +146,7 @@ class UserCmd(BaseCmd):
     
     def getMsgCode(self):
         """Return the hub message code appropriate to the current state"""
-        return self._MsgCodeDict.get[self.state]
+        return self._MsgCodeDict[self.state]
 
         
 NullCmd = UserCmd()
