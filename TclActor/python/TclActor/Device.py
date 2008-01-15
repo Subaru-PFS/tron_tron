@@ -7,7 +7,7 @@ __all__ = ["Device", "TCPDevice"]
 from RO.StringUtil import quoteStr
 import RO.Comm.TCPConnection
 
-class Device(object):
+class Device(RO.AddCallback.BaseMixin):
     """Device interface.
     
     Data includes information necessary to connect to this device
@@ -27,13 +27,18 @@ class Device(object):
     - cmds  a list of command verbs for commands that should be sent
             directly through to this device
     - sendLocID prefix sent commands with the local id number?
+    - callFunc  function to call when state of device changes;
+                note that it is NOT called when the connection state changes;
+                register a callback with "conn" for that task.
     """
     def __init__(self,
         name,
         conn,
         cmds = None,
         sendLocID = True,
+        callFunc = None,
     ):
+        RO.AddCallback.BaseMixin.__init__(self)
         self.name = name
         self.cmds = cmds or()
         self.connReq = (False, None)
@@ -41,6 +46,8 @@ class Device(object):
         self.pendCmdDict = {} # key=locCmdID, value=cmd
         self.writeToUsersFunc = None
         self.sendLocID = sendLocID
+        if callFunc:
+            self.addCallback(callFunc, callNow=False)        
     
     def handleReply(self, replyStr):
         """Handle a line of output from the device.
@@ -54,10 +61,10 @@ class Device(object):
         
         Tasks include:
         - Parse the reply
-        - Manage the pending command dict
-        - Output data to users
-        - Maintain a device model (recommended but not required)
-        - If a command has finished, call the appropriate command callback
+        - Manage pending commands
+        - Update the device model representing the state of the device
+        - Output state data to users (if state has changed)
+        - Call the command callback
         
         Warning: this must be defined by the subclass
         """
@@ -91,6 +98,9 @@ class TCPDevice(Device):
     - cmds  a list of command verbs for commands that should be sent
             directly through to this device
     - sendLocID prefix sent commands with the local id number?
+    - callFunc  function to call when state of device changes;
+                note that it is NOT called when the connection state changes;
+                register a callback with "conn" for that task.
     """
     def __init__(self,
         name,
@@ -98,6 +108,7 @@ class TCPDevice(Device):
         port = 23,
         cmds = None,
         sendLocID = True,
+        callFunc = None,
     ):
         Device.__init__(self,
             name = name,
@@ -109,6 +120,7 @@ class TCPDevice(Device):
                 readLines = True,
             ),
             sendLocID = sendLocID,
+            callFunc = callFunc,
         )
     
     def _readCallback(self, sock, replyStr):
@@ -117,4 +129,5 @@ class TCPDevice(Device):
         - sock  the socket (ignored)
         - line  the reply, missing the final \n     
         """
+        print "TCPDevice._readCallback(sock, replyStr=%r)" % (replyStr,)
         self.handleReply(replyStr)

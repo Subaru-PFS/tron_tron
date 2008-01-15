@@ -13,7 +13,7 @@ Properties:
   - Start with a letter or underscore
   - Contain only letters, numbers or underscores
 """
-__all__ = ["Actor"]
+__all__ = ["Actor", "ConflictError"]
 
 import sys
 import traceback
@@ -22,7 +22,10 @@ import RO.SeqUtil
 from RO.StringUtil import quoteStr
 import RO.Comm.TkSocket
 
-import Command
+from Command import UserCmd, NullCmd
+
+class ConflictError(Exception):
+    pass
 
 
 class Actor(object):
@@ -86,7 +89,7 @@ class Actor(object):
     
     def checkLocalCmd(self, newCmd):
         """Check if the new local command can run given what else is going on.
-        If not then raise TclActor.ConflictError with a reason.
+        If not then raise TclActor.ConflictError(reason)
         If it can run but an existing command must be superseded then supersede the old command here.
         
         Note that each cmd_foo method can perform additional checks and cancellation.
@@ -97,7 +100,7 @@ class Actor(object):
     
     def cmdDone(self, cmd):
         """Report command completion or failure"""
-        is not cmd.isDone():
+        if not cmd.isDone():
             return
         msgCode = cmd.getMsgCode()
         msgStr = "Text=%s" % (quoteStr(cmd.reason)) if cmd.reason else ""
@@ -149,7 +152,7 @@ class Actor(object):
         tkSock.setReadCallback(self.newCmd)
         tkSock.setStateCallback(self.userStateChanged)
         
-        self.cmd_users(Command.UserCmd(userID=userID))
+        self.cmd_users(UserCmd(userID=userID))
         
     def newCmd(self, tkSock):
         """Called when a command is read from a user.
@@ -160,12 +163,13 @@ class Actor(object):
         userID = self.userDict[tkSock]
         
         try:
-            cmd = Command.UserCmd(userID, cmdStr, self.cmdDone)
+            cmd = UserCmd(userID, cmdStr, self.cmdDone)
         except RuntimeError:
             self.writeToUsers(0, userID, "f", "CannotParse=" + quoteStr(cmdStr))
             return
 
-        #print "read cmd=%r cmdID=%s; locID=%s" % (cmd.cmdStr, cmd.cmdID, cmd.locID)
+        print "newCmd: userID=%s; cmdID=%s; cmdVerb=%r; cmdArgs=%r" % \
+            (cmd.userID, cmd.cmdID, cmd.cmdVerb, cmd.cmdArgs)
         
         if not cmd.cmdVerb:
             # echo to show alive
@@ -176,13 +180,16 @@ class Actor(object):
         if cmdFunc != None:
             # execute local command
             try:
-                checkLocalCmd(cmd)
+                print "newCmd: checking local function %s" % (cmdFunc,)
+                self.checkLocalCmd(cmd)
+                print "newCmd: executing local function %s" % (cmdFunc,)
                 cmdFunc(cmd)
-            except TclActor.ConflictError, e:
+            except ConflictError, e:
+                print "newCmd: command rejected due to conflict"
                 cmd.setState("failed", str(e))
                 return
             except Exception, e:
-                sys.stderr.write("cmd %r failed\n" % cmdStr)
+                sys.stderr.write("command %r failed\n" % (cmdStr,))
                 sys.stderr.write("function %s raised %s\n" % (cmdFunc, e))
                 traceback.print_exc(file=sys.stderr)
                 quotedErr = quoteStr(str(e))
@@ -208,6 +215,7 @@ class Actor(object):
     def userStateChanged(self, tkSock):
         """Called when a user connection changes state.
         """
+        print "userStateChanged"
         if not tkSock.isClosed():
             return
 
@@ -234,6 +242,7 @@ class Actor(object):
         """Write a message to all users.
         """
         fullMsgStr = self.formatUserOutput(cmdID, userID, msgCode, msgStr)
+        print "writeToUsers(%s)" % (fullMsgStr,)
         for sock, sockUserID in self.userDict.iteritems():
             sock.writeLine(fullMsgStr)
     
@@ -242,6 +251,7 @@ class Actor(object):
         """
         sock = self.getUserSock(userID)
         fullMsgStr = self.formatUserOutput(cmdID, userID, msgCode, msgStr)
+        print "writeToOneUser(%s)" % (fullMsgStr,)
         sock.writeLine(fullMsgStr)
     
     def cmd_connDev(self, cmd=NullCmd):
