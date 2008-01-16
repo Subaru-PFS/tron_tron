@@ -30,6 +30,7 @@ class Device(RO.AddCallback.BaseMixin):
     - callFunc  function to call when state of device changes;
                 note that it is NOT called when the connection state changes;
                 register a callback with "conn" for that task.
+    - actor actor that contains this device; this gives access to writeToUsers
     """
     def __init__(self,
         name,
@@ -37,6 +38,7 @@ class Device(RO.AddCallback.BaseMixin):
         cmds = None,
         sendLocID = True,
         callFunc = None,
+        actor = None,
     ):
         RO.AddCallback.BaseMixin.__init__(self)
         self.name = name
@@ -45,6 +47,7 @@ class Device(RO.AddCallback.BaseMixin):
         self.conn = conn
         self.pendCmdDict = {} # key=locCmdID, value=cmd
         self.sendLocID = sendLocID
+        self.actor = actor
         if callFunc:
             self.addCallback(callFunc, callNow=False)        
     
@@ -71,13 +74,14 @@ class Device(RO.AddCallback.BaseMixin):
 
     def sendCmd(self, cmd, cmdStr=None, callFunc=None):
         """Send a command to the device"""
-        if cmd.locID:
-            self.pendCmdDict[cmd.locID] = cmd
+        if cmd.locCmdID:
+            self.pendCmdDict[cmd.locCmdID] = cmd
         if cmdStr == None:
             cmdStr = cmd.cmdStr
         if self.sendLocID:
-            cmdStr = " ".join((str(cmd.locID), cmdStr))
+            cmdStr = " ".join((str(cmd.locCmdID), cmdStr))
         try:
+            print "Device.sendCmd writing %r" % (cmdStr,)
             self.conn.writeLine(cmdStr)
         except Exception, e:
             quotedErr = quoteStr(str(e))
@@ -106,6 +110,7 @@ class TCPDevice(Device):
         cmds = None,
         sendLocID = True,
         callFunc = None,
+        actor = None,
     ):
         Device.__init__(self,
             name = name,
@@ -118,6 +123,7 @@ class TCPDevice(Device):
             ),
             sendLocID = sendLocID,
             callFunc = callFunc,
+            actor = actor,
         )
     
     def _readCallback(self, sock, replyStr):
