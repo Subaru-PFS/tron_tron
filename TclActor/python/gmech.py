@@ -470,7 +470,7 @@ class GMechActor(TclActor.Actor):
         self.ctrllr.startCmd(devCmd)
 
     def cmd_status(self, cmd=TclActor.NullCmd):
-        """Return status"""
+        """display status"""
         self.checkNoArgs(cmd)
         self.startDevCmd("STATUS", cmd)
     
