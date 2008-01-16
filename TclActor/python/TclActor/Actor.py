@@ -1,17 +1,5 @@
 #!/usr/local/bin/python
 """Basic framework for a hub actor or ICC based on the Tcl event loop.
-
-Properties:
-- Multiple users may connect.
-- Only one user command may be executing at a time (though a new command may supersede
-  an existing command if the existing command specifically permits it).
-- Command format is:
-    [cmdId[ msgId]][cmdVerb[ cmdArgs]]
-  where [] indicates an optional element.
-  Note: msgId is ignored and is only permitted to make the hub happy.
-- Command verbs are case-insensitive and must:
-  - Start with a letter or underscore
-  - Contain only letters, numbers or underscores
 """
 __all__ = ["Actor", "ConflictError"]
 
@@ -255,7 +243,7 @@ class Actor(object):
         sock.writeLine(fullMsgStr)
     
     def cmd_connDev(self, cmd=NullCmd):
-        """Connect or reconnect one or more devices.
+        """[dev1 [dev2 [...]]]: connect or reconnect one or more devices (all if none specified).
         Command args: 0 or more device names, space-separated
         """
         if cmd.cmdArgs:
@@ -269,7 +257,7 @@ class Actor(object):
             dev.connReq = (True, cmd)
     
     def cmd_disconnDev(self, cmd=NullCmd):
-        """Disconnect one or more devices.
+        """[dev1 [dev2 [...]]]: disconnect one or more devices (all if none specified).
         Command args: 0 or more device names, space-separated
         """
         if cmd.cmdArgs:
@@ -283,16 +271,33 @@ class Actor(object):
             dev.connReq = (False, cmd)
     
     def cmd_exit(self, cmd=NullCmd):
-        """Log off the user"""
-        self.cmd_quit(cmd)
-    
-    def cmd_quit(self, cmd=NullCmd):
-        """Log off the user"""
+        """disconnect yourself"""
         sock = self.getUserSock(cmd.userID)
         sock.close()
     
+    def cmd_help(self, cmd=NullCmd):
+        """print this help"""
+        helpList = []
+        for cmdVerb, cmdFunc in self.locCmdDict.iteritems():
+            helpStr = cmdFunc.__doc__.split("\n")[0]
+            if ":" in helpStr:
+                joinStr = " "
+            else:
+                joinStr = ": "
+            helpList.append(joinStr.join((cmdVerb, helpStr)))
+            
+        for devName, dev in self.devNameDict.iteritems():
+            helpList.append("%s <text>: send <text> to device %s" % (devName, devName))
+            dev = self.devNameDict[devName]
+            for devCmd in dev.cmds:
+                helpList("%s: (handled by device %s)" % (devCmd, devName))
+        
+        helpList.sort()
+        for helpStr in helpList:
+            self.writeToUsers(cmd.cmdID, cmd.userID, "i", "Text=%r" % (helpStr,))
+    
     def cmd_users(self, cmd=NullCmd):
-        """Show user information"""
+        """show user information including your userID"""
         numUsers = len(self.userDict)
         for sock, userID in self.userDict.iteritems():
             msgStr = self.formatUserOutput(cmd.cmdID, cmd.userID, "i",

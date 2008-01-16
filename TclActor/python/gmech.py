@@ -475,14 +475,14 @@ class GMechActor(TclActor.Actor):
         self.startDevCmd("STATUS", cmd)
     
     def cmd_filter(self, cmd=TclActor.NullCmd):
-        """Set the NA2 guider filter number"""
+        """filterNum: set the NA2 guider filter number"""
         filter = int(cmd.cmdArgs)
         devCmdStr = "FILTER %d" % (filter,)
         self.cancelSameCmd(cmd)
         self.startDevCmd(devCmdStr)
     
     def cmd_init(self, cmd=TclActor.NullCmd):
-        """Initialize the NA2 guider mechanical controller and this actor"""
+        """initialize the NA2 guider mechanical controller and this actor"""
         self.checkNoArgs(cmd)
         for cmdVerb in self.actuatorFullStatusDict:
             cmdToCancel = self.activeCmdDict.get(cmdVerb)
@@ -491,14 +491,14 @@ class GMechActor(TclActor.Actor):
         self.startDevCmd("INIT", cmd)
 
     def cmd_piston(self, cmd=TclActor.NullCmd):
-        """Set the NA2 guider piston in um"""
+        """piston: set the NA2 guider piston in um"""
         piston = float(cmd.cmdArgs)
         devCmdStr = "PISTON %0.1f" (piston,)
         self.cancelSameCmd(cmd)
         self.startDevCmd(devCmdStr)
     
     def cmd_remap(self, cmd=TclActor.NullCmd):
-        """Remap actuators and reset controller"""
+        """remap actuators and reset controller"""
         self.checkNoArgs(cmd)
         self.startDevCmd("REMAP", cmd)
 
