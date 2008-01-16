@@ -10,7 +10,7 @@ import RO.SeqUtil
 from RO.StringUtil import quoteStr
 import RO.Comm.TkSocket
 
-from Command import UserCmd, NullCmd
+from Command import UserCmd
 
 class ConflictError(Exception):
     pass
@@ -72,7 +72,7 @@ class Actor(object):
     
     def checkNoArgs(self, newCmd):
         """Raise RuntimeError if newCmd has arguments"""
-        if newCmd.cmdArgs:
+        if newCmd and newCmd.cmdArgs:
             raise RuntimeError("%s takes no arguments" % (newCmd.cmdVerb,))
     
     def checkLocalCmd(self, newCmd):
@@ -92,26 +92,25 @@ class Actor(object):
             return
         msgCode = cmd.getMsgCode()
         msgStr = "Text=%s" % (quoteStr(cmd.reason)) if cmd.reason else ""
-        self.writeToUsers(cmd.cmdID, cmd.userID, msgCode, msgStr)
+        self.writeToUsers(msgCode, msgStr, cmd=cmd)
     
     def devConnStateCallback(self, devConn):
         """Called when a device's connection state changes."""
         dev = self.devConnDict[devConn]
         wantConn, cmd = dev.connReq
-        if cmd == None:
-            cmd = NullCmd
         isDone, isOK, state, stateStr, reason = devConn.getProgress(wantConn)
         
         # output changed state
         quotedReason = quoteStr(reason)
         msgCode = "i" if isOK else "w"
-        self.writeToUsers(cmd.cmdID, cmd.userID, msgCode, "%sConnState = %r, %s" % (dev.name, stateStr, quotedReason))
+        msgStr = "%sConnState = %r, %s" % (dev.name, stateStr, quotedReason)
+        self.writeToUsers(msgCode, msgStr, cmd=cmd)
         
         # if user command has finished then mark it as such and clear device state callback
-        if cmd.userID != 0 and isDone:
+        if cmd and isDone:
             cmdState = "done" if isOK else "failed"
             cmd.setState(cmdState, reason)
-            dev.connReq = (wantConn, NullCmd)
+            dev.connReq = (wantConn, None)
     
     def initialConn(self):
         """Perform initial connections.
@@ -153,27 +152,26 @@ class Actor(object):
         try:
             cmd = UserCmd(userID, cmdStr, self.cmdDone)
         except RuntimeError:
-            self.writeToUsers(0, userID, "f", "CannotParse=" + quoteStr(cmdStr))
+            self.writeToOneUser("f", "CannotParse=" + quoteStr(cmdStr), userID=userID)
             return
 
-        print "newCmd: userID=%s; cmdID=%s; cmdVerb=%r; cmdArgs=%r" % \
-            (cmd.userID, cmd.cmdID, cmd.cmdVerb, cmd.cmdArgs)
+        #print "newCmd: userID=%s; cmdID=%s; cmdVerb=%r; cmdArgs=%r" % (cmd.userID, cmd.cmdID, cmd.cmdVerb, cmd.cmdArgs)
         
         if not cmd.cmdVerb:
             # echo to show alive
-            self.writeToOneUser(cmdID, userID, ":")
+            self.writeToOneUser(":", "", cmd=cmd)
             return
         
         cmdFunc = self.locCmdDict.get(cmd.cmdVerb)
         if cmdFunc != None:
             # execute local command
             try:
-                print "newCmd: checking local function %s" % (cmdFunc,)
+                #print "newCmd: checking local function %s" % (cmdFunc,)
                 self.checkLocalCmd(cmd)
-                print "newCmd: executing local function %s" % (cmdFunc,)
+                #print "newCmd: executing local function %s" % (cmdFunc,)
                 cmdFunc(cmd)
             except ConflictError, e:
-                print "newCmd: command rejected due to conflict"
+                #print "newCmd: command rejected due to conflict"
                 cmd.setState("failed", str(e))
                 return
             except Exception, e:
@@ -181,7 +179,8 @@ class Actor(object):
                 sys.stderr.write("function %s raised %s\n" % (cmdFunc, e))
                 traceback.print_exc(file=sys.stderr)
                 quotedErr = quoteStr(str(e))
-                self.writeToUsers(cmd.cmdID, cmd.userID, "f", "Exception=%s; Text=%s" % (e.__class__.__name__, quotedErr))
+                msgStr = "Exception=%s; Text=%s" % (e.__class__.__name__, quotedErr)
+                self.writeToUsers("f", msgStr, cmd=cmd)
             return
         
         dev = self.devCmdDict.get(cmd.cmdVerb)
@@ -198,12 +197,11 @@ class Actor(object):
             dev.sendCmd(cmd)
             return
 
-        self.writeToUsers(cmd.cmdID, cmd.userID, "f", "UnknownCommand=%s" % (cmd.cmdVerb,))
+        self.writeToOneUser("f", "UnknownCommand=%s" % (cmd.cmdVerb,), cmd=cmd)
         
     def userStateChanged(self, tkSock):
         """Called when a user connection changes state.
         """
-        print "userStateChanged"
         if not tkSock.isClosed():
             return
 
@@ -211,11 +209,21 @@ class Actor(object):
             del self.userDict[tkSock]
         except KeyError:
             sys.stderr.write("ICC warning: user socket closed but could not find in userDict")
+    
+    def getUserCmdID(self, cmd=None, userID=None, cmdID=None):
+        """Return userID, cmdID based on user-supplied information.
+        
+        Each item is 0 is: <item> if <item> != None, else cmd.<item> if cmd != None else 0
+        """
+        return (
+            userID if userID != None else (cmd.userID if cmd else 0),
+            cmdID if cmdID != None else (cmd.cmdID if cmd else 0),
+        )
 
-    def formatUserOutput(self, cmdID, userID, msgCode, msgStr):
+    def formatUserOutput(self, msgCode, msgStr, userID=None, cmdID=None):
         """Format a string to send to the all users.
         """
-        return "%d %d %s %s" % (cmdID, userID, msgCode, msgStr)
+        return "%d %d %s %s" % (userID, cmdID, msgCode, msgStr)
     
     def getUserSock(self, userID):
         """Get a user socket given the user ID number.
@@ -226,27 +234,35 @@ class Actor(object):
                 return sock
         raise KeyError("No user with id %s" % (userID,))
 
-    def writeToUsers(self, cmdID, userID, msgCode, msgStr):
+    def writeToUsers(self, msgCode, msgStr, cmd=None, userID=None, cmdID=None):
         """Write a message to all users.
+        
+        cmdID and userID are obtained from cmd unless overridden by the explicit argument. Both default to 0.
         """
-        fullMsgStr = self.formatUserOutput(cmdID, userID, msgCode, msgStr)
-        print "writeToUsers(%s)" % (fullMsgStr,)
+        userID, cmdID = self.getUserCmdID(cmd=cmd, userID=userID, cmdID=cmdID)
+        fullMsgStr = self.formatUserOutput(msgCode, msgStr, userID=userID, cmdID=cmdID)
+        #print "writeToUsers(%s)" % (fullMsgStr,)
         for sock, sockUserID in self.userDict.iteritems():
             sock.writeLine(fullMsgStr)
     
-    def writeToOneUser(self, cmdID, userID, msgCode, msgStr=""):
+    def writeToOneUser(self, msgCode, msgStr, cmd=None, userID=None, cmdID=None):
         """Write a message to one user.
+
+        cmdID and userID are obtained from cmd unless overridden by the explicit argument. Both default to 0.
         """
+        userID, cmdID = self.getUserCmdID(cmd=cmd, userID=userID, cmdID=cmdID)
+        if userID == 0:
+            raise RuntimeError("Cannot write to user 0")
         sock = self.getUserSock(userID)
-        fullMsgStr = self.formatUserOutput(cmdID, userID, msgCode, msgStr)
-        print "writeToOneUser(%s)" % (fullMsgStr,)
+        fullMsgStr = self.formatUserOutput(msgCode, msgStr, userID=userID, cmdID=cmdID)
+        #print "writeToOneUser(%s)" % (fullMsgStr,)
         sock.writeLine(fullMsgStr)
     
-    def cmd_connDev(self, cmd=NullCmd):
+    def cmd_connDev(self, cmd=None):
         """[dev1 [dev2 [...]]]: connect or reconnect one or more devices (all if none specified).
         Command args: 0 or more device names, space-separated
         """
-        if cmd.cmdArgs:
+        if cmd and cmd.cmdArgs:
             devNameList = cmd.cmdArgs.split()
         else:
             devNameList = self.devNameDict.keys()
@@ -256,11 +272,11 @@ class Actor(object):
             dev.conn.connect()
             dev.connReq = (True, cmd)
     
-    def cmd_disconnDev(self, cmd=NullCmd):
+    def cmd_disconnDev(self, cmd=None):
         """[dev1 [dev2 [...]]]: disconnect one or more devices (all if none specified).
         Command args: 0 or more device names, space-separated
         """
-        if cmd.cmdArgs:
+        if cmd and cmd.cmdArgs:
             devNameList = cmd.cmdArgs.split()
         else:
             devNameList = self.devNameDict.keys()
@@ -270,12 +286,12 @@ class Actor(object):
             dev.conn.disconnect()
             dev.connReq = (False, cmd)
     
-    def cmd_exit(self, cmd=NullCmd):
+    def cmd_exit(self, cmd=None):
         """disconnect yourself"""
         sock = self.getUserSock(cmd.userID)
         sock.close()
     
-    def cmd_help(self, cmd=NullCmd):
+    def cmd_help(self, cmd=None):
         """print this help"""
         helpList = []
         for cmdVerb, cmdFunc in self.locCmdDict.iteritems():
@@ -294,15 +310,30 @@ class Actor(object):
         
         helpList.sort()
         for helpStr in helpList:
-            self.writeToUsers(cmd.cmdID, cmd.userID, "i", "Text=%r" % (helpStr,))
+            self.writeToUsers("i", "Text=%r" % (helpStr,), cmd=cmd)
     
-    def cmd_users(self, cmd=NullCmd):
-        """show user information including your userID"""
+    def cmd_users(self, cmd):
+        """show user information including your userID
+        The command is required.
+        """
         numUsers = len(self.userDict)
-        for sock, userID in self.userDict.iteritems():
-            msgStr = self.formatUserOutput(cmd.cmdID, cmd.userID, "i",
-                "NumUsers=%d, YourUserID=%d" % (numUsers, userID))
-            sock.writeLine(msgStr)
+        if numUsers == 0:
+            return
+        msgData = [
+            "YourUserID=%s" % (cmd.userID,),
+            "NumUsers=%s" % (numUsers,),
+        ]
+        userDict = dict() # dict of userID, addr
+        sockList = self.userDict.keys()
+        userIDList = self.userDict.values()
+        userSockList = sorted(zip(userIDList, sockList))
+        userInfo = []
+        for userID, sock in userSockList:
+            userInfo += [str(userID), sock._addr]
+        userInfoStr = ",".join(userInfo)
+        msgData.append("UserInfo=%s" % (userInfoStr,))
+        msgStr = "; ".join(msgData)
+        msgStr = self.writeToOneUser("i", msgStr, cmd=cmd)
 
 
 if __name__ == "__main__":

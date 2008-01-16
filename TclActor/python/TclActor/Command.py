@@ -1,7 +1,7 @@
 #!/usr/local/bin/python
 """Command objects for the Tcl Actor
 """
-__all__ = ["BaseCmd", "DevCmd", "UserCmd", "NullCmd"]
+__all__ = ["BaseCmd", "DevCmd", "UserCmd"]
 
 import re
 #import sys
@@ -13,7 +13,9 @@ class BaseCmd(RO.AddCallback.BaseMixin):
     # state constants
     DoneStates = set(("done", "cancelled", "failed"))
     StateSet = DoneStates | set(("ready", "running", "cancelling", "failing"))
-    def __init__(self, cmdStr, callFunc = None, timeLimit = None):
+    def __init__(self, cmdStr, userID=0, callFunc=None, timeLimit=None):
+        self.userID = int(userID)
+        self.cmdID = 0
         self.cmdStr = cmdStr
         self.state = "ready"
         self.reason = ""
@@ -77,9 +79,16 @@ class DevCmd(BaseCmd):
     def __init__(self,
         cmdStr = "",
         callFunc = None,
+        userCmd = None,
     ):
+        self.locCmdID = 0
         BaseCmd.__init__(self, cmdStr, callFunc=callFunc)
         self.parseCmdStr(cmdStr)
+
+        if userCmd:
+            self.userID = userCmd.userID
+            self.cmdID = userCmd.cmdID
+            userCmd.trackCmd(self)
     
     def parseCmdStr(self, cmdStr):
         """Parse a user command string and set cmdID, cmdVerb and cmdArgs.
@@ -93,7 +102,7 @@ class DevCmd(BaseCmd):
         
         cmdDict = cmdMatch.groupdict("")
         cmdIDStr = cmdDict["cmdID"]
-        self.cmdID = int(cmdIDStr) if cmdIDStr else 0
+        self.locCmdID = int(cmdIDStr) if cmdIDStr else 0
         self.cmdVerb = cmdDict["cmdVerb"]
         self.cmdArgs = cmdDict["cmdArgs"]
 
@@ -124,8 +133,7 @@ class UserCmd(BaseCmd):
         cmdStr = "",
         callFunc = None,
     ):
-        self.userID = userID
-        BaseCmd.__init__(self, cmdStr, callFunc=callFunc)
+        BaseCmd.__init__(self, cmdStr, userID=userID, callFunc=callFunc)
         self.parseCmdStr(cmdStr)
     
     def parseCmdStr(self, cmdStr):
@@ -147,6 +155,3 @@ class UserCmd(BaseCmd):
     def getMsgCode(self):
         """Return the hub message code appropriate to the current state"""
         return self._MsgCodeDict[self.state]
-
-        
-NullCmd = UserCmd()
