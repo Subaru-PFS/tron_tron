@@ -86,8 +86,8 @@ class Actor(object):
         """
         pass
     
-    def cmdDone(self, cmd):
-        """Report command completion or failure"""
+    def cmdCallback(self, cmd):
+        """Called when a command changes state; report completion or failure"""
         if not cmd.isDone():
             return
         msgCode = cmd.getMsgCode()
@@ -155,7 +155,7 @@ class Actor(object):
         userID = self.userDict[tkSock]
         
         try:
-            cmd = UserCmd(userID, cmdStr, self.cmdDone)
+            cmd = UserCmd(userID, cmdStr, self.cmdCallback)
         except RuntimeError:
             self.writeToOneUser("f", "CannotParse=" + quoteStr(cmdStr), userID=userID)
             return

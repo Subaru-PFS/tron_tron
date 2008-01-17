@@ -2,7 +2,9 @@
 """gmech actor
 
 TO DO:
+- Move command completion notification is *broken*; why?
 - Make INIT more robust by retrying if the first one fails.
+  This would clear out the typeahead buffer, for instance.
   I suspect that instead of tying device command INIT to user command init
   it makes more sense to have a special "init" method for the device.
 - Measure actual speed and acceleration and set ActuatorKArgs accordingly.
@@ -11,6 +13,8 @@ TO DO:
 - Parse REMAP replies (or if none expected then eliminate them).
 - Reduce polling frequency if not moving? If so then be sure to kick it up
   immediately after any move command.
+- Test command queueing and collision handling as thoroughly as possible;
+  it is complicated and it would be best to test all branches of the code
 """
 import math
 import re
@@ -23,26 +27,30 @@ ControllerAddr = "tccserv35m.apo.nmsu.edu"
 ControllerPort = 2600
 StatusIntervalMS = 500
 
-# keyword arguments for ActuatorBasicInfo or ActuatorFullInfo __init__
+# keyword arguments for ActuatorModel.__init__
 ActuatorKArgs = (
-    dict(name="piston", posType=float,   posFmt="%0.2f",    speed=1.0, accel=1.0),
-    dict(name="filter", posType=int, posFmt="%0d", speed=0.1, accel=1.0),
+    dict(name="piston", posType=float, posFmt="%0.2f", speed=1.0, accel=1.0),
+    dict(name="filter", posType=int,   posFmt="%0d",   speed=0.1, accel=1.0),
 )
 
-class ActuatorBasicInfo(object):
+class ActuatorModel(object):
     """Basic status for an actuator
     
-    Inputs:
+    Inputs
     - name      name of actuator; used for formatted output (case adjusted accordingly)
     - posType   type of position (typically int or float)
     - posFmt    format string for position (e.g. "%0.1f");
                 if None then a default is chosen based on posType
-    additional keyword arguments are ignored
+    - speed     maximum speed in units-of-position/second
+    - accel     fixed acceleration in units-of-position/second^2;
+                if omitted or None then acceleration is infinite
+    
+    Speed and acceleration are used to predict motion time.
     """
     ActuatorHaltedMask = 0x20   # actuator powered down
     ActuatorGoodMask = 0x10     # at commanded position
     ActuatorBadMask = 0x0F      # limit switch 1 or 2 engaged or at max or min position
-    def __init__(self, name, posType, posFmt=None, **dumKArgs):
+    def __init__(self, name, posType, posFmt, speed, accel=None):
         self.name = name.title()
         self.posType = posType
         if posFmt == None:
@@ -52,9 +60,19 @@ class ActuatorBasicInfo(object):
             }.get(posType, "%s")
         else:
             self.posFmt = posFmt
+        self.speed = abs(float(speed))
+        self.accel = abs(float(accel)) if accel != None else None
+        
+        # items read from status
+        self.statusTimestamp = None
         self.pos = None
         self.status = None
-        self.timestamp = None
+        
+        # items from a move command
+        self.startTime = None
+        self.desPos = None
+        self.startPos = None
+        self.predSec = None # predicted duration of move (in seconds)
     
     def isOK(self):
         """Return True if no bad status bits set (or if status never read)"""
@@ -64,22 +82,34 @@ class ActuatorBasicInfo(object):
         """Return True if actuator is moving"""
         return (self.status != None) and ((self.status & self.ActuatorHaltedMask) == 0)
 
-    def set(self, pos, status):
-        """Set the values"""
-        print "ActuatorBasicInfo.set(pos=%s, status=%s)" % (pos, status)
+    def setStatus(self, pos, status):
+        """Set status values. Return True if position or status changed, False otherwise"""
+        print "ActuatorModel.setStatus(pos=%s, status=%s)" % (pos, status)
         pos = self.posType(pos)
         status = int(status)
+        statusChanged = (pos != self.pos) or (status != self.status)
+        self.statusTimestamp = time.time()
         self.pos = pos
         self.status = status
-        self.timestamp = time.time()
+        return statusChanged
     
     def copy(self, statusToCopy):
-        """Copy items from another ActuatorBasicInfo object"""
+        """Copy items from another ActuatorModel object"""
+        if self.name != statusToCopy.name:
+            raise RuntimeError("Names do not match")
         if self.posType != statusToCopy.posType:
             raise RuntimeError("Position types do not match")
+        
+        # items read from status
+        self.statusTimestamp = statusToCopy.statusTimestamp
         self.pos = statusToCopy.pos
         self.status = statusToCopy.status
-        self.timestamp = statusToCopy.timestamp
+        
+        # items from a move command
+        self.startTime = statusToCopy.startTime
+        self.desPos = statusToCopy.desPos
+        self.startPos = statusToCopy.startPos
+        self.predSec = statusToCopy.predSec
 
     def hubFormat(self):
         """Return status string formatted in hub key=value format"""
@@ -94,6 +124,25 @@ class ActuatorBasicInfo(object):
             strItems.append("Bad%sStatus" % (self.name,))
 
         return "; ".join(strItems)
+
+        strItems = [
+            ActuatorModel.hubFormat(self),
+            "Des%s=%s" % (self.name, self._fmt(self.desPos)),
+        ]
+        if self.statusTimestamp != None:
+            if self.isMoving():
+                elapsedSec = time.time() - self.startTime
+                strItems += [
+                    "%sPredTotalSec=%0.1f" % (self.name, self.predSec),
+                    "%sElapsedSec=%0.1f" % (self.name, elapsedSec),
+                ]
+            else:
+                if self.desPos != None:
+                    posErr = self.pos - self.desPos
+                else:
+                    posErr = None
+                strItems.append("%sError=%s" % (self.name, self._fmt(posErr)))
+        return "; ".join(strItems)
     
     def _fmt(self, pos):
         """Return position formatted as a string"""
@@ -102,41 +151,13 @@ class ActuatorBasicInfo(object):
         return self.posFmt % (pos,)
     
     def __eq__(self, rhs):
-        """Return True iff position and status are the same (ignores timestamp)"""
+        """Return True if status or move position has changed (aside from status timestamp)"""
         return (self.pos == rhs.pos) \
-            and (self.status == rhs.status)
+            and (self.status == rhs.status) \
+            and (self.startTime == rhs.startTime)
 
-
-class ActuatorFullInfo(ActuatorBasicInfo):
-    """Full information for an actuator"""
-
-    def __init__(self, name, posType, posFmt, speed, accel=None):
-        """Create new object.
-        
-        Inputs
-        - name      name of actuator; used for formatted output (case adjusted accordingly)
-        - posType   type of position (typically int or float)
-        - posFmt    format string for position (e.g. "%0.1f");
-                    if None then a default is chosen based on posType
-        - speed     maximum speed in units-of-position/second
-        - accel     fixed acceleration in units-of-position/second^2;
-                    if omitted or None then acceleration is infinite
-        
-        Speed and acceleration are used to predict motion time.
-        
-        Warning: __eq__ (==) only tests the basic fields.
-        """
-        ActuatorBasicInfo.__init__(self, name, posType, posFmt)
-        self.posFmt = posFmt
-        self.speed = abs(float(speed))
-        self.accel = abs(float(accel)) if accel != None else None
-        self.desPos = None
-        self.startPos = None
-        self.startTime = None
-        self.predSec = None # predicted duration of move (in seconds)
-    
-    def startMove(self, desPos):
-        """Call when starting a move to update the appropriate fields.
+    def setMove(self, desPos):
+        """Call when starting a move to set move-related values.
         
         Inputs:
         - desPos    desired new position
@@ -157,29 +178,7 @@ class ActuatorFullInfo(ActuatorBasicInfo):
                 else:
                     rampTime = 2.0 * self.speed / self.accel
                     self.predSec = rampTime + ((dist - rampDist) / self.speed)
-    
-    def hubFormat(self):
-        """Return status string formatted in hub key=value format"""
-        # if moving then one output, otherwise another
-        strItems = [
-            ActuatorBasicInfo.hubFormat(self),
-            "Des%s=%s" % (self.name, self._fmt(self.desPos)),
-        ]
-        if self.timestamp != None:
-            if self.isMoving():
-                elapsedSec = time.time() - self.startTime
-                strItems += [
-                    "%sPredTotalSec=%0.1f" % (self.name, self.predSec),
-                    "%sElapsedSec=%0.1f" % (self.name, elapsedSec),
-                ]
-            else:
-                if self.desPos != None:
-                    posErr = self.pos - self.desPos
-                else:
-                    posErr = None
-                strItems.append("%sError=%s" % (self.name, self._fmt(posErr)))
-        return "; ".join(strItems)
-        
+
 
 class GMechDev(TclActor.TCPDevice):
     MaxPistonError = 1.0
@@ -204,19 +203,20 @@ class GMechDev(TclActor.TCPDevice):
             actor = actor,
         )
         self.statusID = None # "after" ID of next status command
-        self.statusTime = None # time of most recently received status
         # dictionary of actuator (piston or filter): actuator status
-        self.actuatorBasicStatusDict = {}
+        self.actuatorStatusDict = {}
         for actArgs in ActuatorKArgs:
-            self.actuatorBasicStatusDict[actArgs["name"]] = ActuatorBasicInfo(**actArgs)
+            self.actuatorStatusDict[actArgs["name"]] = ActuatorModel(**actArgs)
         self.currCmd = None
+        self.cmdQueue = []
         self.reqNReplies = 0 # number of replies wanted by this comand, including echo
         self.nReplies = 0 # number of replies read for current command, including echo
         self.currCmdTimer = None # ID of command timeout timer
-        self.pendingCmd = None # only used to cancel REMAP
+        self.pendingCmd = None # only used to cancel REMAP -- OBSOLETE; use cmdQueue instead
         self._tk = Tkinter.Frame()
+        self.conn.addStateCallback(self.devConnStateCallback)
     
-    def getActuatorBasicInfoStr(self, actuatorStatus):
+    def getActuatorModelStr(self, actuatorStatus):
         # note: order of severity is 0, 1, 2... so just plow through the bits in order
         for bit in range(self.MaxActuatorBit):
             bitSet = (actuatorStatus >> bit) & 0x1
@@ -226,8 +226,8 @@ class GMechDev(TclActor.TCPDevice):
     
     def devConnStateCallback(self, devConn):
         """Called when a device's connection state changes."""
-        TclActor.TCPDevice.devConnStateCallback(self, devConn)
-        if self.devConn.connected():
+        print "devConnStateCallback; state=%s" % (devConn.getFullState(),)
+        if devConn.isConnected():
             self.queryStatus()
         else:
             self.cancelQueryStatus()
@@ -235,17 +235,18 @@ class GMechDev(TclActor.TCPDevice):
     def cancelQueryStatus(self):
         """Cancel background status query, if any"""
         if self.statusID:
-            self._tk.after_cancel(statusID)
+            self._tk.after_cancel(self.statusID)
             self.statusID = None
     
     def queryStatus(self):
         """Query status at regular intervals"""
+        print "queryStatus"
         self.cancelQueryStatus()
-        if not (self.currCmd or self.pendingCmd):
+        if not (self.currCmd or self.cmdQueue):
             # not busy; go ahead and request status
             statusCmd = TclActor.DevCmd("STATUS")
             self.startCmd(statusCmd)
-        self.statusID = self._tk.after(queryStatus, StatusIntervalMS)
+        self.statusID = self._tk.after(StatusIntervalMS, self.queryStatus)
     
     def handleReply(self, replyStr):
         """Handle a line of output from the device.
@@ -288,16 +289,20 @@ class GMechDev(TclActor.TCPDevice):
             elif self.currCmd.cmdVerb == "STATUS" and self.nReplies == 2:
                 # parse status
                 statusMatch = self._CtrllrStatusRE.match(replyData)
-                if statusMatch:
-                    matchDict = statusMatch.groupdict()
-                    for act, actStatus in self.actuatorBasicStatusDict.iteritems():
-                        actStatus.set(
-                            pos = matchDict[act],
-                            status = matchDict["%sStatus" % (act,)],
-                        )
-                        print "after parsing status; status=", self.actuatorBasicStatusDict[act].hubFormat()
-                else:
+                if not statusMatch:
                     self.currCmd.setState("failed", "Could not parse status reply %r" % (replyData,))
+                    return
+                matchDict = statusMatch.groupdict()
+                for act, actStatus in self.actuatorStatusDict.iteritems():
+                    statusChanged = actStatus.setStatus(
+                        pos = matchDict[act],
+                        status = matchDict["%sStatus" % (act,)],
+                    )
+
+                    # print status if status was user-requested or has changed
+                    if (self.currCmd.userID != 0) or statusChanged:
+                        self.actor.writeToUsers("i", actStatus.hubFormat(), cmd=self.currCmd)
+                        
             elif self.currCmd.cmdVerb == "REMAP":
                 # probably should parse this data, but for now just spit it out...
                 self.actor.writeToUsers("i", "RemapData=%s" % (quoteStr(replyData)), cmd=self.currCmd)
@@ -330,18 +335,17 @@ class GMechDev(TclActor.TCPDevice):
         else:
             self.currCmdTimer = None
     
-    def cmdDone(self, cmd):
+    def cmdCallback(self, cmd):
         """Handle command state callback"""
         if not cmd.isDone():
             return
         if cmd == self.currCmd:
             self.setCurrCmd(None)
         else:
-            sys.stderr.write("Bug: GMechActor.cmdDone got command callback but command was not current command!\n")
-        if self.pendingCmd:
-            pendingCmd = self.pendingCmd
-            self.pendingCmd = None
-            self.startCmd(pendingCmd)
+            sys.stderr.write("Bug: GMechActor.cmdCallback got command callback but command was not current command!\n")
+        if self.cmdQueue:
+            nextCmd = self.cmdQueue.pop(0)
+            self.startCmd(nextCmd)
     
     def cmdTimeout(self, cmd):
         if self.currCmd != cmd:
@@ -357,23 +361,46 @@ class GMechDev(TclActor.TCPDevice):
 
         cmd.locCmdID = 0
         if self.currCmd:
-            print "there is an existing command %s" % (self.currCmd.cmdStr,)
-            if self.currCmd.cmdVerb == "REMAP" and cmd.cmdVerb() == "INIT":
-                if self.pendingCmd: # cancel command exists
-                    cmd.setState("failed", "Busy cancelling REMAP")
-                    return
-                self.pendingCmd = cmd
-                self.currCmd.setState("cancelling")
-                self.conn.writeLine("") # send any character to cancel a REMAP
-            else:
-                cmd.setState("failed", "Busy executing %s" % self.currCmd.cmdVerb)
+            # queue up the command unless the existing command is remap
+            if cmd.cmdVerb == "INIT":
+                # clear the command queue and replace with this init command
+                for queuedCmd in self.cmdQueue:
+                    queuedCmd.setState("cancelled", "Superseded by INIT")
+                self.cmdQueue = [cmd]
+                
+                # if REMAP is running cancel it (other commands run quickly and can't be cancelled)
+                if self.currCmd.cmdVerb == "REMAP":
+                    self.conn.writeLine("") # start cancelling REMAP
+                    self.currCmd.cmdVerb.setState("cancelled", "Superseded by INIT")
+                return
+
+            # command cannot be queued behind remap because it's so slow
+            # (remap *can* be cancelled by INIT but that is handled above)
+            if self.currCmd.cmdVerb == "REMAP":
+                cmd.setState("failed", "Busy executing remap")
+                return
+
+            queuedCmdSet = set(pcmd.cmdVerb for pcmd in self.cmdQueue)
+            if "REMAP" in queuedCmdSet:
+                cmd.setState("failed", "Remap is queued")
+                return
+            if cmd.cmdVerb in queuedCmdSet:
+                # supersede existing version of this command
+                newCmdQueue = []
+                for queuedCmd in self.cmdQueue:
+                    if queuedCmd.cmdVerb == cmd.cmdVerb:
+                       queuedCmd.setState("cancelled", "Superseded") 
+                    else:
+                        newCmdQueue.append(queuedCmd)
+                self.cmdQueue = newCmdQueue
+            self.cmdQueue.append(cmd)
         else:
             if cmd.cmdVerb == "REMAP":
                 timeLimitMS = None
             else:
                 timeLimitMS = 2000
             self.setCurrCmd(cmd, timeLimitMS)
-            cmd.addCallback(self.cmdDone)
+            cmd.addCallback(self.cmdCallback)
             # self._tk.call('puts', self.conn._sock, cmd.cmdStr)
             print "GMechDev.startCmd writing %r" % (cmd.cmdStr,)
             self.conn.writeLine(cmd.cmdStr)
@@ -400,14 +427,11 @@ class GMechActor(TclActor.Actor):
             devs = GMechDev(callFunc=self.updateCtrllrState, actor=self),
         )
         self.ctrllr = self.devNameDict["gmech"]
-        self.activeCmdDict = {} # dict of cmdVerb: userCmd
-        self.actuatorFullStatusDict = dict() # dict of actuator: last-reported full status
-        for actArgs in ActuatorKArgs:
-            self.actuatorFullStatusDict[actArgs["name"]] = ActuatorFullInfo(**actArgs)
+        self.moveCmdDict = {} # dict of cmdVerb: userCmd for actuator moves
     
     def cancelSameCmd(self, newCmd):
         """Cancel a command of the same verb, if present"""
-        cmdToCancel = self.activeCmdDict.get(newCmd.cmdVerb)
+        cmdToCancel = self.moveCmdDict.pop(newCmd.cmdVerb, None)
         if cmdToCancel:
             cmdToCancel.setState("cancelled", "superseded by %r" % (newCmd.cmdStr,))
     
@@ -418,19 +442,30 @@ class GMechActor(TclActor.Actor):
 
         Note that each cmd_foo method can perform additional checks and cancellation.
         """
-        if not self.activeCmdDict:
+        if not self.moveCmdDict:
             return
-        if "init" in self.activeCmdDict:
+        if "init" in self.moveCmdDict:
             raise TclActor.ConflictError("Busy running init")
-        if "status" in self.activeCmdDict:
+        if "status" in self.moveCmdDict:
             raise TclActor.ConflictError("Busy running status")
             return
-        if "remap" in self.activeCmdDict and newCmd.cmdVerb != "init":
+        if "remap" in self.moveCmdDict and newCmd.cmdVerb != "init":
             raise TclActor.ConflictError("Busy running remap (use init to cancel)")
+    
+    def cmdCallback(self, cmd):
+        """Let Actor handle normal command completion, then remove command from moveCmdDict (if present)"""
+        print "cmdCallback:", cmd.cmdID, cmd.cmdVerb
+        TclActor.Actor.cmdCallback(self, cmd)
+        if cmd.isDone():
+            foo = self.moveCmdDict.pop(cmd.cmdVerb, None)
+            if foo:
+                print "popped command"
+            else:
+                print "could not find command to pop"
 
     def newUserOutput(self, userID, tkSock):
         """Report status to new users"""
-        for actuator, fullStatus in self.actuatorFullStatusDict.iteritems():
+        for actuator, fullStatus in self.ctrllr.actuatorStatusDict.iteritems():
             msgCode = ":" if fullStatus.isOK() else "w"
             statusStr = fullStatus.hubFormat()
             self.writeToOneUser(msgCode, statusStr, userID=userID)
@@ -447,28 +482,19 @@ class GMechActor(TclActor.Actor):
     def updateCtrllrState(self, dev):
         """Called whenever the state of the gmech device changes"""
         print "updateCtrllrState"
-        # print status if needed
-        statusCmd = self.activeCmdDict.get("status")
-        for actuator, fullStatus in self.actuatorFullStatusDict.iteritems():
-            if statusCmd or (fullStatus != dev.actuatorBasicStatusDict[actuator]):
-                # update the basic status information
-                self.actuatorFullStatusDict[actuator].copy(dev.actuatorBasicStatusDict[actuator])
-
-                # report status
-                msgCode = ":" if fullStatus.isOK() else "w"
-                statusStr = fullStatus.hubFormat()
-                self.writeToUsers(msgCode, statusStr, cmd=statusCmd)
-
         # if a move finished then report success or failure
-        for actuator, fullStatus in self.actuatorFullStatusDict.iteritems():
-            moveCmd = self.activeCmdDict.get("piston")
-            if (not moveCmd) or fullStatus.isMoving():
+        for actuator, fullStatus in self.ctrllr.actuatorStatusDict.iteritems():
+            if fullStatus.isMoving():
+                print "Actuator %s is moving" % (actuator,)
                 continue
-            if fullStatus.isOK():
-                moveCmd.setState("done")
-            else:
-                stateStr = dev.getActuatorBasicInfoStr(dev.pistonStatus)
-                moveCmd.setState("failed", stateStr)
+            moveCmd = self.moveCmdDict.get("piston")
+            print "Actuator %s is halted; moveCmd=%s" % (actuator, moveCmd)
+            if moveCmd:
+                if fullStatus.isOK():
+                    moveCmd.setState("done")
+                else:
+                    stateStr = dev.getActuatorModelStr(dev.pistonStatus)
+                    moveCmd.setState("failed", stateStr)
 
     def cmd_status(self, cmd=None):
         """display status"""
@@ -480,13 +506,14 @@ class GMechActor(TclActor.Actor):
         filter = int(cmd.cmdArgs)
         devCmdStr = "FILTER %d" % (filter,)
         self.cancelSameCmd(cmd)
+        self.moveCmdDict[cmd.cmdVerb] = cmd
         self.startDevCmd(devCmdStr)
     
     def cmd_init(self, cmd=None):
         """initialize the NA2 guider mechanical controller and this actor"""
         self.checkNoArgs(cmd)
-        for cmdVerb in self.actuatorFullStatusDict:
-            cmdToCancel = self.activeCmdDict.get(cmdVerb)
+        for cmdVerb in self.ctrllr.actuatorStatusDict:
+            cmdToCancel = self.moveCmdDict.get(cmdVerb)
             if cmdToCancel:
                 cmdToCancel.setState("cancelled", "superseded by init")
         self.startDevCmd("INIT", userCmd=cmd)
@@ -496,6 +523,7 @@ class GMechActor(TclActor.Actor):
         piston = float(cmd.cmdArgs)
         devCmdStr = "PISTON %0.1f" (piston,)
         self.cancelSameCmd(cmd)
+        self.moveCmdDict[cmd.cmdVerb] = cmd
         self.startDevCmd(devCmdStr)
     
     def cmd_remap(self, cmd=None):
