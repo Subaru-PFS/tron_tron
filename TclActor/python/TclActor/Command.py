@@ -1,5 +1,10 @@
 #!/usr/local/bin/python
 """Command objects for the Tcl Actor
+
+To do:
+- Change "reason" to textMsg
+- Add hubMsg (pre-formatted data);
+  this allows easily ending a command with formatted data
 """
 __all__ = ["BaseCmd", "DevCmd", "UserCmd"]
 
