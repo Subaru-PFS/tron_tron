@@ -20,10 +20,13 @@
     <li><a href="#Keywords">Keywords</a>
     <ul>
         <li><a href="#BadDevStatus">Bad<i>Dev</i>Status</a>
-        <li><a href="#Dev"><i>Dev</i></a>
-        <li><a href="#DevElapsedSec"><i>Dev</i>ElapsedSec</a>
-        <li><a href="#DevError"><i>Dev</i>Error</a>
-        <li><a href="#DevStatus"><i>Dev</i>Status</a>
+        <li><a href="#Dev"><i>Dev</i>=<i>pos</i></a>
+        <li><a href="#DevElapsedSec"><i>Dev</i>ElapsedSec=<i>float</i></a>
+        <li><a href="#DevError"><i>Dev</i>Error=<i>pos</i></a>
+        <li><a href="#DevStatus"><i>Dev</i>Status=0x<i>hex</i></a>
+        <li><a href="#NumUsers">NumUsers=<i>int</i></a>
+        <li><a href="#UserInfo">UserInfo=<i>userID1, addr1, userID2, addr2, ...</i></a>
+        <li><a href="#YourUserID">YourUserID=<i>int</i></a>
     </ul>
 </ul>
 
@@ -57,33 +60,41 @@
 
 <h2><a name="Keywords"></a>Keywords</h2>
 
-<p>Note: <p><i>Dev</i> may be either Piston or Filter.
+<p>Keyword data is output whenever the state of the gmech actor or underlying hardware and hardware controller changes.
+
+<p>Notes:
 <ul>
-    <li>Piston position is in &mu;m.
-    <li>Filter "position" is the filter number (an integer starting from 0).
+    <li<i>Dev</i> is a placeholder for Piston or Filter.
+    <ul>
+        <li>Piston position is in &mu;m.
+        <li>Filter "position" is the filter number (an integer starting from 0).
+    </ul>
+    <li>Numeric values (even integers) will be "NaN" if unknown
+    <li>When you first connect you will be shown various status information including your own userID.
+    <li>The actor polls the controller to detect change in state (such as the end of a move); thus there will be some delay in reporting change of state.
 </ul>
 
 <h3><a name="BadDevStatus"></a>Bad<i>Dev</i>Status</h3>
 
-<p>Indicates that <a href="#DevStatus"><i>Dev</i>Status</a> is bad (one or more bad bits are set).
+<p>Indicates that <a href="#DevStatus"><i>Dev</i>Status</a> is bad (one or more bad bits are set). The bad bits are 0-3: limit switches and software position limits.
 
-<h3><a name="Dev"></a><i>Dev</i></h3>
+<h3><a name="Dev"></a><i>Dev</i>=<i>pos</i></h3>
 
 <p>Position of the of the device.
 
-<h3><a name="DevElapsedSec"></a><i>Dev</i>ElapsedSec</h3>
+<h3><a name="DevElapsedSec"></a><i>Dev</i>ElapsedSec=<i>float</i></h3>
 
 <p>Elapsed time (in seconds) for the current move (only reported if moving). See also <a href="#DevPredTotalSec"><i>Dev</i>PredTotalSec</a>
 
-<h3><a name="DevError"></a><i>Dev</i>Error</h3>
+<h3><a name="DevError"></a><i>Dev</i>Error=<i>delta-pos</i></h3>
 
 <p>Position error for the device (only reported if not moving).
 
-<h3><a name="DevPredTotalSec"></a><i>Dev</i>PredTotalSec</h3>
+<h3><a name="DevPredTotalSec"></a><i>Dev</i>PredTotalSec=<i>float</i></h3>
 
 <p>Predicted total time (in seconds) to perform the current move (only reported if moving). See also <a href="#DevElapsedSec"><i>Dev</i>ElapsedSec</a>
 
-<h3><a name="DevStatus"></a><i>Dev</i>Status</h3>
+<h3><a name="DevStatus"></a><i>Dev</i>Status=0x<i>hex</i></h3>
 
 <p>Device status word. The bits are as follows:
 
@@ -91,10 +102,23 @@
 <tr><td>Bit</td><td>Hex</td><td>Meaning</td></tr>
 <tr><td>0</td><td>0x01</td><td>Limit switch 1 engaged</td></tr>
 <tr><td>1</td><td>0x02</td><td>Limit switch 2 engaged</td></tr>
-<tr><td>2</td><td>0x04</td><td>At maximum position</td></tr>
-<tr><td>3</td><td>0x08</td><td>At minimum position</td></tr>
-<tr><td>4</td><td>0x10</td><td>At requested position</td></tr>
-<tr><td>5</td><td>0x20</td><td>Actuator powered down</td></tr>
+<tr><td>2</td><td>0x04</td><td>At maximum position (software limit)</td></tr>
+<tr><td>3</td><td>0x08</td><td>At minimum position (software limit)</td></tr>
+<tr><td>4</td><td>0x10</td><td>At requested position (move successful)</td></tr>
+<tr><td>5</td><td>0x20</td><td>Actuator powered down (move complete)</td></tr>
 </table>
+
+<h3><a name="NumUsers"></a>NumUsers=<i>int</i></h3>
+
+<p>The number of users presently connected (a single integer)
+
+<h3><a name="UserInfo"></a>UserInfo=<i>userID1, addr1, userID2, addr2, ...</i></h3>
+
+<p>An variable-length array containing two entries for each user who is presently connected: userID and the IP address. The user ID is an integer and the address is a string. The userIDs will appear in sorted order but are not necessarily contiguous.
+
+<h3><a name="YourUserID"></a>YourUserID=<i>int</i></h3>
+
+<p>Your own userID.
+
 </body>
 </html>

@@ -130,7 +130,7 @@ class Actor(object):
                 tkSock.close()
                 return
         
-        currIDs = self.userDict.values()
+        currIDs = set(self.userDict.values())
         userID = 1
         while userID in currIDs:
             userID += 1
@@ -139,7 +139,12 @@ class Actor(object):
         tkSock.setReadCallback(self.newCmd)
         tkSock.setStateCallback(self.userStateChanged)
         
+        # report user information and additional info
         self.cmd_users(UserCmd(userID=userID))
+    
+    def newUserOutput(self, userID, tkSock):
+        """Override to report status to the new user (other than userID)"""
+        pass
         
     def newCmd(self, tkSock):
         """Called when a command is read from a user.
