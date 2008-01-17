@@ -2,13 +2,15 @@
 """gmech actor
 
 TO DO:
-- Fix gmech controller communications; try changing telnet settings on terminal server
-  or proper telnet negotiations (ick).
-- Make INIT more robust by retrying if the first one fails
-  (do this in the device, not the actor, I think).
+- Make INIT more robust by retrying if the first one fails.
+  I suspect that instead of tying device command INIT to user command init
+  it makes more sense to have a special "init" method for the device.
 - Measure actual speed and acceleration and set ActuatorKArgs accordingly.
-- When a user connects output device status to that user (user info is already output).
+  This would probably be most accurately determined by printing elapsed time for various moves
+  (but keep in mind the polling granularity).
 - Parse REMAP replies (or if none expected then eliminate them).
+- Reduce polling frequency if not moving? If so then be sure to kick it up
+  immediately after any move command.
 """
 import math
 import re
@@ -425,6 +427,22 @@ class GMechActor(TclActor.Actor):
             return
         if "remap" in self.activeCmdDict and newCmd.cmdVerb != "init":
             raise TclActor.ConflictError("Busy running remap (use init to cancel)")
+
+    def newUserOutput(self, userID, tkSock):
+        """Report status to new users"""
+        for actuator, fullStatus in self.actuatorFullStatusDict.iteritems():
+            msgCode = ":" if fullStatus.isOK() else "w"
+            statusStr = fullStatus.hubFormat()
+            self.writeToOneUser(msgCode, statusStr, userID=userID)
+    
+    def startDevCmd(self, devCmdStr, userCmd=None):
+        """Send a command string to the gmech controller.
+        If userCmd is specified then it will track the device command
+        (i.e. when the device command finishes or fails then so does the user command).
+        """
+        print "startDevCmd(%s)" % (devCmdStr)
+        devCmd = TclActor.DevCmd(cmdStr=devCmdStr, userCmd=userCmd)
+        self.ctrllr.startCmd(devCmd)
     
     def updateCtrllrState(self, dev):
         """Called whenever the state of the gmech device changes"""
@@ -451,15 +469,6 @@ class GMechActor(TclActor.Actor):
             else:
                 stateStr = dev.getActuatorBasicInfoStr(dev.pistonStatus)
                 moveCmd.setState("failed", stateStr)
-    
-    def startDevCmd(self, devCmdStr, userCmd=None):
-        """Send a command string to the gmech controller.
-        If userCmd is specified then it will track the device command
-        (i.e. when the device command finishes or fails then so does the user command).
-        """
-        print "startDevCmd(%s)" % (devCmdStr)
-        devCmd = TclActor.DevCmd(cmdStr=devCmdStr, userCmd=userCmd)
-        self.ctrllr.startCmd(devCmd)
 
     def cmd_status(self, cmd=None):
         """display status"""
