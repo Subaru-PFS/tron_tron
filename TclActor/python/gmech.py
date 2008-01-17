@@ -23,8 +23,8 @@ StatusIntervalMS = 500
 
 # keyword arguments for ActuatorBasicInfo or ActuatorFullInfo __init__
 ActuatorKArgs = (
-    dict(name="piston", posType=int,   posFmt="%d",    speed=1.0, accel=1.0),
-    dict(name="filter", posType=float, posFmt="%0.2f", speed=0.1, accel=1.0),
+    dict(name="piston", posType=float,   posFmt="%0.2f",    speed=1.0, accel=1.0),
+    dict(name="filter", posType=int, posFmt="%0d", speed=0.1, accel=1.0),
 )
 
 class ActuatorBasicInfo(object):
@@ -56,11 +56,11 @@ class ActuatorBasicInfo(object):
     
     def isOK(self):
         """Return True if no bad status bits set (or if status never read)"""
-        return (self.status == None) or (self.status & self.ActuatorBadMask) == 0
+        return (self.status == None) or ((self.status & self.ActuatorBadMask) == 0)
     
     def isMoving(self):
         """Return True if actuator is moving"""
-        return (self.status != None) and (self.status & self.ActuatorHaltedMask) != 0
+        return (self.status != None) and ((self.status & self.ActuatorHaltedMask) == 0)
 
     def set(self, pos, status):
         """Set the values"""
@@ -100,7 +100,7 @@ class ActuatorBasicInfo(object):
         return self.posFmt % (pos,)
     
     def __eq__(self, rhs):
-        """Return True iff position, status and finalPos are the same (ignores timestamp)"""
+        """Return True iff position and status are the same (ignores timestamp)"""
         return (self.pos == rhs.pos) \
             and (self.status == rhs.status)
 
@@ -171,7 +171,11 @@ class ActuatorFullInfo(ActuatorBasicInfo):
                     "%sElapsedSec=%0.1f" % (self.name, elapsedSec),
                 ]
             else:
-                strItems.append("%sError" % (self.name, self._fmat(self.pos - self.desPos)))
+                if self.desPos != None:
+                    posErr = self.pos - self.desPos
+                else:
+                    posErr = None
+                strItems.append("%sError=%s" % (self.name, self._fmt(posErr)))
         return "; ".join(strItems)
         
 
@@ -199,7 +203,7 @@ class GMechDev(TclActor.TCPDevice):
         )
         self.statusID = None # "after" ID of next status command
         self.statusTime = None # time of most recently received status
-        # dictionary of actuator (piston or focus): actuator status
+        # dictionary of actuator (piston or filter): actuator status
         self.actuatorBasicStatusDict = {}
         for actArgs in ActuatorKArgs:
             self.actuatorBasicStatusDict[actArgs["name"]] = ActuatorBasicInfo(**actArgs)
@@ -283,12 +287,13 @@ class GMechDev(TclActor.TCPDevice):
                 # parse status
                 statusMatch = self._CtrllrStatusRE.match(replyData)
                 if statusMatch:
-                    actuatorBasicStatusDict = statusMatch.groupdict()
-                    for act in ("piston", "focus"):
-                        self.actuatorBasicStatusDict[act].set(
-                            pos = actuatorBasicStatusDict[act],
-                            status = actuatorBasicStatusDict["%sStatus" % (act,)],
+                    matchDict = statusMatch.groupdict()
+                    for act, actStatus in self.actuatorBasicStatusDict.iteritems():
+                        actStatus.set(
+                            pos = matchDict[act],
+                            status = matchDict["%sStatus" % (act,)],
                         )
+                        print "after parsing status; status=", self.actuatorBasicStatusDict[act].hubFormat()
                 else:
                     self.currCmd.setState("failed", "Could not parse status reply %r" % (replyData,))
             elif self.currCmd.cmdVerb == "REMAP":
@@ -423,22 +428,23 @@ class GMechActor(TclActor.Actor):
     
     def updateCtrllrState(self, dev):
         """Called whenever the state of the gmech device changes"""
+        print "updateCtrllrState"
         # print status if needed
         statusCmd = self.activeCmdDict.get("status")
         for actuator, fullStatus in self.actuatorFullStatusDict.iteritems():
             if statusCmd or (fullStatus != dev.actuatorBasicStatusDict[actuator]):
+                # update the basic status information
+                self.actuatorFullStatusDict[actuator].copy(dev.actuatorBasicStatusDict[actuator])
+
                 # report status
                 msgCode = ":" if fullStatus.isOK() else "w"
                 statusStr = fullStatus.hubFormat()
                 self.writeToUsers(msgCode, statusStr, cmd=statusCmd)
-                
-                # update the basic status information
-                self.actuatorFullStatusDict[actuator].copy(dev.actuatorBasicStatusDict[actuator])
 
         # if a move finished then report success or failure
         for actuator, fullStatus in self.actuatorFullStatusDict.iteritems():
             moveCmd = self.activeCmdDict.get("piston")
-            if not moveCmd or fullStatus.finalPos == None:
+            if (not moveCmd) or fullStatus.isMoving():
                 continue
             if fullStatus.isOK():
                 moveCmd.setState("done")
