@@ -1,4 +1,3 @@
-#!/usr/local/bin/python
 """Base classes for interface to devices controlled by the Tcl Actor
 
 To do:

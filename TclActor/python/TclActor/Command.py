@@ -1,4 +1,3 @@
-#!/usr/local/bin/python
 """Command objects for the Tcl Actor
 """
 __all__ = ["BaseCmd", "DevCmd", "UserCmd"]
