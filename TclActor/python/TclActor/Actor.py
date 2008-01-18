@@ -10,7 +10,7 @@ import RO.SeqUtil
 from RO.StringUtil import quoteStr
 import RO.Comm.TkSocket
 
-from Command import UserCmd
+import Command
 
 class ConflictError(Exception):
     pass
@@ -26,6 +26,18 @@ class Actor(object):
     - userPort      port on which to listen for users
     - devs          one or more Device objects that this ICC controls; None if none
     - maxUsers      the maximum allowed # of users (if None then no limit)
+    
+    Commands are defined in three ways:
+    - Local commands: all Actor methods whose name starts with "cmd_";
+        the rest of the name is the command verb
+    - Device commands: commands specified via argument cmdInfo when creating the device;
+        these commands are sent directly to the device that claims to handle them
+        (with a new unique command ID number if the device can execute multiple commands at once).
+    - Direct device access commands (for debugging and engineering): the command verb is the device name
+        and the subsequent text is sent directly to the device
+    
+    Error conditions:
+    - Raise RuntimeError if there is any command verbs is defined more than once.
     """
     def __init__(self,
         userPort,
@@ -38,17 +50,6 @@ class Actor(object):
         else:
             devs = RO.SeqUtil.asList(devs)
         
-        self.devNameDict = {} # dev name: dev
-        self.devConnDict = {} # dev conn: dev
-        self.devCmdDict = {} # dev verb: dev
-        for dev in devs:
-            self.devNameDict[dev.name] = dev
-            self.devConnDict[dev.conn] = dev
-            dev.writeToUsers = self.writeToUsers
-            dev.conn.addStateCallback(self.devConnStateCallback)
-            for cmdVerb in dev.cmds:
-                self.devCmdDict[cmdVerb] = dev
-        
         # local command dictionary containing cmd verb: method
         # all methods whose name starts with cmd_ are added
         # each such method must accept one argument: a UserCmd
@@ -57,6 +58,30 @@ class Actor(object):
             if attrName.startswith("cmd_"):
                 cmdVerb = attrName[4:].lower()
                 self.locCmdDict[cmdVerb] = getattr(self, attrName)
+        
+        cmdVerbSet = set(self.locCmdDict.keys())
+        cmdCollisionSet = set()
+        
+        self.devNameDict = {} # dev name: dev
+        self.devConnDict = {} # dev conn: dev
+        self.devCmdDict = {} # dev command verb: (dev, cmdHelp)
+        for dev in devs:
+            self.devNameDict[dev.name] = dev
+            self.devConnDict[dev.conn] = dev
+            dev.writeToUsers = self.writeToUsers
+            dev.conn.addStateCallback(self.devConnStateCallback)
+            for cmdVerb, devCmdVerb, cmdHelp in dev.cmdInfo:
+                devCmdVerb = devCmdVerb or cmdVerb
+                self.devCmdDict[cmdVerb] = (dev, devCmdVerb, cmdHelp)
+            newCmdSet = set(self.devCmdDict.keys())
+            cmdCollisionSet.update(cmdVerbSet & newCmdSet)
+            cmdVerbSet.update(newCmdSet)
+        
+        newCmdSet = set(self.devNameDict.keys())
+        cmdCollisionSet.update(cmdVerbSet & newCmdSet)
+        cmdVerbSet.update(newCmdSet)
+        if cmdCollisionSet:
+            raise RuntimeError("Multiply defined commands: %s" %  ", ".join(cmdCollisionSet))
         
         # entries are: user's socket: userID
         self.userDict = dict()
@@ -77,7 +102,7 @@ class Actor(object):
     
     def checkLocalCmd(self, newCmd):
         """Check if the new local command can run given what else is going on.
-        If not then raise TclActor.ConflictError(reason)
+        If not then raise TclActor.ConflictError(textMsg)
         If it can run but an existing command must be superseded then supersede the old command here.
         
         Note that each cmd_foo method can perform additional checks and cancellation.
@@ -90,8 +115,7 @@ class Actor(object):
         """Called when a command changes state; report completion or failure"""
         if not cmd.isDone():
             return
-        msgCode = cmd.getMsgCode()
-        msgStr = "Text=%s" % (quoteStr(cmd.reason)) if cmd.reason else ""
+        msgCode, msgStr = cmd.hubFormat()
         self.writeToUsers(msgCode, msgStr, cmd=cmd)
     
     def devConnStateCallback(self, devConn):
@@ -140,7 +164,7 @@ class Actor(object):
         tkSock.setStateCallback(self.userStateChanged)
         
         # report user information and additional info
-        self.cmd_users(UserCmd(userID=userID))
+        self.cmd_users(Command.UserCmd(userID=userID))
     
     def newUserOutput(self, userID, tkSock):
         """Override to report status to the new user (other than userID)"""
@@ -148,6 +172,11 @@ class Actor(object):
         
     def newCmd(self, tkSock):
         """Called when a command is read from a user.
+        
+        Note: command name collisions are resolved as follows:
+        - local commands (cmd_<foo> methods of this actor)
+        - commands handled by devices
+        - direct device access commands (device name)
         """
         cmdStr = tkSock.readLine()
         if not cmdStr:
@@ -155,7 +184,7 @@ class Actor(object):
         userID = self.userDict[tkSock]
         
         try:
-            cmd = UserCmd(userID, cmdStr, self.cmdCallback)
+            cmd = Command.UserCmd(userID, cmdStr, self.cmdCallback)
         except RuntimeError:
             self.writeToOneUser("f", "CannotParse=" + quoteStr(cmdStr), userID=userID)
             return
@@ -188,10 +217,13 @@ class Actor(object):
                 self.writeToUsers("f", msgStr, cmd=cmd)
             return
         
-        dev = self.devCmdDict.get(cmd.cmdVerb)
-        if dev != None:
-            # execute known device command
-            dev.sendCmd(cmd)
+        devCmdInfo = self.devCmdDict.get(cmd.cmdVerb)
+        print "devCmdInfo=", devCmdInfo
+        if devCmdInfo:
+            # execute device command
+            dev, devCmdVerb, cmdHelp = devCmdInfo
+            devCmd = Command.DevCmd("%s %s" % (devCmdVerb, cmd.cmdArgs), userCmd=cmd)
+            dev.newCmd(devCmd)
             return
         
         dev = self.devNameDict.get(cmd.cmdVerb)
@@ -299,6 +331,8 @@ class Actor(object):
     def cmd_help(self, cmd=None):
         """print this help"""
         helpList = []
+        
+        # commands handled by this actor
         for cmdVerb, cmdFunc in self.locCmdDict.iteritems():
             helpStr = cmdFunc.__doc__.split("\n")[0]
             if ":" in helpStr:
@@ -306,14 +340,23 @@ class Actor(object):
             else:
                 joinStr = ": "
             helpList.append(joinStr.join((cmdVerb, helpStr)))
-            
+        
+        # commands handled by a device
+        for cmdVerb, cmdInfo in self.devCmdDict.iteritems():
+            helpStr = cmdInfo[2]
+            if ":" in helpStr:
+                joinStr = " "
+            else:
+                joinStr = ": "
+            helpList.append(joinStr.join((cmdVerb, helpStr)))
+
+        helpList.sort()
+        
+        # direct device access commands (these go at the end)
+        helpList += ["", "Direct device access commands:"]
         for devName, dev in self.devNameDict.iteritems():
             helpList.append("%s <text>: send <text> to device %s" % (devName, devName))
-            dev = self.devNameDict[devName]
-            for devCmd in dev.cmds:
-                helpList("%s: (handled by device %s)" % (devCmd, devName))
         
-        helpList.sort()
         for helpStr in helpList:
             self.writeToUsers("i", "Text=%r" % (helpStr,), cmd=cmd)
     

@@ -1,16 +1,12 @@
 #!/usr/local/bin/python
 """Command objects for the Tcl Actor
-
-To do:
-- Change "reason" to textMsg
-- Add hubMsg (pre-formatted data);
-  this allows easily ending a command with formatted data
 """
 __all__ = ["BaseCmd", "DevCmd", "UserCmd"]
 
 import re
 #import sys
 import RO.AddCallback
+from RO.StringUtil import quoteStr
 
 class BaseCmd(RO.AddCallback.BaseMixin):
     """Base class for commands of all types (user and device).
@@ -18,28 +14,53 @@ class BaseCmd(RO.AddCallback.BaseMixin):
     # state constants
     DoneStates = set(("done", "cancelled", "failed"))
     StateSet = DoneStates | set(("ready", "running", "cancelling", "failing"))
+    _MsgCodeDict = dict(
+        ready = "i",
+        running = "i",
+        cancelling = "w",
+        failing = "w",
+        cancelled = "f",
+        failed = "f",
+        done = ":",
+    )
     def __init__(self, cmdStr, userID=0, callFunc=None, timeLimit=None):
         self.userID = int(userID)
         self.cmdID = 0
         self.cmdStr = cmdStr
         self.state = "ready"
-        self.reason = ""
+        self.textMsg = ""
+        self.hubMsg = ""
         self.callFunc = callFunc
         self.timeLimit = timeLimit
         self.cmdToTrack = None
         RO.AddCallback.BaseMixin.__init__(self, callFunc)
     
+    def getMsgCode(self):
+        """Return the hub message code appropriate to the current state"""
+        return self._MsgCodeDict[self.state]
+    
     def isDone(self):
         return self.state in self.DoneStates
 
     def getState(self):
-        """Return state and a reason for that state"""
-        return (self.state, self.reason)
+        """Return state, textMsg, hubMsg"""
+        return (self.state, self.textMsg, self.hubMsg)
     
-    def setState(self, newState, reason=""):
+    def hubFormat(self):
+        """Return (msgCode, msgStr) for output of status as a hub-formatted message"""
+        msgCode = self._MsgCodeDict[self.state]
+        msgInfo = []
+        if self.hubMsg:
+            msgInfo.append(self.hubMsg)
+        if self.textMsg:
+            msgInfo.append("Text=%s" % (quoteStr(self.textMsg),))
+        msgStr = "; ".join(msgInfo)
+        return (msgCode, msgStr)
+    
+    def setState(self, newState, textMsg="", hubMsg=""):
         """Set the state of the command and (if new state is done) remove all callbacks.
 
-        If the new state is Failed then please supply a reason.
+        If the new state is Failed then please supply a textMsg and/or hubMsg.
         
         Error conditions:
         - Raise RuntimeError if this command is finished.
@@ -49,7 +70,8 @@ class BaseCmd(RO.AddCallback.BaseMixin):
         if newState not in self.StateSet:
             raise RuntimeError("Unknown state %s" % newState)
         self.state = newState
-        self.reason = reason
+        self.textMsg = str(textMsg)
+        self.hubMsg = str(hubMsg)
         self._basicDoCallbacks(self)
         if self.isDone():
             self._removeAllCallbacks()
@@ -66,14 +88,18 @@ class BaseCmd(RO.AddCallback.BaseMixin):
     
     def trackUpdate(self, cmdToTrack):
         """Tracked command's state has changed"""
-        state, reason = cmdToTrack.getState()
-        self.setState(state, reason)
+        state, textMsg, hubMsg = cmdToTrack.getState()
+        self.setState(state, textMsg, hubMsg)
     
     def untrackCmd(self):
         """Stop tracking a command if tracking one, else do nothing"""
         if self.cmdToTrack:
             self.cmdToTrack.removeCallback(self.trackUpdate)
-            self.cmdToTrack = None        
+            self.cmdToTrack = None
+    
+    def __str__(self):
+        return "%s(%r)" % (self.__class__.__name__, self.cmdStr)
+
 
 class DevCmd(BaseCmd):
     """Generic device command that assumes all commands have the format "[cmdId] verb arguments"
@@ -111,6 +137,7 @@ class DevCmd(BaseCmd):
         self.cmdVerb = cmdDict["cmdVerb"]
         self.cmdArgs = cmdDict["cmdArgs"]
 
+
 class UserCmd(BaseCmd):
     """A command from a user (typically the hub)
     
@@ -123,15 +150,6 @@ class UserCmd(BaseCmd):
     - cmdVerb   command verb in lowercase
     - cmdArgs   command arguments (in original case)
     """
-    _MsgCodeDict = dict(
-        ready = "i",
-        running = "i",
-        cancelling = "w",
-        failing = "w",
-        cancelled = "f",
-        failed = "f",
-        done = ":",
-    )
     _UserCmdRE = re.compile(r"((?P<cmdID>\d+)(?:\s+\d+)?\s+)?((?P<cmdVerb>[A-Za-z_]\w*)(\s+(?P<cmdArgs>.*))?)?")
     def __init__(self,
         userID = 0,
@@ -156,7 +174,3 @@ class UserCmd(BaseCmd):
         self.cmdID = int(cmdIDStr) if cmdIDStr else 0
         self.cmdVerb = cmdDict["cmdVerb"].lower()
         self.cmdArgs = cmdDict["cmdArgs"]
-    
-    def getMsgCode(self):
-        """Return the hub message code appropriate to the current state"""
-        return self._MsgCodeDict[self.state]
