@@ -1,4 +1,3 @@
-#!/usr/local/bin/python
 """Basic framework for a hub actor or ICC based on the Tcl event loop.
 """
 __all__ = ["Actor", "ConflictError"]
@@ -218,7 +217,6 @@ class Actor(object):
             return
         
         devCmdInfo = self.devCmdDict.get(cmd.cmdVerb)
-        print "devCmdInfo=", devCmdInfo
         if devCmdInfo:
             # execute device command
             dev, devCmdVerb, cmdHelp = devCmdInfo
