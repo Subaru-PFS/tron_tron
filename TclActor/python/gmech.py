@@ -2,44 +2,19 @@
 """gmech actor
 
 TO DO:
-- Document keywords: Superseded, Timeout, Cmd
-- No status at user connect time. Why?
-- No status reported at device connect time. Why?
-- "piston 56" makes the controller upset; it NEEDS a decimal point.
-  Either make it an actor command or coerce all arguments for motion commands.
-  I prefer the latter, I think. But it limits the user's ability to send arbitrary text to the ctrllr.
-- Superseding motion commands seems to be broken. Once the controller got upset
-  as per above then sending a new motion command did not make it happy again.
-  I got a lot of this sort of thing:
-  GMechDev.handleReply: replyStr='20002.50 0 51618.000  48  48 OK'; nReplies=1
-TkSocket sock12 read callback <bound method TCPConnection._sockReadLineCallback of <RO.Comm.TCPConnection.TCPConnection object at 0x10e46d0>> failed: Command is done; cannot change state
-Traceback (most recent call last):
-  File "/Library/Frameworks/Python.framework/Versions/2.5/lib/python2.5/site-packages/RO-2.2.5b1-py2.5.egg/RO/Comm/TkSocket.py", line 482, in _doRead
-    self._readCallback(self)
-  File "/Library/Frameworks/Python.framework/Versions/2.5/lib/python2.5/site-packages/RO-2.2.5b1-py2.5.egg/RO/Comm/TCPConnection.py", line 356, in _sockReadLineCallback
-    subr(sock, dataRead)
-  File "/Users/rowen/Instruments/tron trunk/TclActor/python/TclActor/Device.py", line 143, in _readCallback
-    self.handleReply(replyStr)
-  File "gmech.py", line 353, in handleReply
-    cmd = self.currCmd,
-  File "gmech.py", line 185, in setStatus
-    self.moveCmd.setState("done")
-  File "/Users/rowen/Instruments/tron trunk/TclActor/python/TclActor/Command.py", line 69, in setState
-    raise RuntimeError("Command is done; cannot change state")
-  RuntimeError: Command is done; cannot change state
-How could a move command end and still be stuck in self.moveCmd???
-
-  
+- Fix this error: Bug: GMechActor.cmdCallback got command callback but command was not current command!
+  I think I already fixed this -- startCmd would start a position command even if it was rejected
+  (and thus had already started)
+- Test command queueing and collision handling as thoroughly as possible;
+  it is complicated and it would be best to test all branches of the code.
+- Determine position limits and time prediction constants for piston.
+  If possible query them from the controller instead of experimenting!
 - Make INIT more robust by retrying if the first one fails.
   This would clear out the typeahead buffer, for instance.
   I suspect that instead of tying device command INIT to user command init
-  it makes more sense to have a special "init" method for the device.
-- Measure actual speed and acceleration and set ActuatorModel.ActuatorInfo accordingly.
-  This would probably be most accurately determined by printing elapsed time for various moves
-  (but keep in mind the polling granularity).
+  it makes more sense to have a special "init" method for the gmech device.
 - Parse REMAP replies (or if none expected then eliminate them).
-- Test command queueing and collision handling as thoroughly as possible;
-  it is complicated and it would be best to test all branches of the code
+- Document keywords: Superseded, Timeout, LostConnection
 """
 import math
 import re
@@ -72,23 +47,22 @@ class ActuatorModel(object):
     ActuatorHaltedMask = 0x20   # actuator powered down
     ActuatorGoodMask = 0x10     # at commanded position
     ActuatorBadMask = 0x0F      # limit switch 1 or 2 engaged or at max or min position
-    # actuator info is a dict of name: (posType, posFmt, speed, accel)
+    # actuator info is a dict of name: (posType, posFmt, minPos, maxPos, tconst, speed, accel)
+    # tconst, speed and accel are used to predict motion time
     ActuatorInfo = dict(
-        piston = (float, "%0.2f", 1.0, 1.0),
-        filter = (int,   "%0d",   0.1, 1.0),
+        piston = (float, "%0.2f", None, None, 0.42, 1.0, 1.0),
+        filter = (int,   "%0d",   0,    6,    0.42, 2.0, 2.4),
     )
     def __init__(self, name, writeToUsersFunc):
         actInfo = self.ActuatorInfo.get(name)
         if not actInfo:
             raise RuntimeError("Unknown actuator %r" % (name,))
         self.name = name.title()
-        self.posType, self.posFmt, self.speed, self.accel = actInfo
+        self.posType, self.posFmt, self.minPos, self.maxPos, self.tconst, self.speed, self.accel = actInfo
         self.writeToUsersFunc = writeToUsersFunc
         
         # items read from status
-        self.statusTimestamp = None
-        self.pos = None
-        self.status = None
+        self._clearStatus()
         
         # items from a move command
         self._clearMove()
@@ -100,6 +74,13 @@ class ActuatorModel(object):
         if self.moveCmd:
             self.moveCmd.setState("cancelled", hubMsg="Superseded")
         self._clearMove()
+    
+    def connLost(self):
+        """Call if the connection is lost"""
+        if self.moveCmd:
+            self.moveCmd.setState("failed", hubMsg="LostConnection")
+        self._clearMove()
+        self._clearStatus()
     
     def copy(self, statusToCopy):
         """Copy items from another ActuatorModel object"""
@@ -166,6 +147,7 @@ class ActuatorModel(object):
         Inputs:
         - desPos    desired new position
         """
+        # check type of position string and force the format (the gmech controller is picky)
         try:
             desPos = self.posType(moveCmd.cmdArgs)
             moveCmd.cmdArgs = self.posFmt % (desPos,)
@@ -174,8 +156,18 @@ class ActuatorModel(object):
             moveCmd.setState("failed", textMsg="Could not parse position %r" % (moveCmd.cmdArgs),
                 hubMsg="Exception=%s" % (quoteStr(str(e)),))
             raise RuntimeError(e)
+
+        # check limits
+        if (self.minPos != None) and (desPos < self.minPos):
+            errMsg = "Position too small: %s < %s" % (desPos, self.minPos)
+            moveCmd.setState("failed", textMsg=errMsg)
+            raise RuntimeError(errMsg)
+        if (self.maxPos != None) and (desPos > self.maxPos):
+            errMsg = "Position too large: %s > %s" % (desPos, self.maxPos)
+            moveCmd.setState("failed", textMsg=errMsg)
+            raise RuntimeError(errMsg)
             
-        moveCmd.addCallback(self.updMoveCmdState)
+        moveCmd.addCallback(self._moveCmdCallback)
 
         self.cancelMove()
         self.moveCmd = moveCmd
@@ -189,24 +181,20 @@ class ActuatorModel(object):
                 self.predSec = dist / self.speed
             else:
                 # ramp time/distance is time/distance to ramp up to full speed and back down
-                rampDist = self.speed / self.accel
+                rampDist = self.speed**2 / self.accel
                 if dist <= rampDist:
                     self.predSec = 2.0 * math.sqrt(dist / self.accel)
                 else:
                     rampTime = 2.0 * self.speed / self.accel
                     self.predSec = rampTime + ((dist - rampDist) / self.speed)
-    
-    def updMoveCmdState(self, cmd):
-        """Callback function for move commands"""
-        if cmd.isDone():
-            self._clearMove()
+            self.predSec += self.tconst
 
     def setStatus(self, pos, status, cmd=None):
         """Set status values."""
         #print "ActuatorModel.setStatus(pos=%s, status=%s)" % (pos, status)
         pos = self.posType(pos)
         status = int(status)
-        statusChanged = (pos != self.pos) or (status != self.status)
+        statusChanged = (pos != self.pos) or (status != self.status) or (self.statusTimestamp == None)
         self.statusTimestamp = time.time()
         self.pos = pos
         self.status = status
@@ -216,23 +204,36 @@ class ActuatorModel(object):
         
         if self.moveCmd and not self.isMoving():
             if self.isOK():
+                print "%s moved %s in %s seconds" % (self.name, abs(self.pos - self.startPos), time.time() - self.startTime)
                 self.moveCmd.setState("done")
             else:
                 self.moveCmd.setState("failed", textMsg="Bad actuator status")
     
     def _clearMove(self):
         """Clear all move command information.
+        Be careful not to call unless the move command has finished.
         """
         self.moveCmd = None
         self.startTime = None
         self.desPos = None
         self.predSec = None # predicted duration of move (in seconds)
     
+    def _clearStatus(self):
+        """Clear status data"""
+        self.statusTimestamp = None
+        self.pos = None
+        self.status = None
+    
     def _fmt(self, pos):
         """Return position formatted as a string"""
         if pos == None:
             return "NaN"
         return self.posFmt % (pos,)
+    
+    def _moveCmdCallback(self, cmd):
+        """Callback function for move commands"""
+        if cmd.isDone():
+            self._clearMove()
     
     def __eq__(self, rhs):
         """Return True if status or move position has changed (aside from status timestamp)"""
@@ -271,7 +272,7 @@ class GMechDev(TclActor.TCPDevice):
               ("init",   None, "initialize the gmech controller"),
               ("remap",  None, "remap the piston and filter actuators and reset the gmech controller"),
               ("piston", None, "um: set the guider piston (focus)"),
-              ("filter", None, "filtnum: set the guider filter"),
+              ("filter", None, "filtnum: select guider filter number (0-6)"),
               ("status", None, "return gmech controller status")
             ),
         )
@@ -286,7 +287,7 @@ class GMechDev(TclActor.TCPDevice):
         self.currCmdTimer = None # ID of command timeout timer
         self.pendingCmd = None # only used to cancel REMAP -- OBSOLETE; use cmdQueue instead
         self._tk = Tkinter.Frame()
-        self.conn.addStateCallback(self.devConnStateCallback)
+        self.conn.addStateCallback(self.connStateCallback)
     
     def getActuatorModelStr(self, actuatorStatus):
         # note: order of severity is 0, 1, 2... so just plow through the bits in order
@@ -296,13 +297,15 @@ class GMechDev(TclActor.TCPDevice):
                 return ActatorBitDict[bitSet]
         return ""
     
-    def devConnStateCallback(self, devConn):
+    def connStateCallback(self, devConn):
         """Called when a device's connection state changes."""
-        print "devConnStateCallback; state=%s" % (devConn.getFullState(),)
+        print "connStateCallback; state=%s" % (devConn.getFullState(),)
         if devConn.isConnected():
             self.queryStatus()
         else:
             self.cancelQueryStatus()
+            for actStatus in self.actuatorStatusDict.itervalues():
+                actStatus.connLost()
     
     def cancelQueryStatus(self):
         """Cancel background status query, if any"""
@@ -440,7 +443,11 @@ class GMechDev(TclActor.TCPDevice):
                 actStatus.setMove(cmd)
             except RuntimeError, e:
                 print "Move rejected: %s" % (e,)
-                pass
+                self.clearCurrCmd() # try next command, if any
+                return
+        
+        if cmd.isDone(): # sanity check
+            raise RuntimeError("Bug: %s already finished" % (cmd,))
 
         self.currCmd = cmd
         if timeLimitMS:
