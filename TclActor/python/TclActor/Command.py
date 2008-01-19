@@ -110,8 +110,9 @@ class DevCmd(BaseCmd):
         cmdStr = "",
         callFunc = None,
         userCmd = None,
+        locCmdID = 0,
     ):
-        self.locCmdID = 0
+        self.locCmdID = int(locCmdID)
         BaseCmd.__init__(self, cmdStr, callFunc=callFunc)
         self.parseCmdStr(cmdStr)
 

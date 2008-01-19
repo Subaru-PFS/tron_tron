@@ -164,6 +164,7 @@ class Actor(object):
         
         # report user information and additional info
         self.cmd_users(Command.UserCmd(userID=userID))
+        self.newUserOutput(userID, tkSock)
     
     def newUserOutput(self, userID, tkSock):
         """Override to report status to the new user (other than userID)"""
@@ -228,8 +229,8 @@ class Actor(object):
         if dev != None:
             # command verb is the name of a device
             # the rest of the text gets sent to the device
-            cmd.cmdStr = cmd.cmdArgs
-            dev.sendCmd(cmd)
+            devCmd = Command.DevCmd(cmd.cmdArgs, userCmd=cmd)
+            dev.newCmd(devCmd)
             return
 
         self.writeToOneUser("f", "UnknownCommand=%s" % (cmd.cmdVerb,), cmd=cmd)
