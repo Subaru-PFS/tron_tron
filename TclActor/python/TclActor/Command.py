@@ -3,8 +3,9 @@
 __all__ = ["BaseCmd", "DevCmd", "UserCmd"]
 
 import re
-#import sys
+import sys
 import RO.AddCallback
+import RO.Alg
 from RO.StringUtil import quoteStr
 
 class BaseCmd(RO.AddCallback.BaseMixin):
@@ -40,6 +41,9 @@ class BaseCmd(RO.AddCallback.BaseMixin):
     
     def isDone(self):
         return self.state in self.DoneStates
+    
+    def isFailing(self):
+        return self.state in ("cancelling", "failing")
 
     def getState(self):
         """Return state, textMsg, hubMsg"""
@@ -101,18 +105,20 @@ class BaseCmd(RO.AddCallback.BaseMixin):
 
 
 class DevCmd(BaseCmd):
-    """Generic device command that assumes all commands have the format "[cmdId] verb arguments"
+    """Generic device command that assumes all commands have the format "verb arguments"
+    
+    If your device wants a command ID for each command then send it devCmd.getCmdWithID();
+    otherwise send it devCmd.cmdStr.
     
     If you are talking to a device with different rules then please make your own subclass of BaseCmd.
     """
-    _DevCmdRE = re.compile(r"((?P<cmdID>\d+)(?:\s+)?\s+)?((?P<cmdVerb>[A-Za-z_]\w*)(\s+(?P<cmdArgs>.*))?)?")
+    _LocCmdIDGen = RO.Alg.IDGen(startVal=1, wrapVal=sys.maxint)
     def __init__(self,
-        cmdStr = "",
+        cmdStr,
         callFunc = None,
         userCmd = None,
-        locCmdID = 0,
     ):
-        self.locCmdID = int(locCmdID)
+        self.locCmdID = self._LocCmdIDGen.next()
         BaseCmd.__init__(self, cmdStr, callFunc=callFunc)
         self.parseCmdStr(cmdStr)
 
@@ -122,20 +128,19 @@ class DevCmd(BaseCmd):
             userCmd.trackCmd(self)
     
     def parseCmdStr(self, cmdStr):
-        """Parse a user command string and set cmdID, cmdVerb and cmdArgs.
+        """Parse a user command string and set cmdVerb and cmdArgs.
         
         Inputs:
         - cmdStr: command string (see module doc string for format)
         """
-        cmdMatch = self._DevCmdRE.match(cmdStr)
-        if not cmdMatch:
-            raise RuntimeError("Could not parse command %r" % cmdStr)
-        
-        cmdDict = cmdMatch.groupdict("")
-        cmdIDStr = cmdDict["cmdID"]
-        self.locCmdID = int(cmdIDStr) if cmdIDStr else 0
-        self.cmdVerb = cmdDict["cmdVerb"]
-        self.cmdArgs = cmdDict["cmdArgs"]
+        cmdVerbArgs = cmdStr.split(None, 1)
+        self.cmdVerb = cmdVerbArgs[0]
+        self.cmdArgs = cmdVerbArgs[1] if len(cmdVerbArgs) > 1 else ""
+    
+    def getCmdWithID(self):
+        """Return the command string with local command ID as a prefix
+        """
+        return "%s %s" % (self.locCmdID, self.cmdStr)
 
 
 class UserCmd(BaseCmd):
