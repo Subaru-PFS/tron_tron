@@ -19,12 +19,15 @@
     </ul>
     <li><a href="#Keywords">Keywords</a>
     <ul>
-        <li><a href="#BadDevStatus">Bad<i>Dev</i>Status</a>
-        <li><a href="#Dev"><i>Dev</i>=<i>pos</i></a>
-        <li><a href="#DevElapsedSec"><i>Dev</i>ElapsedSec=<i>float</i></a>
-        <li><a href="#DevError"><i>Dev</i>Error=<i>pos</i></a>
-        <li><a href="#DevStatus"><i>Dev</i>Status=0x<i>hex</i></a>
+        <li><a href="#BadActuatorStatus">Bad<i>Actuator</i>Status</a>
+        <li><a href="#Actuator"><i>Actuator</i>=<i>pos</i></a>
+        <li><a href="#ActuatorElapsedSec"><i>Actuator</i>ElapsedSec=<i>float</i></a>
+        <li><a href="#ActuatorError"><i>Actuator</i>Error=<i>pos</i></a>
+        <li><a href="#ActuatorStatus"><i>Actuator</i>Status=0x<i>hex</i></a>
+        <li><a href="#gmechConnState">gmechConnState=<i>state, reason</i></a>
         <li><a href="#NumUsers">NumUsers=<i>int</i></a>
+        <li><a href="#Superseded">Superseded</a>
+        <li><a href="#Timeout">Timeout</a>
         <li><a href="#UserInfo">UserInfo=<i>userID1, addr1, userID2, addr2, ...</i></a>
         <li><a href="#YourUserID">YourUserID=<i>int</i></a>
     </ul>
@@ -64,7 +67,7 @@
 
 <p>Notes:
 <ul>
-    <li<i>Dev</i> is a placeholder for Piston or Filter.
+    <li><i>Actuator</i> is a placeholder for Piston or Filter.
     <ul>
         <li>Piston position is in &mu;m.
         <li>Filter "position" is the filter number (an integer starting from 0).
@@ -74,27 +77,27 @@
     <li>The actor polls the controller to detect change in state (such as the end of a move); thus there will be some delay in reporting change of state.
 </ul>
 
-<h3><a name="BadDevStatus"></a>Bad<i>Dev</i>Status</h3>
+<h3><a name="BadActuatorStatus"></a>Bad<i>Actuator</i>Status</h3>
 
-<p>Indicates that <a href="#DevStatus"><i>Dev</i>Status</a> is bad (one or more bad bits are set). The bad bits are 0-3: limit switches and software position limits.
+<p>Indicates that <a href="#ActuatorStatus"><i>Actuator</i>Status</a> is bad (one or more bad bits are set). The bad bits are 0-3: limit switches and software position limits.
 
-<h3><a name="Dev"></a><i>Dev</i>=<i>pos</i></h3>
+<h3><a name="Actuator"></a><i>Actuator</i>=<i>pos</i></h3>
 
 <p>Position of the of the device.
 
-<h3><a name="DevElapsedSec"></a><i>Dev</i>ElapsedSec=<i>float</i></h3>
+<h3><a name="ActuatorElapsedSec"></a><i>Actuator</i>ElapsedSec=<i>float</i></h3>
 
-<p>Elapsed time (in seconds) for the current move (only reported if moving). See also <a href="#DevPredTotalSec"><i>Dev</i>PredTotalSec</a>
+<p>Elapsed time (in seconds) for the current move (only reported if moving). See also <a href="#ActuatorPredTotalSec"><i>Actuator</i>PredTotalSec</a>
 
-<h3><a name="DevError"></a><i>Dev</i>Error=<i>delta-pos</i></h3>
+<h3><a name="ActuatorError"></a><i>Actuator</i>Error=<i>delta-pos</i></h3>
 
 <p>Position error for the device (only reported if not moving).
 
-<h3><a name="DevPredTotalSec"></a><i>Dev</i>PredTotalSec=<i>float</i></h3>
+<h3><a name="ActuatorPredTotalSec"></a><i>Actuator</i>PredTotalSec=<i>float</i></h3>
 
-<p>Predicted total time (in seconds) to perform the current move (only reported if moving). See also <a href="#DevElapsedSec"><i>Dev</i>ElapsedSec</a>
+<p>Predicted total time (in seconds) to perform the current move (only reported if moving). See also <a href="#ActuatorElapsedSec"><i>Actuator</i>ElapsedSec</a>
 
-<h3><a name="DevStatus"></a><i>Dev</i>Status=0x<i>hex</i></h3>
+<h3><a name="ActuatorStatus"></a><i>Actuator</i>Status=0x<i>hex</i></h3>
 
 <p>Device status word. The bits are as follows:
 
@@ -108,9 +111,21 @@
 <tr><td>5</td><td>0x20</td><td>Actuator powered down (move complete)</td></tr>
 </table>
 
+<h3><a name="gmechConnState"></a>gmechConnState=<i>state, reason</i></h3>
+
+<p>State of connection to the gmech hardware controller. <i>State</i> is one of Connecting, Authorizing, Connected, Disconnecting, Failing, Disconnected or Failed (the states of an RO.Comm.TCPConnection object). <i>Reason</i> is the reason it got to this state ("" if no reason given).
+
 <h3><a name="NumUsers"></a>NumUsers=<i>int</i></h3>
 
 <p>The number of users presently connected (a single integer)
+
+<h3><a name="Superseded"></a>Superseded</h3>
+
+<p>The command was superseded by some other command.
+
+<h3><a name="Timeout"></a>Timeout</h3>
+
+<p>The command timed out.
 
 <h3><a name="UserInfo"></a>UserInfo=<i>userID1, addr1, userID2, addr2, ...</i></h3>
 

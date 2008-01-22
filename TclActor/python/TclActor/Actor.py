@@ -132,7 +132,7 @@ class Actor(object):
         # if user command has finished then mark it as such and clear device state callback
         if cmd and isDone:
             cmdState = "done" if isOK else "failed"
-            cmd.setState(cmdState, reason)
+            cmd.setState(cmdState, textMsg=reason)
             dev.connReq = (wantConn, None)
     
     def initialConn(self):
@@ -221,16 +221,17 @@ class Actor(object):
         if devCmdInfo:
             # execute device command
             dev, devCmdVerb, cmdHelp = devCmdInfo
-            devCmd = Command.DevCmd("%s %s" % (devCmdVerb, cmd.cmdArgs), userCmd=cmd)
-            dev.newCmd(devCmd)
+            devCmdStr = dev.newCmd(cmdVerb=devCmdVerb, cmdArgs=cmd.cmdArgs, userCmd=cmd)
             return
         
         dev = self.devNameDict.get(cmd.cmdVerb)
         if dev != None:
-            # command verb is the name of a device
-            # the rest of the text gets sent to the device
-            devCmd = Command.DevCmd(cmd.cmdArgs, userCmd=cmd)
-            dev.newCmd(devCmd)
+            # user's command verb is the name of a device
+            # the rest of the text is a device command
+            devCmdVerbArgs = cmd.cmdArgs.split(None, 1)
+            devCmdVerb = devCmdVerbArgs[0]
+            devCmdArgs = devCmdVerbArgs[1] if len(devCmdVerbArgs) > 1 else ""
+            dev.newCmd(cmdVerb = devCmdVerb, cmdArgs = devCmdArgs)
             return
 
         self.writeToOneUser("f", "UnknownCommand=%s" % (cmd.cmdVerb,), cmd=cmd)

@@ -8,6 +8,7 @@ __all__ = ["Device", "TCPDevice"]
 #import RO.AddCallback
 from RO.StringUtil import quoteStr
 import RO.Comm.TCPConnection
+import Command
 
 class Device(RO.AddCallback.BaseMixin):
     """Device interface.
@@ -30,19 +31,19 @@ class Device(RO.AddCallback.BaseMixin):
                 for commands that are be sent directly through to this device.
                 Specify None for the device command verb if it is the same as the user command verb
                 (high recommended as it is much easier for the user to figure out what is going on)
-    - sendLocID prefix sent commands with the local id number?
     - callFunc  function to call when state of device changes;
                 note that it is NOT called when the connection state changes;
                 register a callback with "conn" for that task.
     - actor actor that contains this device; this gives access to writeToUsers
+    - cmdClass  class for commands for this device
     """
     def __init__(self,
         name,
         conn,
         cmdInfo = None,
-        sendLocID = True,
         callFunc = None,
         actor = None,
+        cmdClass = Command.DevCmd,
     ):
         RO.AddCallback.BaseMixin.__init__(self)
         self.name = name
@@ -50,8 +51,8 @@ class Device(RO.AddCallback.BaseMixin):
         self.connReq = (False, None)
         self.conn = conn
         self.pendCmdDict = {} # key=locCmdID, value=cmd
-        self.sendLocID = sendLocID
         self.actor = actor
+        self.cmdClass = cmdClass
         if callFunc:
             self.addCallback(callFunc, callNow=False)        
     
@@ -76,21 +77,19 @@ class Device(RO.AddCallback.BaseMixin):
         """
         raise NotImplementedError()
 
-    def sendCmd(self, cmd, cmdStr=None, callFunc=None):
-        """Send a command to the device"""
-        if cmd.locCmdID:
-            self.pendCmdDict[cmd.locCmdID] = cmd
-        if cmdStr == None:
-            cmdStr = cmd.cmdStr
-        if self.sendLocID:
-            cmdStr = " ".join((str(cmd.locCmdID), cmdStr))
+    def newCmd(self, cmdStr, callFunc=None, userCmd=None):
+        """Start a new command.
+        """
+        cmd = self.cmdClass(cmdStr, userCmd=userCmd, callFunc=callFunc)
+        
+        self.pendCmdDict[cmd.locCmdID] = cmd
+        fullCmdStr = cmd.getCmdWithID()
         try:
-            #print "Device.sendCmd writing %r" % (cmdStr,)
-            self.conn.writeLine(cmdStr)
+            #print "Device.sendCmd writing %r" % (fullCmdStr,)
+            self.conn.writeLine(fullCmdStr)
         except Exception, e:
             quotedErr = quoteStr(str(e))
-            quotedCmd = quoteStr(cmdStr)
-            cmd.setState(isDone=True, isOK=False, reason=str(e))
+            cmd.setState(isDone=True, isOK=False, textMsg=str(e))
 
 
 class TCPDevice(Device):
@@ -104,19 +103,20 @@ class TCPDevice(Device):
                 for commands that are be sent directly through to this device.
                 Specify None for the device command verb if it is the same as the user command verb
                 (high recommended as it is much easier for the user to figure out what is going on)
-    - sendLocID prefix sent commands with the local id number?
     - callFunc  function to call when state of device changes;
                 note that it is NOT called when the connection state changes;
                 register a callback with "conn" for that task.
+    - actor actor that contains this device; this gives access to writeToUsers
+    - cmdClass  class for commands for this device
     """
     def __init__(self,
         name,
         addr,
         port = 23,
         cmdInfo = None,
-        sendLocID = True,
         callFunc = None,
         actor = None,
+        cmdClass = Command.DevCmd,
     ):
         Device.__init__(self,
             name = name,
@@ -127,9 +127,9 @@ class TCPDevice(Device):
                 readCallback = self._readCallback,
                 readLines = True,
             ),
-            sendLocID = sendLocID,
             callFunc = callFunc,
             actor = actor,
+            cmdClass = cmdClass,
         )
     
     def _readCallback(self, sock, replyStr):
