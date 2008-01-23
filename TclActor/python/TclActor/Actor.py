@@ -1,8 +1,9 @@
 """Basic framework for a hub actor or ICC based on the Tcl event loop.
 """
-__all__ = ["Actor", "ConflictError"]
+__all__ = ["Actor"]
 
 import sys
+import types
 import traceback
 #import RO.AddCallback
 import RO.SeqUtil
@@ -10,9 +11,6 @@ from RO.StringUtil import quoteStr
 import RO.Comm.TkSocket
 
 import Command
-
-class ConflictError(Exception):
-    pass
 
 
 class Actor(object):
@@ -28,12 +26,16 @@ class Actor(object):
     
     Commands are defined in three ways:
     - Local commands: all Actor methods whose name starts with "cmd_";
-        the rest of the name is the command verb
+        the rest of the name is the command verb.
+        These methods must return True if the command is executed in the background
+        (otherwise they will be reported as "done" when the method ends)
     - Device commands: commands specified via argument cmdInfo when creating the device;
         these commands are sent directly to the device that claims to handle them
         (with a new unique command ID number if the device can execute multiple commands at once).
+        The device must finish the command (unless dev.newCmd raises an exception).
     - Direct device access commands (for debugging and engineering): the command verb is the device name
-        and the subsequent text is sent directly to the device
+        and the subsequent text is sent directly to the device.
+        The device must finish the command (unless dev.newCmd raises an exception).
     
     Error conditions:
     - Raise RuntimeError if there is any command verbs is defined more than once.
@@ -48,6 +50,7 @@ class Actor(object):
             devs = ()
         else:
             devs = RO.SeqUtil.asList(devs)
+        self.doDebugMsgs = False
         
         # local command dictionary containing cmd verb: method
         # all methods whose name starts with cmd_ are added
@@ -95,13 +98,13 @@ class Actor(object):
         self.initialConn()
     
     def checkNoArgs(self, newCmd):
-        """Raise RuntimeError if newCmd has arguments"""
+        """Raise Command.CommandError if newCmd has arguments"""
         if newCmd and newCmd.cmdArgs:
-            raise RuntimeError("%s takes no arguments" % (newCmd.cmdVerb,))
+            raise Command.CommandError("%s takes no arguments" % (newCmd.cmdVerb,))
     
     def checkLocalCmd(self, newCmd):
         """Check if the new local command can run given what else is going on.
-        If not then raise TclActor.ConflictError(textMsg)
+        If not then raise Command.CommandError(textMsg)
         If it can run but an existing command must be superseded then supersede the old command here.
         
         Note that each cmd_foo method can perform additional checks and cancellation.
@@ -121,17 +124,10 @@ class Actor(object):
         """Called when a device's connection state changes."""
         dev = self.devConnDict[devConn]
         wantConn, cmd = dev.connReq
-        isDone, isOK, state, stateStr, reason = devConn.getProgress(wantConn)
-        
-        # output changed state
-        quotedReason = quoteStr(reason)
-        msgCode = "i" if isOK else "w"
-        msgStr = "%sConnState = %r, %s" % (dev.name, stateStr, quotedReason)
-        self.writeToUsers(msgCode, msgStr, cmd=cmd)
-        
-        # if user command has finished then mark it as such and clear device state callback
-        if cmd and isDone:
-            cmdState = "done" if isOK else "failed"
+        self.showOneDevConnStatus(dev, cmd=cmd)
+        if cmd and devConn.isDone():
+            succeeded = wantConn and devConn.isConnected()
+            cmdState = "done" if succeeded else "failed"
             cmd.setState(cmdState, textMsg=reason)
             dev.connReq = (wantConn, None)
     
@@ -163,11 +159,15 @@ class Actor(object):
         tkSock.setStateCallback(self.userStateChanged)
         
         # report user information and additional info
-        self.cmd_users(Command.UserCmd(userID=userID))
+        fakeCmd = Command.UserCmd(userID=userID)
+        self.showUserInfo(fakeCmd)
+        self.showDevConnStatus(cmd=fakeCmd, onlyOneUser=True, onlyIfNotConn=True)
         self.newUserOutput(userID, tkSock)
     
     def newUserOutput(self, userID, tkSock):
-        """Override to report status to the new user (other than userID)"""
+        """Override to report additional status to the new user
+        other than userID and bad device status
+        """
         pass
         
     def newCmd(self, tkSock):
@@ -183,11 +183,7 @@ class Actor(object):
             return
         userID = self.userDict[tkSock]
         
-        try:
-            cmd = Command.UserCmd(userID, cmdStr, self.cmdCallback)
-        except RuntimeError:
-            self.writeToOneUser("f", "CannotParse=" + quoteStr(cmdStr), userID=userID)
-            return
+        cmd = Command.UserCmd(userID, cmdStr, self.cmdCallback)
 
         #print "newCmd: userID=%s; cmdID=%s; cmdVerb=%r; cmdArgs=%r" % (cmd.userID, cmd.cmdID, cmd.cmdVerb, cmd.cmdArgs)
         
@@ -196,16 +192,46 @@ class Actor(object):
             self.writeToOneUser(":", "", cmd=cmd)
             return
         
+        # see if command is a local command
         cmdFunc = self.locCmdDict.get(cmd.cmdVerb)
         if cmdFunc != None:
             # execute local command
             try:
-                #print "newCmd: checking local function %s" % (cmdFunc,)
                 self.checkLocalCmd(cmd)
-                #print "newCmd: executing local function %s" % (cmdFunc,)
-                cmdFunc(cmd)
-            except ConflictError, e:
-                #print "newCmd: command rejected due to conflict"
+                retVal = cmdFunc(cmd)
+            except Command.CommandError, e:
+                cmd.setState("failed", str(e))
+                return
+            except Exception, e:
+                sys.stderr.write("command %r failed\n" % (cmdStr,))
+                sys.stderr.write("function %s raised %s\n" % (cmdFunc, e))
+                traceback.print_exc(file=sys.stderr)
+                quotedErr = quoteStr(str(e))
+                msgStr = "Exception=%s; Text=%s" % (e.__class__.__name__, quotedErr)
+                self.writeToUsers("f", msgStr, cmd=cmd)
+            else:
+                if not retVal:
+                    cmd.setState("done")
+            return
+        
+        # see if command is a device command
+        dev = None
+        devCmdStr = ""
+        devCmdInfo = self.devCmdDict.get(cmd.cmdVerb)
+        if devCmdInfo:
+            # command verb is one handled by a device
+            dev, devCmdVerb, cmdHelp = devCmdInfo
+            devCmdStr = "%s %s" % (devCmdVerb, cmd.cmdArgs)
+        else:
+            dev = self.devNameDict.get(cmd.cmdVerb)
+            if dev != None:
+                # command verb is the name of a device;
+                # the command arguments are the string to send to the device
+                devCmdStr = cmd.cmdArgs
+        if dev and devCmdStr:
+            try:
+                dev.newCmd(devCmdStr, userCmd=cmd)
+            except Command.CommandError, e:
                 cmd.setState("failed", str(e))
                 return
             except Exception, e:
@@ -216,25 +242,51 @@ class Actor(object):
                 msgStr = "Exception=%s; Text=%s" % (e.__class__.__name__, quotedErr)
                 self.writeToUsers("f", msgStr, cmd=cmd)
             return
-        
-        devCmdInfo = self.devCmdDict.get(cmd.cmdVerb)
-        if devCmdInfo:
-            # execute device command
-            dev, devCmdVerb, cmdHelp = devCmdInfo
-            devCmdStr = dev.newCmd(cmdVerb=devCmdVerb, cmdArgs=cmd.cmdArgs, userCmd=cmd)
-            return
-        
-        dev = self.devNameDict.get(cmd.cmdVerb)
-        if dev != None:
-            # user's command verb is the name of a device
-            # the rest of the text is a device command
-            devCmdVerbArgs = cmd.cmdArgs.split(None, 1)
-            devCmdVerb = devCmdVerbArgs[0]
-            devCmdArgs = devCmdVerbArgs[1] if len(devCmdVerbArgs) > 1 else ""
-            dev.newCmd(cmdVerb = devCmdVerb, cmdArgs = devCmdArgs)
-            return
 
         self.writeToOneUser("f", "UnknownCommand=%s" % (cmd.cmdVerb,), cmd=cmd)
+
+    def showDevConnStatus(self, cmd=None, onlyOneUser=False, onlyIfNotConn=False):
+        """Show connection status for all devices"""
+        for devName in sorted(self.devNameDict.keys()):
+            dev = self.devNameDict[devName]
+            self.showOneDevConnStatus(dev, onlyOneUser=onlyOneUser, onlyIfNotConn=onlyIfNotConn, cmd=cmd)
+    
+    def showOneDevConnStatus(self, dev, cmd=None, onlyOneUser=False, onlyIfNotConn=False):
+        """Show connection status for one device"""
+        if onlyIfNotConn and dev.conn.isConnected():
+            return
+
+        state, stateStr, reason = dev.conn.getFullState()
+        quotedReason = quoteStr(reason)
+        msgCode = "i" if dev.conn.isConnected() else "w"
+        msgStr = "%sConnState = %r, %s" % (dev.name, stateStr, quotedReason)
+        if onlyOneUser:
+            self.writeToOneUser(msgCode, msgStr, cmd=cmd)
+        else:
+            self.writeToUsers(msgCode, msgStr, cmd=cmd)
+
+    def showUserInfo(self, cmd):
+        """Show user information including your userID.
+        The command is required.
+        """
+        numUsers = len(self.userDict)
+        if numUsers == 0:
+            return
+        msgData = [
+            "YourUserID=%s" % (cmd.userID,),
+            "NumUsers=%s" % (numUsers,),
+        ]
+        userDict = dict() # dict of userID, addr
+        sockList = self.userDict.keys()
+        userIDList = self.userDict.values()
+        userSockList = sorted(zip(userIDList, sockList))
+        userInfo = []
+        for userID, sock in userSockList:
+            userInfo += [str(userID), sock._addr]
+        userInfoStr = ",".join(userInfo)
+        msgData.append("UserInfo=%s" % (userInfoStr,))
+        msgStr = "; ".join(msgData)
+        msgStr = self.writeToOneUser("i", msgStr, cmd=cmd)
         
     def userStateChanged(self, tkSock):
         """Called when a user connection changes state.
@@ -292,7 +344,6 @@ class Actor(object):
             raise RuntimeError("Cannot write to user 0")
         sock = self.getUserSock(userID)
         fullMsgStr = self.formatUserOutput(msgCode, msgStr, userID=userID, cmdID=cmdID)
-        #print "writeToOneUser(%s)" % (fullMsgStr,)
         sock.writeLine(fullMsgStr)
     
     def cmd_connDev(self, cmd=None):
@@ -308,6 +359,38 @@ class Actor(object):
             dev = self.devNameDict[devName]
             dev.conn.connect()
             dev.connReq = (True, cmd)
+    
+    def cmd_debugMsgs(self, cmd):
+        """on/off: turn debugging messages on or off"""
+        arg = cmd.cmdArgs.lower()
+        if arg == "on":
+            self.doDebugMsgs = True
+        elif arg == "off":
+            self.doDebugMsgs = False
+        else:
+            raise RuntimeError("Unrecognized argument %r; must be 'on' or 'off'" % (cmd.cmdArgs,))
+
+    def cmd_debugMemRefs(self, cmd):
+        """Print memory references"""
+        d = {}
+        sys.modules
+        # collect all classes
+        for m in sys.modules.values():
+            for sym in dir(m):
+                o = getattr (m, sym)
+                if type(o) in (types.ClassType, types.TypeType):
+                    d[o] = sys.getrefcount (o)
+        # sort by refcount
+        pairs = map (lambda x: (x[1],x[0]), d.items())
+        pairs.sort()
+        pairs.reverse()
+
+        for n, c in pairs[:100]:
+            self.writeToOneUser("i", "MemRefs=%10d, %s" % (n, c.__name__), cmd=cmd)
+    
+    def cmd_debugWing(self, cmd):
+        """Load wingdbstub so you can debug this code using WingIDE"""
+        import wingdbstub
     
     def cmd_disconnDev(self, cmd=None):
         """[dev1 [dev2 [...]]]: disconnect one or more devices (all if none specified).
@@ -360,29 +443,12 @@ class Actor(object):
         for helpStr in helpList:
             self.writeToUsers("i", "Text=%r" % (helpStr,), cmd=cmd)
     
-    def cmd_users(self, cmd):
-        """show user information including your userID
-        The command is required.
+    def cmd_status(self, cmd):
+        """Show status
+        Actors may wish to override this method to output additional status.
         """
-        numUsers = len(self.userDict)
-        if numUsers == 0:
-            return
-        msgData = [
-            "YourUserID=%s" % (cmd.userID,),
-            "NumUsers=%s" % (numUsers,),
-        ]
-        userDict = dict() # dict of userID, addr
-        sockList = self.userDict.keys()
-        userIDList = self.userDict.values()
-        userSockList = sorted(zip(userIDList, sockList))
-        userInfo = []
-        for userID, sock in userSockList:
-            userInfo += [str(userID), sock._addr]
-        userInfoStr = ",".join(userInfo)
-        msgData.append("UserInfo=%s" % (userInfoStr,))
-        msgStr = "; ".join(msgData)
-        msgStr = self.writeToOneUser("i", msgStr, cmd=cmd)
-
+        self.showUserInfo(cmd=cmd)
+        self.showDevConnStatus(cmd=cmd)
 
 if __name__ == "__main__":
     import Tkinter
