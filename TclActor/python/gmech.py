@@ -2,9 +2,11 @@
 """gmech actor
 
 TO DO:
-- Document UnknownCommand, MemRefs; document some of these in a TclActor manual.
-- Is gmechConnState being output when the state changes? I don't think so.
-- Make sure Status is really being output after reconnecting, INIT and REMAP
+- Refine piston motion timings based on recent measurements.
+- Document UnknownCommand, MemRefs
+  Remove "users" command -- use status instead.
+  Document actor-common keywords in TclActor manual? It'd be nice to do an inclusion if possible.
+- Should status be output when device disconnected?
 - Test command queueing and collision handling as thoroughly as possible;
   it is complicated and it would be best to test all branches of the code.
 - Consider making INIT more robust. Some possibilities:
@@ -369,9 +371,6 @@ class GMechDev(TclActor.TCPDevice):
                     self.currCmd.setState("failed", textMsg="Bad command echo: read %r; wanted %r" % \
                         (replyData, self.currCmd.cmdStr.strip()))
                     return
-                
-                if self.currCmd.cmdVerb == "REMAP":
-                    self.actor.writeToUsers("i", "Started", cmd=self.currCmd)
             elif self.currCmd.cmdVerb == "STATUS" and self.nReplies == 2:
                 # parse status
                 statusMatch = self._CtrllrStatusRE.match(replyData)
@@ -466,6 +465,8 @@ class GMechDev(TclActor.TCPDevice):
             for actStatus in self.actuatorStatusDict.itervalues():
                 actStatus.clear()
             self.queryStatus()
+            if cmd.cmdVerb == "REMAP":
+                self.actor.writeToUsers("i", "Started", cmd=cmd)
     
     def cmdCallback(self, cmd):
         """Handle command state callback"""
@@ -594,7 +595,7 @@ class GMechActor(TclActor.Actor):
             self.gmechDev.newCmd("STATUS", userCmd=cmd)
             return True # command executes in background
         else:
-            for actObj in ActuatorModel.ActuatorInfo.values():
+            for actObj in self.gmechDev.actuatorStatusDict.values():
                 msgCode, statusStr = actObj.hubFormat()
                 self.writeToUsers(msgCode, statusStr, cmd=cmd)
 

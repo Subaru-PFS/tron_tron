@@ -124,12 +124,38 @@ class Actor(object):
         """Called when a device's connection state changes."""
         dev = self.devConnDict[devConn]
         wantConn, cmd = dev.connReq
+        print "wantConn=%s; cmd=%s" % (wantConn, cmd)
         self.showOneDevConnStatus(dev, cmd=cmd)
+        state, stateStr, reason = devConn.getFullState()
         if cmd and devConn.isDone():
-            succeeded = wantConn and devConn.isConnected()
+            succeeded = bool(wantConn) == devConn.isConnected()
             cmdState = "done" if succeeded else "failed"
             cmd.setState(cmdState, textMsg=reason)
             dev.connReq = (wantConn, None)
+
+    def formatUserOutput(self, msgCode, msgStr, userID=None, cmdID=None):
+        """Format a string to send to the all users.
+        """
+        return "%d %d %s %s" % (userID, cmdID, msgCode, msgStr)
+    
+    def getUserCmdID(self, cmd=None, userID=None, cmdID=None):
+        """Return userID, cmdID based on user-supplied information.
+        
+        Each item is 0 is: <item> if <item> != None, else cmd.<item> if cmd != None else 0
+        """
+        return (
+            userID if userID != None else (cmd.userID if cmd else 0),
+            cmdID if cmdID != None else (cmd.cmdID if cmd else 0),
+        )
+    
+    def getUserSock(self, userID):
+        """Get a user socket given the user ID number.
+        Raise KeyError if user unknown.
+        """
+        for sock, sockUserID in self.userDict.iteritems():
+            if sockUserID == userID:
+                return sock
+        raise KeyError("No user with id %s" % (userID,))
     
     def initialConn(self):
         """Perform initial connections.
@@ -139,37 +165,6 @@ class Actor(object):
         """
         self.cmd_connDev()
     
-    def newUser(self, tkSock):
-        """A new user has connected.
-        Assign an ID and report it to the user.
-        """
-        if self.maxUsers != None:
-            if len(self.userDict) >= self.maxUsers:
-                tkSock.writeLine("0 0 E NoFreeConnections")
-                tkSock.close()
-                return
-        
-        currIDs = set(self.userDict.values())
-        userID = 1
-        while userID in currIDs:
-            userID += 1
-        
-        self.userDict[tkSock] = userID
-        tkSock.setReadCallback(self.newCmd)
-        tkSock.setStateCallback(self.userStateChanged)
-        
-        # report user information and additional info
-        fakeCmd = Command.UserCmd(userID=userID)
-        self.showUserInfo(fakeCmd)
-        self.showDevConnStatus(cmd=fakeCmd, onlyOneUser=True, onlyIfNotConn=True)
-        self.newUserOutput(userID, tkSock)
-    
-    def newUserOutput(self, userID, tkSock):
-        """Override to report additional status to the new user
-        other than userID and bad device status
-        """
-        pass
-        
     def newCmd(self, tkSock):
         """Called when a command is read from a user.
         
@@ -245,6 +240,37 @@ class Actor(object):
 
         self.writeToOneUser("f", "UnknownCommand=%s" % (cmd.cmdVerb,), cmd=cmd)
 
+    def newUser(self, tkSock):
+        """A new user has connected.
+        Assign an ID and report it to the user.
+        """
+        if self.maxUsers != None:
+            if len(self.userDict) >= self.maxUsers:
+                tkSock.writeLine("0 0 E NoFreeConnections")
+                tkSock.close()
+                return
+        
+        currIDs = set(self.userDict.values())
+        userID = 1
+        while userID in currIDs:
+            userID += 1
+        
+        self.userDict[tkSock] = userID
+        tkSock.setReadCallback(self.newCmd)
+        tkSock.setStateCallback(self.userStateChanged)
+        
+        # report user information and additional info
+        fakeCmd = Command.UserCmd(userID=userID)
+        self.showUserInfo(fakeCmd)
+        self.showDevConnStatus(cmd=fakeCmd, onlyOneUser=True, onlyIfNotConn=True)
+        self.newUserOutput(userID, tkSock)
+    
+    def newUserOutput(self, userID, tkSock):
+        """Override to report additional status to the new user
+        other than userID and bad device status
+        """
+        pass
+
     def showDevConnStatus(self, cmd=None, onlyOneUser=False, onlyIfNotConn=False):
         """Show connection status for all devices"""
         for devName in sorted(self.devNameDict.keys()):
@@ -298,30 +324,6 @@ class Actor(object):
             del self.userDict[tkSock]
         except KeyError:
             sys.stderr.write("ICC warning: user socket closed but could not find in userDict")
-    
-    def getUserCmdID(self, cmd=None, userID=None, cmdID=None):
-        """Return userID, cmdID based on user-supplied information.
-        
-        Each item is 0 is: <item> if <item> != None, else cmd.<item> if cmd != None else 0
-        """
-        return (
-            userID if userID != None else (cmd.userID if cmd else 0),
-            cmdID if cmdID != None else (cmd.cmdID if cmd else 0),
-        )
-
-    def formatUserOutput(self, msgCode, msgStr, userID=None, cmdID=None):
-        """Format a string to send to the all users.
-        """
-        return "%d %d %s %s" % (userID, cmdID, msgCode, msgStr)
-    
-    def getUserSock(self, userID):
-        """Get a user socket given the user ID number.
-        Raise KeyError if user unknown.
-        """
-        for sock, sockUserID in self.userDict.iteritems():
-            if sockUserID == userID:
-                return sock
-        raise KeyError("No user with id %s" % (userID,))
 
     def writeToUsers(self, msgCode, msgStr, cmd=None, userID=None, cmdID=None):
         """Write a message to all users.
@@ -357,8 +359,75 @@ class Actor(object):
         
         for devName in devNameList:
             dev = self.devNameDict[devName]
-            dev.conn.connect()
             dev.connReq = (True, cmd)
+            dev.conn.connect()
+        return True
+    
+    def cmd_disconnDev(self, cmd=None):
+        """[dev1 [dev2 [...]]]: disconnect one or more devices (all if none specified).
+        Command args: 0 or more device names, space-separated
+        """
+        if cmd and cmd.cmdArgs:
+            devNameList = cmd.cmdArgs.split()
+        else:
+            devNameList = self.devNameDict.keys()
+        
+        for devName in devNameList:
+            dev = self.devNameDict[devName]
+            dev.connReq = (False, cmd)
+            dev.conn.disconnect()
+        return True
+    
+    def cmd_exit(self, cmd=None):
+        """disconnect yourself"""
+        sock = self.getUserSock(cmd.userID)
+        sock.close()
+    
+    def cmd_help(self, cmd=None):
+        """print this help"""
+        helpList = []
+        debugHelpList = []
+        
+        # commands handled by this actor
+        for cmdVerb, cmdFunc in self.locCmdDict.iteritems():
+            helpStr = cmdFunc.__doc__.split("\n")[0]
+            if ":" in helpStr:
+                joinStr = " "
+            else:
+                joinStr = ": "
+            if cmdVerb.startswith("debug"):
+                debugHelpList.append(joinStr.join((cmdVerb, helpStr)))
+            else:
+                helpList.append(joinStr.join((cmdVerb, helpStr)))
+        
+        # commands handled by a device
+        for cmdVerb, cmdInfo in self.devCmdDict.iteritems():
+            helpStr = cmdInfo[2]
+            if ":" in helpStr:
+                joinStr = " "
+            else:
+                joinStr = ": "
+            helpList.append(joinStr.join((cmdVerb, helpStr)))
+
+        helpList.sort()
+        helpList += ["", "Debug commands:"]
+        debugHelpList.sort()
+        helpList += debugHelpList
+        
+        # direct device access commands (these go at the end)
+        helpList += ["", "Direct device access commands:"]
+        for devName, dev in self.devNameDict.iteritems():
+            helpList.append("%s <text>: send <text> to device %s" % (devName, devName))
+        
+        for helpStr in helpList:
+            self.writeToUsers("i", "Text=%r" % (helpStr,), cmd=cmd)
+    
+    def cmd_status(self, cmd):
+        """Show status
+        Actors may wish to override this method to output additional status.
+        """
+        self.showUserInfo(cmd=cmd)
+        self.showDevConnStatus(cmd=cmd)
     
     def cmd_debugMsgs(self, cmd):
         """on/off: turn debugging messages on or off"""
@@ -391,64 +460,6 @@ class Actor(object):
     def cmd_debugWing(self, cmd):
         """Load wingdbstub so you can debug this code using WingIDE"""
         import wingdbstub
-    
-    def cmd_disconnDev(self, cmd=None):
-        """[dev1 [dev2 [...]]]: disconnect one or more devices (all if none specified).
-        Command args: 0 or more device names, space-separated
-        """
-        if cmd and cmd.cmdArgs:
-            devNameList = cmd.cmdArgs.split()
-        else:
-            devNameList = self.devNameDict.keys()
-        
-        for devName in devNameList:
-            dev = self.devNameDict[devName]
-            dev.conn.disconnect()
-            dev.connReq = (False, cmd)
-    
-    def cmd_exit(self, cmd=None):
-        """disconnect yourself"""
-        sock = self.getUserSock(cmd.userID)
-        sock.close()
-    
-    def cmd_help(self, cmd=None):
-        """print this help"""
-        helpList = []
-        
-        # commands handled by this actor
-        for cmdVerb, cmdFunc in self.locCmdDict.iteritems():
-            helpStr = cmdFunc.__doc__.split("\n")[0]
-            if ":" in helpStr:
-                joinStr = " "
-            else:
-                joinStr = ": "
-            helpList.append(joinStr.join((cmdVerb, helpStr)))
-        
-        # commands handled by a device
-        for cmdVerb, cmdInfo in self.devCmdDict.iteritems():
-            helpStr = cmdInfo[2]
-            if ":" in helpStr:
-                joinStr = " "
-            else:
-                joinStr = ": "
-            helpList.append(joinStr.join((cmdVerb, helpStr)))
-
-        helpList.sort()
-        
-        # direct device access commands (these go at the end)
-        helpList += ["", "Direct device access commands:"]
-        for devName, dev in self.devNameDict.iteritems():
-            helpList.append("%s <text>: send <text> to device %s" % (devName, devName))
-        
-        for helpStr in helpList:
-            self.writeToUsers("i", "Text=%r" % (helpStr,), cmd=cmd)
-    
-    def cmd_status(self, cmd):
-        """Show status
-        Actors may wish to override this method to output additional status.
-        """
-        self.showUserInfo(cmd=cmd)
-        self.showDevConnStatus(cmd=cmd)
 
 if __name__ == "__main__":
     import Tkinter
