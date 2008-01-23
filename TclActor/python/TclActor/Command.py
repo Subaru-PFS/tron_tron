@@ -1,12 +1,20 @@
 """Command objects for the Tcl Actor
 """
-__all__ = ["BaseCmd", "DevCmd", "UserCmd"]
+__all__ = ["CommandError", "BaseCmd", "DevCmd", "UserCmd"]
 
 import re
 import sys
 import RO.AddCallback
 import RO.Alg
 from RO.StringUtil import quoteStr
+
+
+class CommandError(Exception):
+    """Raise for a "normal" command failure when you want the explanation to be
+    nothing more than the text of the exception.
+    """
+    pass
+
 
 class BaseCmd(RO.AddCallback.BaseMixin):
     """Base class for commands of all types (user and device).
@@ -172,7 +180,7 @@ class UserCmd(BaseCmd):
         """
         cmdMatch = self._UserCmdRE.match(cmdStr)
         if not cmdMatch:
-            raise RuntimeError("Could not parse command %r" % cmdStr)
+            raise CommandError("Could not parse command %r" % cmdStr)
         
         cmdDict = cmdMatch.groupdict("")
         cmdIDStr = cmdDict["cmdID"]

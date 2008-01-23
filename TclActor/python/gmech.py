@@ -2,6 +2,7 @@
 """gmech actor
 
 TO DO:
+- Document UnknownCommand, MemRefs; document some of these in a TclActor manual.
 - Is gmechConnState being output when the state changes? I don't think so.
 - Make sure Status is really being output after reconnecting, INIT and REMAP
 - Test command queueing and collision handling as thoroughly as possible;
@@ -48,19 +49,16 @@ class ActuatorModel(object):
         piston = (float, "%0.2f", -3.0, 152403.0, 0.42, 1587.4, None),
         filter = (int,   "%0d",    0,        6,   0.42, 2.0, 2.4),
     )
-    def __init__(self, name, writeToUsersFunc):
+    def __init__(self, name, actor):
         actInfo = self.ActuatorInfo.get(name)
         if not actInfo:
             raise RuntimeError("Unknown actuator %r" % (name,))
         self.name = name.title()
+        self.actor = actor
         self.posType, self.posFmt, self.minPos, self.maxPos, self.tconst, self.speed, self.accel = actInfo
-        self.writeToUsersFunc = writeToUsersFunc
         
-        # items read from status
-        self._clearStatus()
-        
-        # items from a move command
-        self._clearMove()
+        self.moveCmd = None
+        self.clear()
     
     def cancelMove(self, msg="Superseded"):
         """Mark the current motion command (if any) as cancelled.
@@ -68,7 +66,8 @@ class ActuatorModel(object):
         """
         if self.moveCmd:
             if self.moveCmd.isDone():
-                self.writeToUsers("w", textMsg="Bug: move command %s is done and is being purged" % (self.moveCmd,))
+                textMsg = "Bug: move command %s is done and is being purged" % (self.moveCmd,)
+                self.actor.writeToUsers("w", "Text=%s" % (quoteStr(textMsg),))
             else:
                 self.moveCmd.setState("cancelled", hubMsg="Superseded")
         self._clearMove()
@@ -100,7 +99,7 @@ class ActuatorModel(object):
 
     def hubFormat(self):
         """Return (msgCode, msgStr) for output of status as a hub-formatted message"""
-        msgCode = ":" if self.isOK() else "w"
+        msgCode = "i" if self.isOK() else "w"
         strItems = [
             "%s=%s" % (self.name, self._fmt(self.pos)),
         ]
@@ -189,7 +188,6 @@ class ActuatorModel(object):
 
     def setStatus(self, pos, status, cmd=None):
         """Set status values."""
-        #print "ActuatorModel.setStatus(pos=%s, status=%s)" % (pos, status)
         pos = self.posType(pos)
         status = int(status)
         statusChanged = (pos != self.pos) or (status != self.status) or (self.statusTimestamp == None)
@@ -198,11 +196,11 @@ class ActuatorModel(object):
         self.status = status
         if statusChanged or (cmd and cmd.userID != 0):
             msgCode, statusStr = self.hubFormat()
-            self.writeToUsersFunc(msgCode, statusStr, cmd=cmd)
+            self.actor.writeToUsers(msgCode, statusStr, cmd=cmd)
         
         if self.moveCmd and not self.isMoving():
             if self.isOK():
-                print "%s moved %s in %s seconds" % (self.name, abs(self.pos - self.startPos), time.time() - self.startTime)
+                #print "%s moved %s in %s seconds" % (self.name, abs(self.pos - self.startPos), time.time() - self.startTime)
                 self.moveCmd.setState("done")
             else:
                 self.moveCmd.setState("failed", textMsg="Bad actuator status")
@@ -265,7 +263,6 @@ class GMechDev(TclActor.TCPDevice):
             name = "gmech",
             addr = ControllerAddr,
             port = ControllerPort,
-            sendLocID = False,
             callFunc = callFunc,
             actor = actor,
             cmdInfo = (
@@ -273,14 +270,13 @@ class GMechDev(TclActor.TCPDevice):
               ("remap",  None, "remap the piston and filter actuators and reset the gmech controller"),
               ("piston", None, "um: set the guider piston (focus)"),
               ("filter", None, "filtnum: select guider filter number (0-6)"),
-              ("status", None, "return gmech controller status")
             ),
         )
         self.queryStatusTimer = None # "after" ID of next queryStatus command
         # dictionary of actuator (piston or filter): actuator status
         self.actuatorStatusDict = {}
         for actName in ActuatorModel.ActuatorInfo.keys():
-            self.actuatorStatusDict[actName] = ActuatorModel(actName, self.actor.writeToUsers)
+            self.actuatorStatusDict[actName] = ActuatorModel(actName, self.actor)
         self.cmdQueue = []
         self.currCmd = None
         self.nReplies = 0 # number of replies read for current command, including echo
@@ -299,7 +295,6 @@ class GMechDev(TclActor.TCPDevice):
     
     def connStateCallback(self, devConn):
         """Called when a device's connection state changes."""
-        print "connStateCallback; state=%s" % (devConn.getFullState(),)
         if devConn.isConnected():
             self.queryStatus()
         else:
@@ -316,7 +311,6 @@ class GMechDev(TclActor.TCPDevice):
     def queryStatus(self):
         """Query status at regular intervals.
         """
-        print "queryStatus"
         self.cancelQueryStatus()
         needNewStatus = True
         if self.currCmd and self.currCmd.cmdVerb == "STATUS":
@@ -333,7 +327,6 @@ class GMechDev(TclActor.TCPDevice):
         for actStatus in self.actuatorStatusDict.itervalues():
             isMoving = isMoving or actStatus.moveCmd
         intervalMS = StatusIntervalMovingMS if isMoving else StatusIntervalHaltedMS
-        #print "isMoving=%s, intervalMS=%s" % (isMoving, intervalMS)
         self.queryStatusTimer = self._tk.after(intervalMS, self.queryStatus)
     
     def handleReply(self, replyStr):
@@ -363,7 +356,9 @@ class GMechDev(TclActor.TCPDevice):
             replyData = ""
         else:
             replyData = replyList[0]
-        print "GMechDev.handleReply: replyStr=%r; replyData=%r; isDone=%s; nReplies=%s; currCmd=%s" % (replyStr, replyData, isDone, self.nReplies, self.currCmd)
+        if self.actor.doDebugMsgs:
+            debugMsg = "GMechDev.handleReply: replyStr=%r; nReplies=%s; currCmd=%s" % (replyStr, self.nReplies, self.currCmd)
+            self.actor.writeToUsers("i", "DebugText=%s" % quoteStr(debugMsg))
             
         # handle reply data
         if replyData:
@@ -375,8 +370,8 @@ class GMechDev(TclActor.TCPDevice):
                         (replyData, self.currCmd.cmdStr.strip()))
                     return
                 
-                if self.currCmd.verb == "REMAP":
-                    self.writeToUsers("i", "Started")
+                if self.currCmd.cmdVerb == "REMAP":
+                    self.actor.writeToUsers("i", "Started", cmd=self.currCmd)
             elif self.currCmd.cmdVerb == "STATUS" and self.nReplies == 2:
                 # parse status
                 statusMatch = self._CtrllrStatusRE.match(replyData)
@@ -411,9 +406,9 @@ class GMechDev(TclActor.TCPDevice):
                 # if actuator command then mark as started
                 actStatus = self.actuatorStatusDict.get(self.currCmd.cmdVerb.lower())
                 if actStatus:
-                    # an actuator move; print "started", remove from self.currCmd
+                    # an actuator move; print "started" and remove from self.currCmd
                     # and start next command (if any)
-                    self.writeToUsers("i", "Started", self.currCmd)
+                    self.actor.writeToUsers("i", "Started", cmd=self.currCmd)
                     self.clearCurrCmd()
                 else:
                     # command does not run in the background; it's really done now
@@ -437,9 +432,11 @@ class GMechDev(TclActor.TCPDevice):
     
     def startCmd(self, cmd, timeLimitMS=_DefTimeLimitMS):
         """Send a command to the device; there must be no current command"""
-        print "startCmd %s; currCmd=%s; currCmdTimer=%s" % (cmd, self.currCmd, self.currCmdTimer)
         if self.currCmd or self.currCmdTimer:
             raise RuntimeError("Current command and/or command timer exists")
+        if self.actor.doDebugMsgs:
+            debugMsg = "GMechDev.startCmd cmd=%s; timeLimitMS=%s" % (cmd, timeLimitMS)
+            self.actor.writeToUsers("i", "DebugText=%s" % quoteStr(debugMsg))
 
         # if this is an actuator move then vet the arguments and set actuator status
         isMove = False
@@ -450,7 +447,6 @@ class GMechDev(TclActor.TCPDevice):
             try:
                 actStatus.setMove(cmd)
             except RuntimeError, e:
-                print "Move rejected: %s" % (e,)
                 self.clearCurrCmd() # try next command, if any
                 return
         
@@ -460,8 +456,9 @@ class GMechDev(TclActor.TCPDevice):
         self.currCmd = cmd
         if timeLimitMS:
             self.currCmdTimer = self._tk.after(timeLimitMS, self.cmdTimeout, cmd)
-        cmd.addCallback(self.cmdCallback)
-        self.conn.writeLine(cmd.getCmdStr())
+        if not isMove:
+            cmd.addCallback(self.cmdCallback)
+        self.conn.writeLine(cmd.cmdStr)
 
         if isMove:
             self.queryStatus()
@@ -487,13 +484,15 @@ class GMechDev(TclActor.TCPDevice):
 
     def newCmd(self, cmdStr, callFunc=None, userCmd=None):
         """Start a new command"""
-        print "GMechDev.newCmd(cmdStr=%s, callFunc=%s, userCmd=%s)" % (cmdStr, callFunc, userCmd)
+        if self.actor.doDebugMsgs:
+            debugMsg = "GMechDev.newCmd cmdStr=%s; callFunc=%s; userCmd=%s" % (cmdStr, callFunc, userCmd)
+            self.actor.writeToUsers("i", "DebugText=%s" % quoteStr(debugMsg))
         if not self.conn.isConnected():
             errMsg = "Device %s is not connected" % (self.name,)
             if userCmd:
                 userCmd.setState("failed", textMsg=errMsg)
             else:
-                self.writeToUsers("Text=%s" % (quoteStr(errMsg),))
+                self.actor.writeToUsers("w", "Text=%s" % (quoteStr(errMsg),))
             return
         
         # force command string to uppercase for gmech device
@@ -506,14 +505,16 @@ class GMechDev(TclActor.TCPDevice):
                 actStatus.cancelMove("Superseded by init")
             for queuedCmd in self.cmdQueue:
                 if queuedCmd.isDone():
-                    self.writeToUsers("w", textMsg="Bug: queued command %s is done and is being purged" % (cmd,))
+                    textMsg = "Bug: queued command %s is done and is being purged" % (cmd,)
+                    self.actor.writeToUsers("w", "Text=%s" % (quoteStr(textMsg),))
                 else:
                     queuedCmd.setState("cancelled", textMsg="Superseded by init", hubMsg="Superseded")
             self.cmdQueue = []
 
             if self.currCmd:
                 if self.currCmd.isDone():
-                    self.writeToUsers("w", textMsg="Bug: current command %s is done and is being purged" % (self.currCmd,))
+                    textMsg = "Bug: current command %s is done and is being purged" % (self.currCmd,)
+                    self.actor.writeToUsers("w", "Text=%s" % (quoteStr(textMsg),))
                     self.currCmd = None
                 elif self.currCmd.cmdVerb == "REMAP":
                     # remap can be cancelled; other commands cannot
@@ -522,7 +523,7 @@ class GMechDev(TclActor.TCPDevice):
                     if self.currCmdTimer:
                         self._tk.after_cancel(self.currCmdTimer)
                     else:
-                        self.writeToUsers("w", textMsg="Bug: cancelling REMAP but no command timer")
+                        self.actor.writeToUsers("w", "Text=Bug: cancelling REMAP but no command timer")
                     self.currCmdTimer = self._tk.after(self._DefTimeLimitMS, self.cmdTimeout, self.currCmd)
                     self.conn.writeLine("") # start cancelling REMAP
 
@@ -576,14 +577,26 @@ class GMechActor(TclActor.Actor):
             maxUsers = None,
             devs = GMechDev(actor=self),
         )
-        self.ctrllr = self.devNameDict["gmech"]
+        self.gmechDev = self.devNameDict["gmech"]
         self.moveCmdDict = {} # dict of cmdVerb: userCmd for actuator moves
     
     def newUserOutput(self, userID, tkSock):
         """Report status to new user"""
-        for actuator, actStatus in self.ctrllr.actuatorStatusDict.iteritems():
+        for actuator, actStatus in self.gmechDev.actuatorStatusDict.iteritems():
             msgCode, statusStr = actStatus.hubFormat()
             self.writeToOneUser(msgCode, statusStr, userID=userID)
+    
+    def cmd_status(self, cmd=None):
+        """Show device status
+        """
+        TclActor.Actor.cmd_status(self, cmd)
+        if self.gmechDev.conn.isConnected():
+            self.gmechDev.newCmd("STATUS", userCmd=cmd)
+            return True # command executes in background
+        else:
+            for actObj in ActuatorModel.ActuatorInfo.values():
+                msgCode, statusStr = actObj.hubFormat()
+                self.writeToUsers(msgCode, statusStr, cmd=cmd)
 
 
 if __name__ == "__main__":
