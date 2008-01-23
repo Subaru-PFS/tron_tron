@@ -2,6 +2,7 @@
 """
 __all__ = ["Actor"]
 
+import operator
 import sys
 import types
 import traceback
@@ -349,7 +350,8 @@ class Actor(object):
         sock.writeLine(fullMsgStr)
     
     def cmd_connDev(self, cmd=None):
-        """[dev1 [dev2 [...]]]: connect or reconnect one or more devices (all if none specified).
+        """[dev1 [dev2 [...]]]: connect one or more devices (all devices if none specified).
+        Already-connected devices are ignored (except to output status).
         Command args: 0 or more device names, space-separated
         """
         if cmd and cmd.cmdArgs:
@@ -357,14 +359,20 @@ class Actor(object):
         else:
             devNameList = self.devNameDict.keys()
         
+        runInBackground = False
         for devName in devNameList:
             dev = self.devNameDict[devName]
-            dev.connReq = (True, cmd)
-            dev.conn.connect()
-        return True
+            if dev.conn.isConnected():
+                self.showOneDevConnStatus(dev, cmd=cmd)
+            else:
+                runInBackground = True
+                dev.connReq = (True, cmd)
+                dev.conn.connect()
+        return runInBackground
     
     def cmd_disconnDev(self, cmd=None):
         """[dev1 [dev2 [...]]]: disconnect one or more devices (all if none specified).
+        Already-disconnected devices are ignored (except to output status).
         Command args: 0 or more device names, space-separated
         """
         if cmd and cmd.cmdArgs:
@@ -372,11 +380,16 @@ class Actor(object):
         else:
             devNameList = self.devNameDict.keys()
         
+        runInBackground = False
         for devName in devNameList:
             dev = self.devNameDict[devName]
-            dev.connReq = (False, cmd)
-            dev.conn.disconnect()
-        return True
+            if dev.conn.isDone() and not dev.conn.isConnected():
+                self.showOneDevConnStatus(dev, cmd=cmd)
+            else:
+                runInBackground = True
+                dev.connReq = (False, cmd)
+                dev.conn.disconnect()
+        return runInBackground
     
     def cmd_exit(self, cmd=None):
         """disconnect yourself"""
@@ -439,8 +452,8 @@ class Actor(object):
         else:
             raise RuntimeError("Unrecognized argument %r; must be 'on' or 'off'" % (cmd.cmdArgs,))
 
-    def cmd_debugMemRefs(self, cmd):
-        """Print memory references"""
+    def cmd_debugRefCounts(self, cmd):
+        """Print the reference count for each object"""
         d = {}
         sys.modules
         # collect all classes
@@ -449,13 +462,12 @@ class Actor(object):
                 o = getattr (m, sym)
                 if type(o) in (types.ClassType, types.TypeType):
                     d[o] = sys.getrefcount (o)
-        # sort by refcount
-        pairs = map (lambda x: (x[1],x[0]), d.items())
-        pairs.sort()
-        pairs.reverse()
+        # sort by descending refcount (most interesting objects first)
+        pairs = d.items()
+        pairs.sort(key=operator.itemgetter(1), reverse=True)
 
-        for n, c in pairs[:100]:
-            self.writeToOneUser("i", "MemRefs=%10d, %s" % (n, c.__name__), cmd=cmd)
+        for c, n in pairs[:100]:
+            self.writeToOneUser("i", "RefCount=%5d, %s" % (n, c.__name__), cmd=cmd)
     
     def cmd_debugWing(self, cmd):
         """Load wingdbstub so you can debug this code using WingIDE"""
