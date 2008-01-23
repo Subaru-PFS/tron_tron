@@ -33,31 +33,31 @@
     </ul>
 </ul>
 
-<h2><a name= "Overview">Overview</a></h2>
+<h2><a name="Overview">Overview</a></h2>
 
 <p>gmech Actor is an interface to the NA2 <a href="http://www.apo.nmsu.edu/Telescopes/HardwareControllers/GuiderMechCommands.html">guide camera mechanical controller</a>, which sets the filter number and focus position of the NA2 off-axis guider. The following commands are supported:
 
-<h2><a name= "Commands">Commands</a></h2>
+<h2><a name="Commands">Commands</a></h2>
 
 <p>Commands are not case-sensitive.
 
-<h3><a name="filter"><code> filter <i>filter_number</i> </code></a></h3>
+<h3><a name="filter">filter <i>filter_number</i></a></h3>
 
 <p>Set the specified filter. Filters numbers are integers, starting at 0.
 
-<h3><a name="init"><code>init</code></a></h3>
+<h3><a name="init">init</a></h3>
 
 <p>Stop all motion and initializes the controller. This is the only command that can interrupt the <a href="#remap">remap</a> command.
 
-<h3><a name="piston"><code>piston <i>piston</i> </code></a></h3>
+<h3><a name="piston">piston <i>piston</i></a></h3>
 
 <p>Set the piston of the guider to the specified value in &mu;m.
 
-<h3><a name="remap"><code>remap</code></a></h3>
+<h3><a name="remap">remap</a></h3>
 
 <p>Remap the actuators. This commands takes a long time to finish, but if necesary you can interrupt it using the <a href="#init">init</a> command.
 
-<h3><a name="status"><code>status</code></a></h3>
+<h3><a name="status">status</a></h3>
 
 <p>Returns the state of the piston and filter actuators. The output is described in the <a href="#Keywords">Keywords</a> section.
 

@@ -2,17 +2,8 @@
 """gmech actor
 
 TO DO:
-- Refine piston motion timings based on recent measurements.
-- Document UnknownCommand, MemRefs
-  Remove "users" command -- use status instead.
-  Document actor-common keywords in TclActor manual? It'd be nice to do an inclusion if possible.
-- Should status be output when device disconnected?
 - Test command queueing and collision handling as thoroughly as possible;
   it is complicated and it would be best to test all branches of the code.
-- Consider making INIT more robust. Some possibilities:
-    - Retry if the first one fails
-    - Send some more complicated sequence such as <CR>INIT and handle command echo carefully
-    (e.g. ignore all replies until OK, then check last replyData == "INIT")
 """
 import math
 import re
@@ -591,13 +582,10 @@ class GMechActor(TclActor.Actor):
         """Show device status
         """
         TclActor.Actor.cmd_status(self, cmd)
-        if self.gmechDev.conn.isConnected():
-            self.gmechDev.newCmd("STATUS", userCmd=cmd)
-            return True # command executes in background
-        else:
-            for actObj in self.gmechDev.actuatorStatusDict.values():
-                msgCode, statusStr = actObj.hubFormat()
-                self.writeToUsers(msgCode, statusStr, cmd=cmd)
+        if not self.gmechDev.conn.isConnected():
+            return False
+        self.gmechDev.newCmd("STATUS", userCmd=cmd)
+        return True # command executes in background
 
 
 if __name__ == "__main__":
