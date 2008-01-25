@@ -6,10 +6,9 @@
 <body>
 <h1>TclActor</h1>
 
-<p>Contents
 <ul>
-    <li> <a href= "#Overview">Overview</a>
-    <li> <a href= "#Commands">Commands</a>
+    <li><a href="#Overview">Overview</a>
+    <li><a href="#Commands">Standard Commands</a>
     <ul>
         <li><a href="#connDev">connDev <i>[dev1 [dev2 [...]]]</i></a>
         <li><a href="#disconnDev">disconnDev <i>[dev1 [dev2 [...]]]</i></a>
@@ -21,7 +20,7 @@
         <li><a href="#debugRefCounts">debugRefCounts</a>
         <li><a href="#debugWing">debugWing</a>
     </ul>
-    <li><a href="#Keywords">Keywords</a>
+    <li><a href="#Keywords">Standard Keywords</a>
     <ul>
         <li><a href="#devConnState"><i>dev</i>ConnState=<i>state, reason</i></a>
         <li><a href="#NumUsers">NumUsers=<i>int</i></a>
@@ -34,15 +33,15 @@
     </ul>
 </ul>
 
-<h2><a name= "Overview">Overview</a></h2>
+<h2><a name="Overview">Overview</a></h2>
 
-<p>TclActor is core code for writing an actor: an instrument control computer (ICC) or hub-based script that does something useful. Any actor based on TclActor will support the commands and keywords described in here (unless the programmer has overridden them).
+<p>TclActor is core code for writing an actor: an instrument control computer (ICC) or hub-based script that does something useful. This manual describes the standard commands and keywords that any actor based on TclActor will support.
 
-This manual describes the user interface to TclActor. See <a href="TclActorInternals.html">TclActor Internals</a> for information about writing code based on TclActor.
+<p>See <a href="TclActorInternals.html">TclActor Internals</a> for information about writing code based on TclActor.
 
-<h2><a name= "Commands">Commands</a></h2>
+<h2><a name="Commands">Standard Commands</a></h2>
 
-<p>Commands are not case-sensitive.
+<p>All actors based on TclActor typically support the following standard commands (plus additional device-specific commands documented in that actor's manual). Commands are not case-sensitive.
 
 <h3><a name="connDev">connDev <i>[dev1 [dev2 [...]]]</i></a></h3>
 
@@ -76,15 +75,15 @@ This manual describes the user interface to TclActor. See <a href="TclActorInter
 
 <p>Enable debugging via WingIDE (simply imports wingdbstubs).
 
-<h2><a name="Keywords"></a>Keywords</h2>
+<h2><a name="Keywords"></a>Standard Keywords</h2>
 
-<p>Keyword data is output whenever the state of the dev actor or underlying hardware and hardware controller changes.
+<p>Keyword data is output whenever the state of the actor changes. All actors based on TclActor output the following standard keywords (in addition to device-specific keywords described in the manual for that actor).
 
 <p>Notes:
 <ul>
     <li><i>Dev</i> is a placeholder for a device name
     <li>Numeric values (even integers) will be "NaN" if unknown
-    <li>When you first connect you are shown current status.
+    <li>When you first connect you are shown current status, including YourUserID.
 </ul>
 
 <h3><a name="devConnState"></a><i>dev</i>ConnState=<i>state, reason</i></h3>

@@ -6,16 +6,16 @@
 <body>
 <h1>gmech Actor</h1>
 
-<p>Contents
 <ul>
-    <li> <a href= "#Overview">Overview</a>
-    <li> <a href= "#Commands">Commands</a>
+    <li><a href= "#Overview">Overview</a>
+    <li><a href= "#Commands">Commands</a>
     <ul>
         <li><a href="#filter">filter <i>filter_number</i></a>
         <li><a href="#init">init</a>
         <li><a href="#piston">piston <i>piston</i></a>
         <li><a href="#remap">remap</a>
         <li><a href="#status">status</a>
+        <li>Plus: <a href="TclActor.html#Commands">standard commands</a> from TclActor
     </ul>
     <li><a href="#Keywords">Keywords</a>
     <ul>
@@ -30,16 +30,19 @@
         <li><a href="#Timeout">Timeout</a>
         <li><a href="#UserInfo">UserInfo=<i>userID1, addr1, userID2, addr2, ...</i></a>
         <li><a href="#YourUserID">YourUserID=<i>int</i></a>
+        <li>Plus: <a href="TclActor.html#Keywords">Standard keywords</a> from TclActor
     </ul>
 </ul>
 
 <h2><a name="Overview">Overview</a></h2>
 
-<p>gmech Actor is an interface to the NA2 <a href="http://www.apo.nmsu.edu/Telescopes/HardwareControllers/GuiderMechCommands.html">guide camera mechanical controller</a>, which sets the filter number and focus position of the NA2 off-axis guider. The following commands are supported:
+<p>The gmech actor is an interface to the NA2 <a href="http://www.apo.nmsu.edu/Telescopes/HardwareControllers/GuiderMechCommands.html">guide camera mechanical controller</a>, which sets the filter number and focus position of the NA2 off-axis guider.
 
-<h2><a name="Commands">Commands</a></h2>
+<p>Gmech actor is based on <a href="TclActor.html">TclActor</a>. As such it has TclActor's <a href="TclActor.html#Commands">standard commands</a> and <a href="TclActor.html#Keywords">standard keywords</a>. There are additional gmech-specific commands and keywords which are described in this manual.
 
-<p>Commands are not case-sensitive.
+<h2><a name="Commands">GMech Commands</a></h2>
+
+<p>In addition to the <a href="TclActor.html#Commands">standard commands</a> from TclActor, gmech supports the following commands (none of which are case-sensitive):
 
 <h3><a name="filter">filter <i>filter_number</i></a></h3>
 
@@ -61,9 +64,9 @@
 
 <p>Returns the state of the piston and filter actuators. The output is described in the <a href="#Keywords">Keywords</a> section.
 
-<h2><a name="Keywords"></a>Keywords</h2>
+<h2><a name="Keywords"></a>GMech Keywords</h2>
 
-<p>Keyword data is output whenever the state of the gmech actor or underlying hardware and hardware controller changes.
+<p>Keyword data is output whenever the state of the gmech actor or underlying hardware and hardware controller changes. In addition to the <a href="TclActor.html#Keywords">standard keywords</a> from TclActor, gmech supports a number of gmech-specific keywords described here.
 
 <p>Notes:
 <ul>
