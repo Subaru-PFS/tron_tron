@@ -29,7 +29,7 @@ startAllConnections(['client',
                      'spicam','spicamExpose', "sfocus",
                      'nfake', # 'nfocus',
                      'cmiccServer', 'cm',
-                     'telmech'
+                     'telmech', 'gmech',
                      ])
 
 # Manually add ZA01 as an always-active commander of apollo.

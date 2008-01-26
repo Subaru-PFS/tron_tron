@@ -130,7 +130,11 @@ class Actor(object):
         state, stateStr, reason = devConn.getFullState()
         if cmd and devConn.isDone():
             succeeded = bool(wantConn) == devConn.isConnected()
-            cmdState = "done" if succeeded else "failed"
+            #cmdState = "done" if succeeded else "failed"
+            if succeeded:
+                cmdState = "done" 
+            else:
+                cmdState = "failed" 
             cmd.setState(cmdState, textMsg=reason)
             dev.connReq = (wantConn, None)
 
@@ -144,10 +148,21 @@ class Actor(object):
         
         Each item is 0 is: <item> if <item> != None, else cmd.<item> if cmd != None else 0
         """
-        return (
-            userID if userID != None else (cmd.userID if cmd else 0),
-            cmdID if cmdID != None else (cmd.cmdID if cmd else 0),
-        )
+        if userID == None:
+            userID = 0
+            if cmd:
+                userID = cmd.userID
+
+        if cmdID == None:
+            cmdID = 0
+            if cmd:
+                cmdID = cmd.cmdID
+            
+        #return (
+        #    userID if userID != None else (cmd.userID if cmd else 0),
+        #    cmdID if cmdID != None else (cmd.cmdID if cmd else 0),
+        #)
+        return userID, cmdID
     
     def getUserSock(self, userID):
         """Get a user socket given the user ID number.
@@ -285,7 +300,11 @@ class Actor(object):
 
         state, stateStr, reason = dev.conn.getFullState()
         quotedReason = quoteStr(reason)
-        msgCode = "i" if dev.conn.isConnected() else "w"
+        #msgCode = "i" if dev.conn.isConnected() else "w"
+        if dev.conn.isConnected():
+            msgCode = "i" 
+        else:
+            msgCode = "w"
         msgStr = "%sConnState = %r, %s" % (dev.name, stateStr, quotedReason)
         if onlyOneUser:
             self.writeToOneUser(msgCode, msgStr, cmd=cmd)
