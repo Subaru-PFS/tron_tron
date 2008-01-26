@@ -13,7 +13,7 @@ import Tkinter
 from RO.StringUtil import quoteStr
 import TclActor
 
-ActorPort = 2006
+ActorPort = 9879
 ControllerAddr = "tccserv35m.apo.nmsu.edu"
 ControllerPort = 2600
 StatusIntervalMovingMS = 500

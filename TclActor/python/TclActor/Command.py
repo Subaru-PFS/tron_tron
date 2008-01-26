@@ -143,7 +143,11 @@ class DevCmd(BaseCmd):
         """
         cmdVerbArgs = cmdStr.split(None, 1)
         self.cmdVerb = cmdVerbArgs[0]
-        self.cmdArgs = cmdVerbArgs[1] if len(cmdVerbArgs) > 1 else ""
+        #self.cmdArgs = cmdVerbArgs[1] if len(cmdVerbArgs) > 1 else ""
+        if len(cmdVerbArgs) > 1:
+            self.cmdArgs = cmdVerbArgs[1]
+        else:
+            self.cmdArgs = ""
     
     def getCmdWithID(self):
         """Return the command string with local command ID as a prefix
@@ -184,6 +188,10 @@ class UserCmd(BaseCmd):
         
         cmdDict = cmdMatch.groupdict("")
         cmdIDStr = cmdDict["cmdID"]
-        self.cmdID = int(cmdIDStr) if cmdIDStr else 0
+        #self.cmdID = int(cmdIDStr) if cmdIDStr else 0
+        if cmdIDStr:
+            self.cmdID = int(cmdIDStr) 
+        else:
+            self.cmdID = 0
         self.cmdVerb = cmdDict["cmdVerb"].lower()
         self.cmdArgs = cmdDict["cmdArgs"]
