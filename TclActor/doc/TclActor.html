@@ -29,8 +29,10 @@
         <li><a href="#Timeout">Timeout</a>
         <li><a href="#UnknownCommand">UnknownCommand=<i>cmdVerb</i></a>
         <li><a href="#UserInfo">UserInfo=<i>userID1, addr1, userID2, addr2, ...</i></a>
+        <li><a href="#Version">Version=<i>vers</i></a>
         <li><a href="#YourUserID">YourUserID=<i>int</i></a>
     </ul>
+    <li><a href="#VersionHistory">Version History</a>
 </ul>
 
 <h2><a name="Overview">Overview</a></h2>
@@ -114,9 +116,26 @@
 
 <p>An variable-length array containing two entries for each user who is presently connected: userID and the IP address. The user ID is an integer and the address is a string. The userIDs will appear in sorted order but are not necessarily contiguous.
 
+<h3><a name="Version">Version=<i>vers</i></a></h3>
+
+<p>The version number (as a string) of the actor.
+
 <h3><a name="YourUserID"></a>YourUserID=<i>int</i></h3>
 
 <p>Your own userID.
+
+<h2><a name="VersionHistory">Version History</a></h2>
+
+<h3>1.0b2 2008-01-30</h3>
+
+<ul>
+    <li>Removed a diagnostic print statement.
+    <li>Removed an unused variable (found by pychecker).
+</ul>
+
+<h3>1.0b1 2008-01-25</h3>
+
+<p>The first beta release.
 
 </body>
 </html>
