@@ -125,7 +125,6 @@ class Actor(object):
         """Called when a device's connection state changes."""
         dev = self.devConnDict[devConn]
         wantConn, cmd = dev.connReq
-        print "wantConn=%s; cmd=%s" % (wantConn, cmd)
         self.showOneDevConnStatus(dev, cmd=cmd)
         state, stateStr, reason = devConn.getFullState()
         if cmd and devConn.isDone():

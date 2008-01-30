@@ -1,4 +1,5 @@
 #!/usr/local/bin/python
+from __future__ import with_statement
 """gmech actor
 
 TO DO:
@@ -6,10 +7,12 @@ TO DO:
   it is complicated and it would be best to test all branches of the code.
 """
 import math
+import os
 import re
 import sys
 import time
 import Tkinter
+import RO.CnvUtil
 from RO.StringUtil import quoteStr
 import TclActor
 
@@ -90,11 +93,11 @@ class ActuatorModel(object):
         self.startPos = statusToCopy.startPos
         self.predSec = statusToCopy.predSec
 
-    def hubFormat(self):
+    def formatStatus(self):
         """Return (msgCode, msgStr) for output of status as a hub-formatted message"""
         msgCode = "i" if self.isOK() else "w"
         strItems = [
-            "%s=%s" % (self.name, self._fmt(self.pos)),
+            "%s=%s" % (self.name, self._fmtPos(self.pos)),
         ]
         if self.status == None:
             strItems.append("%sStatus=NaN" % (self.name,))
@@ -103,21 +106,26 @@ class ActuatorModel(object):
         if not self.isOK():
             strItems.append("Bad%sStatus" % (self.name,))
 
-        strItems.append("Des%s=%s" % (self.name, self._fmt(self.desPos)))
+        strItems.append("Des%s=%s" % (self.name, self._fmtPos(self.desPos)))
         if self.startTime != None:
             if self.isMoving():
                 elapsedSec = time.time() - self.startTime
-                strItems += [
-                    "%sPredTotalSec=%0.1f" % (self.name, self.predSec),
-                    "%sElapsedSec=%0.1f" % (self.name, elapsedSec),
-                ]
+                strItems.append("%sMoveTime=%0.1f, %0.1f" % (self.name, elapsedSec, self.predSec))
             else:
                 if self.desPos != None:
                     posErr = self.pos - self.desPos
                 else:
                     posErr = None
-                strItems.append("%sError=%s" % (self.name, self._fmt(posErr)))
+                strItems.append("%sError=%s" % (self.name, self._fmtPos(posErr)))
         return (msgCode, "; ".join(strItems))
+    
+    def formatParameters(self):
+        """Return for output of parameters as a hub-formatted message"""
+        strItems = [
+            "Min%s=%s" % (self.name, self._fmtPos(self.minPos)),
+            "Max%s=%s" % (self.name, self._fmtPos(self.maxPos)),
+        ]
+        return "; ".join(strItems)
     
     def isOK(self):
         """Return True if no bad status bits set (or if status never read)"""
@@ -188,7 +196,7 @@ class ActuatorModel(object):
         self.pos = pos
         self.status = status
         if statusChanged or (cmd and cmd.userID != 0):
-            msgCode, statusStr = self.hubFormat()
+            msgCode, statusStr = self.formatStatus()
             self.actor.writeToUsers(msgCode, statusStr, cmd=cmd)
         
         if self.moveCmd and not self.isMoving():
@@ -198,7 +206,7 @@ class ActuatorModel(object):
             else:
                 self.moveCmd.setState("failed", textMsg="Bad actuator status")
     
-    def _clearMove(self):
+    def _clearMove(self, clearDesPos=True):
         """Clear all move command information.
         Be careful not to call unless the move command has finished.
         """
@@ -206,7 +214,8 @@ class ActuatorModel(object):
             self.moveCmd.setState("failed", textMsg="Bug: move command cancelled by GMechDev._clearMove")
         self.moveCmd = None
         self.startTime = None
-        self.desPos = None
+        if clearDesPos:
+            self.desPos = None
         self.predSec = None # predicted duration of move (in seconds)
     
     def _clearStatus(self):
@@ -215,7 +224,7 @@ class ActuatorModel(object):
         self.pos = None
         self.status = None
     
-    def _fmt(self, pos):
+    def _fmtPos(self, pos):
         """Return position formatted as a string"""
         if pos == None:
             return "NaN"
@@ -224,15 +233,55 @@ class ActuatorModel(object):
     def _moveCmdCallback(self, cmd):
         """Callback function for move commands"""
         if cmd.isDone():
-            self._clearMove()
+            self._clearMove(clearDesPos=False)
     
     def __eq__(self, rhs):
         """Return True if status or move position has changed (aside from status timestamp)"""
         return (self.pos == rhs.pos) \
             and (self.status == rhs.status) \
             and (self.startTime == rhs.startTime)
+            
 
-
+class PistonModel(ActuatorModel):
+    def __init__(self, actor):
+        ActuatorModel.__init__(self, "piston", actor)
+        self.focusOffset = 0.0 # piston = focus + focusOffset
+    
+    def formatStatus(self):
+        """Return (msgCode, msgStr) for output of status as a hub-formatted message"""
+        msgCode, stdMsg = ActuatorModel.formatStatus(self)
+        if self.pos == None:
+            focus = None
+        else:
+            focus = self.pos - self.focusOffset
+        if self.desPos == None:
+            desFocus = None
+        else:
+            desFocus = self.desPos - self.focusOffset
+        strItems = [
+            stdMsg,
+            "FocusOffset=%s" % (self._fmtPos(self.focusOffset)),
+            "Focus=%s" % (self._fmtPos(focus),),
+            "DesFocus=%s" % (self._fmtPos(desFocus),),
+        ]
+        return (msgCode, "; ".join(strItems))
+    
+    def setFocusOffset(self, newOffset):
+        """Change focus offset; return delta focus offset (or None if desired position unknown).
+        Warning: this does not communicate with the controller.
+        """
+        newOffset = float(newOffset)
+        dOffset = newOffset - self.focusOffset
+        self.focusOffset = newOffset
+        if self.desPos != None:
+            return self.desPos + dOffset
+        return None
+    
+    def pistonFromFocus(self, focus):
+        """Convert focus to piston"""
+        return self.focusOffset + float(focus)
+        
+        
 class GMechDev(TclActor.TCPDevice):
     """Object representing the gmech hardware controller.
     
@@ -267,9 +316,10 @@ class GMechDev(TclActor.TCPDevice):
         )
         self.queryStatusTimer = None # "after" ID of next queryStatus command
         # dictionary of actuator (piston or filter): actuator status
-        self.actuatorStatusDict = {}
-        for actName in ActuatorModel.ActuatorInfo.keys():
-            self.actuatorStatusDict[actName] = ActuatorModel(actName, self.actor)
+        self.actuatorStatusDict = dict(
+            filter = ActuatorModel("filter", self.actor),
+            piston = PistonModel(self.actor),
+        )
         self.cmdQueue = []
         self.currCmd = None
         self.nReplies = 0 # number of replies read for current command, including echo
@@ -571,21 +621,104 @@ class GMechActor(TclActor.Actor):
         )
         self.gmechDev = self.devNameDict["gmech"]
         self.moveCmdDict = {} # dict of cmdVerb: userCmd for actuator moves
+        minFiltNum = self.gmechDev.actuatorStatusDict["filter"].minPos
+        maxFiltNum = self.gmechDev.actuatorStatusDict["filter"].maxPos
+        numFilters = maxFiltNum + 1 - minFiltNum
+        self.filtList = ["?"]*numFilters
+        try:
+            self.cmd_readFilterNames()
+        except Exception, e:
+            sys.stderr.write("Warning: cannot read filter names: %s\n" % (str(e),))
     
     def newUserOutput(self, userID, tkSock):
         """Report status to new user"""
-        for actuator, actStatus in self.gmechDev.actuatorStatusDict.iteritems():
-            msgCode, statusStr = actStatus.hubFormat()
-            self.writeToOneUser(msgCode, statusStr, userID=userID)
-    
-    def cmd_status(self, cmd=None):
-        """Show device status
-        """
-        TclActor.Actor.cmd_status(self, cmd)
-        if not self.gmechDev.conn.isConnected():
-            return False
-        self.gmechDev.newCmd("STATUS", userCmd=cmd)
+        cmd = TclActor.UserCmd(userID = userID)
+        self.cmd_parameters(cmd=cmd, writeToOne=True)
+        self.cmd_status(cmd=cmd, doQuery=False)
+        
+    def cmd_focusOffset(self, cmd):
+        """set focus offset (piston = focus + focusOffset)"""
+        focOffset = float(cmd.cmdArgs)
+        piston = self.gmechDev.actuatorStatusDict["piston"].setFocusOffset(focOffset)
+        if piston == None:
+            self.writeToUsers("w", 'Text="Not adjusting piston: desired piston unknown"', cmd=cmd)
+            return
+        self.gmechDev.newCmd("PISTON %0.1f" % (piston,))
         return True # command executes in background
+    
+    def cmd_focus(self, cmd):
+        """set focus (piston = focus + focusOffset)"""
+        focus = float(cmd.cmdArgs)
+        piston = self.gmechDev.actuatorStatusDict["piston"].pistonFromFocus(focus)
+        self.gmechDev.newCmd("PISTON %0.1f" % (piston,))
+        return True # command executes in background
+    
+    def cmd_status(self, cmd=None, doQuery=True):
+        """[doQuery]: show device status; if doQuery is no/F/false/0 then do not query the controller
+        
+        if cmd.cmdArgs is specified then doQuery is ignored.
+        
+        Note: if doQuery is False then device status is only output to one user.
+        """
+        if cmd.cmdArgs:
+            try:
+                doQuery = RO.CnvUtil.asBool(cmd.cmdArgs)
+            except TypeError, e:
+                raise TclActor.CommandError("Could not parse %s as a boolean" % (cmd.cmdArgs,))
+                
+        TclActor.Actor.cmd_status(self, cmd)
+        if doQuery:
+            if not self.gmechDev.conn.isConnected():
+                return False
+            self.gmechDev.newCmd("STATUS", userCmd=cmd)
+            return True # command executes in background
+        else:
+            for actuator, actStatus in self.gmechDev.actuatorStatusDict.iteritems():
+                msgCode, statusStr = actStatus.formatStatus()
+                self.writeToOneUser(msgCode, statusStr, cmd=cmd)
+    
+    def cmd_parameters(self, cmd=None, writeToOne=True):
+        """show parameters such as actuator limits and filter names"""
+        strList = [
+            "FilterNames=%s" % ",".join([quoteStr(fn) for fn in self.filtList]),
+        ]
+        for actStatus in self.gmechDev.actuatorStatusDict.itervalues():
+            strList.append(actStatus.formatParameters())
+        msgStr = "; ".join(strList)
+        if writeToOne:
+            self.writeToOneUser("i", msgStr, cmd=cmd)
+        else:
+            self.writeToUsers("i", msgStr, cmd=cmd)
+    
+    def cmd_readFilterNames(self, cmd=None):
+        """read filter names from $HOME/config/gmech.filters"""
+        filePath = os.path.join(os.environ["HOME"], "config", "gmech.filters")
+        if not os.path.exists(filePath):
+            raise TclActor.CommandError("Cannot find file %r" % (filePath,))
+        minFiltNum = self.gmechDev.actuatorStatusDict["filter"].minPos
+        maxFiltNum = self.gmechDev.actuatorStatusDict["filter"].maxPos
+        numFilters = maxFiltNum + 1 - minFiltNum
+        filtList = [""]*numFilters
+        with file(filePath) as filterFile:
+            for dataStr in filterFile:
+                dataStr = dataStr.strip()
+                if not dataStr or dataStr.startswith("#"):
+                    continue
+                filtNumName = dataStr.split(None, 1)
+                if len(filtNumName) < 2:
+                    raise TclActor.CommandError("Cannot parse line %r in %r" % (dataStr, filePath,))
+                filtNumStr, filtName = filtNumName
+                try:
+                    filtNum = int(filtNumStr)
+                except Exception:
+                    raise TclActor.CommandError("Cannot parse line %r in %r" % (dataStr, filePath,))
+                filtInd = filtNum - minFiltNum
+                if filtInd < 0 or filtInd >= numFilters:
+                    raise TclActor.CommandError("Filter number %s out of range [%s, %s]: line %r in %r" \
+                        % (filtNum, minFiltNum, maxFiltNum, dataStr, filePath))
+                filtList[filtInd] = filtName
+        self.filtList = filtList
+        self.cmd_parameters(cmd=cmd, writeToOne=False)
 
 
 if __name__ == "__main__":
