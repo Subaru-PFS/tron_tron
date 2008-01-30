@@ -12,7 +12,7 @@ import re
 import sys
 import time
 import Tkinter
-#import pychecker.checker # uncomment to run pychecker
+import pychecker.checker # uncomment to run pychecker
 import RO.CnvUtil
 from RO.StringUtil import quoteStr
 import TclActor
@@ -54,6 +54,7 @@ class ActuatorModel(object):
         self.name = name.title()
         self.actor = actor
         self.posType, self.posFmt, self.minPos, self.maxPos, self.tconst, self.speed, self.accel = actInfo
+        self.forceShowStatus = False # force showing focus
         
         self.moveCmd = None
         self.clear()
@@ -188,16 +189,19 @@ class ActuatorModel(object):
                     rampTime = 2.0 * self.speed / self.accel
                     self.predSec = rampTime + ((dist - rampDist) / self.speed)
             self.predSec += self.tconst
+        self.forceShowStatus = True
 
     def setStatus(self, pos, status, cmd=None):
         """Set status values."""
         pos = self.posType(pos)
         status = int(status)
-        statusChanged = (pos != self.pos) or (status != self.status) or (self.statusTimestamp == None)
+        doShowFocus = self.forceShowStatus or (pos != self.pos) \
+            or (status != self.status) or (self.statusTimestamp == None)
+        self.forceShowStatus = False
         self.statusTimestamp = time.time()
         self.pos = pos
         self.status = status
-        if statusChanged or (cmd and cmd.userID != 0):
+        if doShowFocus or (cmd and cmd.userID != 0):
             msgCode, statusStr = self.formatStatus()
             self.actor.writeToUsers(msgCode, statusStr, cmd=cmd)
         
@@ -222,6 +226,7 @@ class ActuatorModel(object):
     
     def _clearStatus(self):
         """Clear status data"""
+        self.forceShowStatus = True
         self.statusTimestamp = None
         self.pos = None
         self.status = None
@@ -645,14 +650,14 @@ class GMechActor(TclActor.Actor):
         if piston == None:
             self.writeToUsers("w", 'Text="Not adjusting piston: desired piston unknown"', cmd=cmd)
             return
-        self.gmechDev.newCmd("PISTON %0.1f" % (piston,))
+        self.gmechDev.newCmd("PISTON %0.1f" % (piston,), userCmd=cmd)
         return True # command executes in background
     
     def cmd_focus(self, cmd):
         """set focus (piston = focus + focusOffset)"""
         focus = float(cmd.cmdArgs)
         piston = self.gmechDev.actuatorStatusDict["piston"].pistonFromFocus(focus)
-        self.gmechDev.newCmd("PISTON %0.1f" % (piston,))
+        self.gmechDev.newCmd("PISTON %0.1f" % (piston,), userCmd=cmd)
         return True # command executes in background
     
     def cmd_status(self, cmd=None, doQuery=True):
