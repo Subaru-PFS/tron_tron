@@ -17,6 +17,7 @@ import RO.CnvUtil
 from RO.StringUtil import quoteStr
 import TclActor
 
+__version__ = "1.0b2"
 ActorPort = 9879
 ControllerAddr = "tccserv35m.apo.nmsu.edu"
 ControllerPort = 2600
@@ -681,6 +682,7 @@ class GMechActor(TclActor.Actor):
     def cmd_parameters(self, cmd=None, writeToOne=True):
         """show parameters such as actuator limits and filter names"""
         strList = [
+            "Version=%s" % (quoteStr(__version__),),
             "FilterNames=%s" % ",".join([quoteStr(fn) for fn in self.filtList]),
         ]
         for actStatus in self.gmechDev.actuatorStatusDict.itervalues():
