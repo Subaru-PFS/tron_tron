@@ -12,6 +12,7 @@ import re
 import sys
 import time
 import Tkinter
+#import pychecker.checker # uncomment to run pychecker
 import RO.CnvUtil
 from RO.StringUtil import quoteStr
 import TclActor

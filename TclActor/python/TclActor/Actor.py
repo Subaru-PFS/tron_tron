@@ -321,7 +321,6 @@ class Actor(object):
             "YourUserID=%s" % (cmd.userID,),
             "NumUsers=%s" % (numUsers,),
         ]
-        userDict = dict() # dict of userID, addr
         sockList = self.userDict.keys()
         userIDList = self.userDict.values()
         userSockList = sorted(zip(userIDList, sockList))
@@ -473,7 +472,6 @@ class Actor(object):
     def cmd_debugRefCounts(self, cmd):
         """Print the reference count for each object"""
         d = {}
-        sys.modules
         # collect all classes
         for m in sys.modules.values():
             for sym in dir(m):
@@ -487,14 +485,14 @@ class Actor(object):
         for c, n in pairs[:100]:
             self.writeToOneUser("i", "RefCount=%5d, %s" % (n, c.__name__), cmd=cmd)
     
-    def cmd_debugWing(self, cmd):
+    def cmd_debugWing(self, cmd=None):
         """Load wingdbstub so you can debug this code using WingIDE"""
         import wingdbstub
 
 if __name__ == "__main__":
     import Tkinter
     root = Tkinter.Tk()
-    b = TclActor(
+    b = Actor(
         userPort = 2005,
     )
     print b.locCmdDict
