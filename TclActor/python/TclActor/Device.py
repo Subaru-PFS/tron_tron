@@ -88,7 +88,6 @@ class Device(RO.AddCallback.BaseMixin):
             #print "Device.sendCmd writing %r" % (fullCmdStr,)
             self.conn.writeLine(fullCmdStr)
         except Exception, e:
-            quotedErr = quoteStr(str(e))
             cmd.setState(isDone=True, isOK=False, textMsg=str(e))
 
 
