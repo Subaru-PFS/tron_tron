@@ -1,5 +1,4 @@
 #!/usr/local/bin/python
-from __future__ import with_statement
 """gmech actor
 
 TO DO:
@@ -12,7 +11,7 @@ import re
 import sys
 import time
 import Tkinter
-import pychecker.checker # uncomment to run pychecker
+#import pychecker.checker # uncomment to run pychecker
 import RO.CnvUtil
 from RO.StringUtil import quoteStr
 import TclActor
@@ -98,7 +97,10 @@ class ActuatorModel(object):
 
     def formatStatus(self):
         """Return (msgCode, msgStr) for output of status as a hub-formatted message"""
-        msgCode = "i" if self.isOK() else "w"
+        if self.isOK():
+            msgCode = "i"
+        else:
+            msgCode = "w"
         strItems = [
             "%s=%s" % (self.name, self._fmtPos(self.pos)),
         ]
@@ -376,7 +378,10 @@ class GMechDev(TclActor.TCPDevice):
         isMoving = False
         for actStatus in self.actuatorStatusDict.itervalues():
             isMoving = isMoving or actStatus.moveCmd
-        intervalMS = StatusIntervalMovingMS if isMoving else StatusIntervalHaltedMS
+        if isMoving:
+            intervalMS = StatusIntervalMovingMS
+        else:
+            intervalMS = StatusIntervalHaltedMS
         self.queryStatusTimer = self._tk.after(intervalMS, self.queryStatus)
     
     def handleReply(self, replyStr):
@@ -707,7 +712,8 @@ class GMechActor(TclActor.Actor):
         maxFiltNum = self.gmechDev.actuatorStatusDict["filter"].maxPos
         numFilters = maxFiltNum + 1 - minFiltNum
         filtList = [""]*numFilters
-        with file(filePath) as filterFile:
+        filterFile = file(filePath, "rU")
+        try:
             for dataStr in filterFile:
                 dataStr = dataStr.strip()
                 if not dataStr or dataStr.startswith("#"):
@@ -725,6 +731,8 @@ class GMechActor(TclActor.Actor):
                     raise TclActor.CommandError("Filter number %s out of range [%s, %s]: line %r in %r" \
                         % (filtNum, minFiltNum, maxFiltNum, dataStr, filePath))
                 filtList[filtInd] = filtName
+        finally:
+            filterFile.close()
         self.filtList = filtList
         self.cmd_parameters(cmd=cmd, writeToOne=False)
 
