@@ -1,9 +1,5 @@
 #!/usr/local/bin/python
 """gmech actor
-
-TO DO:
-- Test command queueing and collision handling as thoroughly as possible;
-  it is complicated and it would be best to test all branches of the code.
 """
 import math
 import os
@@ -16,7 +12,7 @@ import RO.CnvUtil
 from RO.StringUtil import quoteStr
 import TclActor
 
-__version__ = "1.0b2"
+__version__ = "1.0b3"
 ActorPort = 9879
 ControllerAddr = "tccserv35m.apo.nmsu.edu"
 ControllerPort = 2600
@@ -58,23 +54,26 @@ class ActuatorModel(object):
         self.moveCmd = None
         self.clear()
     
-    def cancelMove(self, msg="Superseded"):
-        """Mark the current motion command (if any) as cancelled.
+    def cancelMove(self, didFail=False, textMsg=None, hubMsg="Superseded"):
+        """Cancel the current motion command, if any, and clear move information.
+        
+        Inputs:
+        - didFail: True if move failed, False if cancelled
+        - hubMsg: message for hub
+
         Warning: this does not communicate with the controller!
         """
-        if self.moveCmd:
-            if self.moveCmd.isDone():
-                textMsg = "Bug: move command %s is done and is being purged" % (self.moveCmd,)
-                self.actor.writeToUsers("w", "Text=%s" % (quoteStr(textMsg),))
+        if self.moveCmd and not self.moveCmd.isDone():
+            if didFail:
+                newState = "failed"
             else:
-                self.moveCmd.setState("cancelled", hubMsg="Superseded")
+                newState = "cancelled"
+            self.moveCmd.setState(newState, textMsg=textMsg, hubMsg=hubMsg)
         self._clearMove()
     
     def clear(self):
-        """Clear all information; call if the connection is lost or for INIT or REMAP"""
-        if self.moveCmd:
-            self.moveCmd.setState("failed", hubMsg="LostConnection")
-        self._clearMove()
+        """Clear all information; call if the connection is lost or for REMAP"""
+        self.cancelMove(didFail=True, textMsg="Bug: clear called while move active")
         self._clearStatus()
     
     def copy(self, statusToCopy):
@@ -112,16 +111,16 @@ class ActuatorModel(object):
             strItems.append("Bad%sStatus" % (self.name,))
 
         strItems.append("Des%s=%s" % (self.name, self._fmtPos(self.desPos)))
-        if self.startTime != None:
-            if self.isMoving():
+        if self.isMoving():
+            if self.startTime != None:
                 elapsedSec = time.time() - self.startTime
                 strItems.append("%sMoveTime=%0.1f, %0.1f" % (self.name, elapsedSec, self.predSec))
+        else:
+            if self.desPos != None:
+                posErr = self.pos - self.desPos
             else:
-                if self.desPos != None:
-                    posErr = self.pos - self.desPos
-                else:
-                    posErr = None
-                strItems.append("%sError=%s" % (self.name, self._fmtPos(posErr)))
+                posErr = None
+            strItems.append("%sError=%s" % (self.name, self._fmtPos(posErr)))
         return (msgCode, "; ".join(strItems))
     
     def formatParameters(self):
@@ -169,10 +168,8 @@ class ActuatorModel(object):
             errMsg = "Position too large: %s > %s" % (desPos, self.maxPos)
             moveCmd.setState("failed", textMsg=errMsg)
             raise RuntimeError(errMsg)
-            
-        moveCmd.addCallback(self._moveCmdCallback)
 
-        self.cancelMove()
+        self.cancelMove(textMsg="Superseded by new move")
         self.moveCmd = moveCmd
         self.desPos = desPos
         self.startPos = self.pos
@@ -207,14 +204,14 @@ class ActuatorModel(object):
             msgCode, statusStr = self.formatStatus()
             self.actor.writeToUsers(msgCode, statusStr, cmd=cmd)
         
-        if self.moveCmd and not self.isMoving():
+        if self.moveCmd and not self.moveCmd.isDone and not self.isMoving():
             if self.isOK():
                 #print "%s moved %s in %s seconds" % (self.name, abs(self.pos - self.startPos), time.time() - self.startTime)
                 self.moveCmd.setState("done")
             else:
                 self.moveCmd.setState("failed", textMsg="Bad actuator status")
     
-    def _clearMove(self, clearDesPos=True):
+    def _clearMove(self):
         """Clear all move command information.
         Be careful not to call unless the move command has finished.
         """
@@ -222,8 +219,7 @@ class ActuatorModel(object):
             self.moveCmd.setState("failed", textMsg="Bug: move command cancelled by GMechDev._clearMove")
         self.moveCmd = None
         self.startTime = None
-        if clearDesPos:
-            self.desPos = None
+        self.desPos = None
         self.predSec = None # predicted duration of move (in seconds)
     
     def _clearStatus(self):
@@ -238,11 +234,6 @@ class ActuatorModel(object):
         if pos == None:
             return "NaN"
         return self.posFmt % (pos,)
-    
-    def _moveCmdCallback(self, cmd):
-        """Callback function for move commands"""
-        if cmd.isDone():
-            self._clearMove(clearDesPos=False)
     
     def __eq__(self, rhs):
         """Return True if status or move position has changed (aside from status timestamp)"""
@@ -333,7 +324,6 @@ class GMechDev(TclActor.TCPDevice):
         self.currCmd = None
         self.nReplies = 0 # number of replies read for current command, including echo
         self.currCmdTimer = None # ID of command timeout timer
-        self.pendingCmd = None # only used to cancel REMAP -- OBSOLETE; use cmdQueue instead
         self._tk = Tkinter.Frame()
         self.conn.addStateCallback(self.connStateCallback)
     
@@ -352,6 +342,7 @@ class GMechDev(TclActor.TCPDevice):
         else:
             self.cancelQueryStatus()
             for actStatus in self.actuatorStatusDict.itervalues():
+                actStatus.cancelMove(didFail=True, hubMsg="LostConnection")
                 actStatus.clear()
     
     def cancelQueryStatus(self):
@@ -516,7 +507,9 @@ class GMechDev(TclActor.TCPDevice):
             self.queryStatus()
         elif cmd.cmdVerb in ("INIT", "REMAP"):
             for actStatus in self.actuatorStatusDict.itervalues():
-                actStatus.clear()
+                actStatus.cancelMove(textMsg="Superseded by %s" % (cmd.cmdVerb.lower()))
+                if cmd.cmdVerb == "REMAP":
+                    actStatus.clear()
             self.queryStatus()
             if cmd.cmdVerb == "REMAP":
                 self.actor.writeToUsers("i", "Started", cmd=cmd)
@@ -556,7 +549,7 @@ class GMechDev(TclActor.TCPDevice):
         if cmd.cmdVerb == "INIT":
             # clear the command queue
             for actStatus in self.actuatorStatusDict.itervalues():
-                actStatus.cancelMove("Superseded by init")
+                actStatus.cancelMove(textMsg="Superseded by init")
             for queuedCmd in self.cmdQueue:
                 if queuedCmd.isDone():
                     textMsg = "Bug: queued command %s is done and is being purged" % (cmd,)
@@ -675,8 +668,8 @@ class GMechActor(TclActor.Actor):
         if cmd.cmdArgs:
             try:
                 doQuery = RO.CnvUtil.asBool(cmd.cmdArgs)
-            except TypeError, e:
-                raise TclActor.CommandError("Could not parse %s as a boolean" % (cmd.cmdArgs,))
+            except Exception, e:
+                raise TclActor.CommandError("Could not parse %r as a boolean" % (cmd.cmdArgs,))
                 
         TclActor.Actor.cmd_status(self, cmd)
         if doQuery:
