@@ -220,7 +220,7 @@ class Actor(object):
                 msgStr = "Exception=%s; Text=%s" % (e.__class__.__name__, quotedErr)
                 self.writeToUsers("f", msgStr, cmd=cmd)
             else:
-                if not retVal:
+                if not retVal and not cmd.isDone():
                     cmd.setState("done")
             return
         
@@ -452,8 +452,13 @@ class Actor(object):
         for helpStr in helpList:
             self.writeToUsers("i", "Text=%r" % (helpStr,), cmd=cmd)
     
+    def cmd_ping(self, cmd):
+        """verify that actor is alive"""
+        cmd.setState("done", textMsg="alive")
+    
     def cmd_status(self, cmd):
-        """Show status
+        """show status
+
         Actors may wish to override this method to output additional status.
         """
         self.showUserInfo(cmd=cmd)
@@ -468,9 +473,10 @@ class Actor(object):
             self.doDebugMsgs = False
         else:
             raise RuntimeError("Unrecognized argument %r; must be 'on' or 'off'" % (cmd.cmdArgs,))
+        self.writeToUsers("i", 'Text="Debugging messages %s"' % (arg,), cmd=cmd)
 
     def cmd_debugRefCounts(self, cmd):
-        """Print the reference count for each object"""
+        """print the reference count for each object"""
         d = {}
         # collect all classes
         for m in sys.modules.values():
@@ -486,8 +492,10 @@ class Actor(object):
             self.writeToOneUser("i", "RefCount=%5d, %s" % (n, c.__name__), cmd=cmd)
     
     def cmd_debugWing(self, cmd=None):
-        """Load wingdbstub so you can debug this code using WingIDE"""
+        """load wingdbstub so you can debug this code using WingIDE"""
         import wingdbstub
+        self.writeToUsers("i", 'Text="Debugging with WingIDE enabled"', cmd=cmd)
+
 
 if __name__ == "__main__":
     import Tkinter
