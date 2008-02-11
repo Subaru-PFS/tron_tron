@@ -12,7 +12,7 @@ import RO.CnvUtil
 from RO.StringUtil import quoteStr
 import TclActor
 
-__version__ = "1.0b3"
+__version__ = "1.0b4"
 ActorPort = 9879
 ControllerAddr = "tccserv35m.apo.nmsu.edu"
 ControllerPort = 2600
@@ -204,7 +204,7 @@ class ActuatorModel(object):
             msgCode, statusStr = self.formatStatus()
             self.actor.writeToUsers(msgCode, statusStr, cmd=cmd)
         
-        if self.moveCmd and not self.moveCmd.isDone and not self.isMoving():
+        if self.moveCmd and not self.moveCmd.isDone() and not self.isMoving():
             if self.isOK():
                 #print "%s moved %s in %s seconds" % (self.name, abs(self.pos - self.startPos), time.time() - self.startTime)
                 self.moveCmd.setState("done")
@@ -310,7 +310,7 @@ class GMechDev(TclActor.TCPDevice):
             cmdInfo = (
               ("init",   None, "initialize the gmech controller"),
               ("remap",  None, "remap the piston and filter actuators and reset the gmech controller"),
-              ("piston", None, "um: set the guider piston (focus)"),
+              ("piston", None, "piston: set the guider piston, in um"),
               ("filter", None, "filtnum: select guider filter number (0-6)"),
             ),
         )
@@ -640,9 +640,16 @@ class GMechActor(TclActor.Actor):
         cmd = TclActor.UserCmd(userID = userID)
         self.cmd_parameters(cmd=cmd, writeToOne=True)
         self.cmd_status(cmd=cmd, doQuery=False)
+    
+    def cmd_focus(self, cmd):
+        """focus: set focus, in um (piston = focus + focusOffset)"""
+        focus = float(cmd.cmdArgs)
+        piston = self.gmechDev.actuatorStatusDict["piston"].pistonFromFocus(focus)
+        self.gmechDev.newCmd("PISTON %0.1f" % (piston,), userCmd=cmd)
+        return True # command executes in background
         
     def cmd_focusOffset(self, cmd):
-        """set focus offset (piston = focus + focusOffset)"""
+        """focusOffset: set focus offset, in um (piston = focus + focusOffset)"""
         focOffset = float(cmd.cmdArgs)
         piston = self.gmechDev.actuatorStatusDict["piston"].setFocusOffset(focOffset)
         if piston == None:
@@ -650,37 +657,6 @@ class GMechActor(TclActor.Actor):
             return
         self.gmechDev.newCmd("PISTON %0.1f" % (piston,), userCmd=cmd)
         return True # command executes in background
-    
-    def cmd_focus(self, cmd):
-        """set focus (piston = focus + focusOffset)"""
-        focus = float(cmd.cmdArgs)
-        piston = self.gmechDev.actuatorStatusDict["piston"].pistonFromFocus(focus)
-        self.gmechDev.newCmd("PISTON %0.1f" % (piston,), userCmd=cmd)
-        return True # command executes in background
-    
-    def cmd_status(self, cmd=None, doQuery=True):
-        """[doQuery]: show device status; if doQuery is no/F/false/0 then do not query the controller
-        
-        if cmd.cmdArgs is specified then doQuery is ignored.
-        
-        Note: if doQuery is False then device status is only output to one user.
-        """
-        if cmd.cmdArgs:
-            try:
-                doQuery = RO.CnvUtil.asBool(cmd.cmdArgs)
-            except Exception, e:
-                raise TclActor.CommandError("Could not parse %r as a boolean" % (cmd.cmdArgs,))
-                
-        TclActor.Actor.cmd_status(self, cmd)
-        if doQuery:
-            if not self.gmechDev.conn.isConnected():
-                return False
-            self.gmechDev.newCmd("STATUS", userCmd=cmd)
-            return True # command executes in background
-        else:
-            for actuator, actStatus in self.gmechDev.actuatorStatusDict.iteritems():
-                msgCode, statusStr = actStatus.formatStatus()
-                self.writeToOneUser(msgCode, statusStr, cmd=cmd)
     
     def cmd_parameters(self, cmd=None, writeToOne=True):
         """show parameters such as actuator limits and filter names"""
@@ -728,6 +704,42 @@ class GMechActor(TclActor.Actor):
             filterFile.close()
         self.filtList = filtList
         self.cmd_parameters(cmd=cmd, writeToOne=False)
+    
+    def cmd_relPiston(self, cmd):
+        """relPiston: offset the piston and focus, in um (piston/focus = current piston/focus + relPiston)"""
+        deltaFocus = float(cmd.cmdArgs)
+        currDesPiston = self.gmechDev.actuatorStatusDict["piston"].desPos
+        if currDesPiston == None:
+            currDesPiston = self.gmechDev.actuatorStatusDict["piston"].pos
+            if currDesPiston == None:
+                raise TclActor.CommandError("Current piston not known")
+        newDesPiston = currDesPiston + deltaFocus
+        self.gmechDev.newCmd("PISTON %0.1f" % (newDesPiston,), userCmd=cmd)
+        return True # command executes in background
+    
+    def cmd_status(self, cmd=None, doQuery=True):
+        """[doQuery]: show device status; if doQuery is no/F/false/0 then do not query the controller
+        
+        if cmd.cmdArgs is specified then doQuery is ignored.
+        
+        Note: if doQuery is False then device status is only output to one user.
+        """
+        if cmd.cmdArgs:
+            try:
+                doQuery = RO.CnvUtil.asBool(cmd.cmdArgs)
+            except Exception, e:
+                raise TclActor.CommandError("Could not parse %r as a boolean" % (cmd.cmdArgs,))
+                
+        TclActor.Actor.cmd_status(self, cmd)
+        if doQuery:
+            if not self.gmechDev.conn.isConnected():
+                return False
+            self.gmechDev.newCmd("STATUS", userCmd=cmd)
+            return True # command executes in background
+        else:
+            for actuator, actStatus in self.gmechDev.actuatorStatusDict.iteritems():
+                msgCode, statusStr = actStatus.formatStatus()
+                self.writeToOneUser(msgCode, statusStr, cmd=cmd)
 
 
 if __name__ == "__main__":
