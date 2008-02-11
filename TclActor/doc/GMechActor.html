@@ -17,6 +17,7 @@
         <li><a href="#parameters">parameters</a>
         <li><a href="#piston">piston <i>piston</i></a>
         <li><a href="#readFilterNames">readFilterNames</a>
+        <li><a href="#relPiston">relPiston <i>relPiston</i></a>
         <li><a href="#remap">remap</a>
         <li><a href="#status">status [<i>doQuery</i>]</a>
         <li>Plus: <a href="TclActor.html#Commands">standard commands</a> from <a href="TclActor.html">TclActor</a>
@@ -58,15 +59,28 @@
 
 <h3><a name="focus">focus <i>focus</i></a></h3>
 
-<p>Set the desired focus, in &mu;m. Piston = focus + focusOffset.
+<p>Set the desired focus, in &mu;m.
+<blockquote>
+    <p>Piston = focus + focusOffset
+</blockquote>
 
 <h3><a name="focusOffset">focusOffset <i>focusOffset</i></a></h3>
 
-<p>Set the desired focus offset, in &mu;m. The piston is changed to preserve the current desired focus (unless the desired focus is unknown). Piston = focus + focusOffset.
+<p>Set the desired focus offset, in &mu;m, where:
+<blockquote>
+    <p>Piston = focus + focusOffset
+</blockquote>
+<p>The piston is changed to preserve the current desired focus (unless the desired focus is unknown). Thus:
+<blockquote>
+    <p>New focus = current focus<br>
+    New piston = current piston + (new focusOffset - current focusOffset)
+</blockquote>
 
 <h3><a name="init">init</a></h3>
 
 <p>Stop all motion and initializes the controller. This is the only command that can interrupt the <a href="#remap">remap</a> command.
+
+<p>Note: the init command does not connect disconnected devices; use the <a href="#connDev">connDev</a> for that purpose.
 
 <h3><a name="parameters">parameters</a></h3>
 
@@ -86,6 +100,15 @@
     <li>If a filter number is listed more than once then the last one is used.
 </ul>
 <p>If the filter names file cannot be found or contains unusable data then an error is reported and the old filter names are retained.
+
+<h3><a name="relPiston">relPiston <i>relPiston</i></a></h3>
+
+<p>Offset the piston, and thus the focus, of the guider by the specified value in &mu;m.
+<blockquote>
+    <p>New piston/focus = current piston/focus + relPiston.
+</blockquote>
+
+<p>Note that there is no separate "relFocus" command because this command does the job.
 
 <h3><a name="remap">remap</a></h3>
 
@@ -177,6 +200,13 @@
 
 <h2><a name="VersionHistory">Version History</a></h2>
 
+<h3>1.0b4 2008-02-11</h3>
+
+<ul>
+    <li>Added the relPiston command.
+    <li>Bug fix: piston and filter commands were never reported as finished.
+</ul>
+
 <h3>1.0b3 2008-02-01</h3>
 
 <ul>
@@ -187,10 +217,10 @@
 <h3>1.0b2 2008-01-30</h3>
 
 <ul>
-    <li>Added support for focus and focus offset
-    <li>Added parameters command
-    <li>Added basic support for filter names, including readFilterNames command
-    <li>Added doQuery argument to status command
+    <li>Added support for focus and focus offset.
+    <li>Added parameters command.
+    <li>Added basic support for filter names, including readFilterNames command.
+    <li>Added doQuery argument to status command.
 </ul>
 
 <h3>1.0b1 2008-01-25</h3>
