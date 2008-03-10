@@ -103,6 +103,10 @@ def init(**argv):
     CPL.log('client.init', 'hubLink=%s' % (hubLink,))
 
 def run(**argv):
+    #
+    # I don't see how this can be run multiple times because the thread
+    # can only be started once.
+    #
     if not __builtins__.has_key('hubLink'):
         init(**argv)
         
