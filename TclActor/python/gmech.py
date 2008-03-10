@@ -744,6 +744,7 @@ class GMechActor(TclActor.Actor):
 
 if __name__ == "__main__":
     import Tkinter
+    os.environ['DISPLAY'] = ':1'
     root = Tkinter.Tk()
     b = GMechActor()
     root.mainloop()

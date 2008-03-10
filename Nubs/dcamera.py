@@ -16,7 +16,7 @@ def start(poller):
 
     d = Hub.ASCIIReplyDecoder(debug=1)
     e = Hub.ASCIICmdEncoder(debug=1, sendCommander=True)
-    nub = Hub.SocketActorNub(poller, 'offset', 5000,
+    nub = Hub.SocketActorNub(poller, 'dcamera-icc', 5000,
                              name=name, encoder=e, decoder=d,
                              initCmds=initCmds, safeCmds=safeCmds,
                              needsAuth=False,

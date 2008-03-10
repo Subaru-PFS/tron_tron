@@ -31,7 +31,7 @@ doread       8.00     3     3      171.0      171.0     1024.0     1024.0
     def __init__(self, **argv):
         sys.stderr.write("in __init__\n")
         
-	self.commands.update({'dodark':     self.doTccDoread,
+        self.commands.update({'dodark':     self.doTccDoread,
                               'doread':     self.doTccDoread,
                               'setcam':     self.doTccSetcam,
                               'OK':       self.doOK,
@@ -43,25 +43,25 @@ doread       8.00     3     3      171.0      171.0     1024.0     1024.0
     def echoToTcc(self, cmd, ret):
         """ If cmd comes from the TCC, pass the ret lines back to it. """
 
-	for i in range(len(ret)-1):
-	    cmd.respond('txtForTcc=%s' % (CPL.qstr(ret[i])))
+        for i in range(len(ret)-1):
+            cmd.respond('txtForTcc=%s' % (CPL.qstr(ret[i])))
 
-	cmd.finish('txtForTcc=%s' % (CPL.qstr(ret[-1])))
+        cmd.finish('txtForTcc=%s' % (CPL.qstr(ret[-1])))
             
     def doOK(self, cmd):
-	""" A TOTAL hack, for recovering after we fail in the middle of a TCC command. This
-	merely generates a fake completion for the TCC. Even though we say OK, the command 
-	has certainly failed, and the TCC will recognize this -- because it has not 
-	seen the expected command response. 
-	"""
-	
+        """ A TOTAL hack, for recovering after we fail in the middle of a TCC command. This
+        merely generates a fake completion for the TCC. Even though we say OK, the command 
+        has certainly failed, and the TCC will recognize this -- because it has not 
+        seen the expected command response. 
+        """
+        
         cmd.finish('txtForTcc=" OK"')
 
     def doTccInit(self, cmd):
         """ Clean up/stop/initialize ourselves. """
 
-	cmd.respond('txtForTcc="init"')
-	cmd.finish('txtForTcc="OK"')
+        cmd.respond('txtForTcc="init"')
+        cmd.finish('txtForTcc="OK"')
         
     def doTccShowstatus(self, cmd):
         ''' Respond to a tcc 'showstatus' command.
@@ -149,23 +149,23 @@ showstatus
             xSize = float(xSize); ySize = float(ySize)
 
             # Some realignments, since the TCC can request funny things.
- 	    xMax = self.size[0] / xBin
-	    yMax = self.size[1] / yBin
+            xMax = self.size[0] / xBin
+            yMax = self.size[1] / yBin
             if xSize <= 0 or xSize > xMax:
                 xSize = xMax
             if ySize <= 0 or ySize > yMax:
                 ySize = xMax
-	    
+            
             bin = [xBin, yBin]
             window = [int(xCtr - (xSize/2)),
                       int(yCtr - (ySize/2)),
                       int(xCtr + (xSize/2) + 0.5),
                       int(yCtr + (ySize/2) + 0.5)]
 
-	    if window[0] < 0: window[0] = 0
-	    if window[1] < 0: window[1] = 0
-	    if window[2] > xMax: window[2] = xMax
-	    if window[3] > yMax: window[3] = yMax
+            if window[0] < 0: window[0] = 0
+            if window[1] < 0: window[1] = 0
+            if window[2] > xMax: window[2] = xMax
+            if window[3] > yMax: window[3] = yMax
 
         except:
             cmd.fail('txtForTcc=%s' % (CPL.qstr("Could not interpret command %s" % (cmd.raw_cmd))))
