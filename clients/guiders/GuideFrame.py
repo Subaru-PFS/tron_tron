@@ -4,6 +4,9 @@ import pyfits
 
 import CPL
 
+class NullFITS (Exception):
+    pass
+
 class ImageFrame(object):
     """ Maintain the transformations between:
            - CCD-centric (full-frame, unbinned pixels).
@@ -71,6 +74,9 @@ class ImageFrame(object):
         """
 
         fits = pyfits.open(filename)
+        if len(fits) == 0:
+            raise NullFITS(filename)
+        CPL.log('fits file stuff', 'stuff=%s' % (str(fits)))
         h = fits[0].header
         fits.close()
         del fits
