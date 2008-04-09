@@ -51,7 +51,7 @@ class ExposureActor(Actor.Actor):
     def __init__(self, **argv):
         Actor.Actor.__init__(self, 'expose', debug=1)
         
-        self.knownInstruments = ('dis', 'echelle', 'grim')
+        self.knownInstruments = ('dis', 'echelle', 'grim', 'tspec')
 
         # Indexed by instrument
         self.openExposures = {}
