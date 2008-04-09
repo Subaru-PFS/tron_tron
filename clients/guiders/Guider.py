@@ -624,7 +624,7 @@ o            cb          - the callback function
         if max > saturation:
             fiddled = True
             im -= min
-            im *= ((saturation - min) / (max+1))
+            im *= (float(saturation - min) / float(max+1))
             im += min
             CPL.log('processCamFile', "after max-down min=%01.f max=%0.1f" % (min, max))
         
@@ -738,6 +738,12 @@ o            cb          - the callback function
         # Make blank masks
         satMaskArray = camBits * 0
         maskArray = camBits * 0
+
+        # Scale pixel values by binning - 20080403 FRS
+        bin = tweaks.get('bin', [1,1])
+        scale = bin[0]*bin[1]
+        if scale > 1:
+            camBits /= scale
         
         # Dark or bias subtraction.
         if darkFile:
@@ -762,12 +768,21 @@ o            cb          - the callback function
         camBits -= darkBits
 
         if flatFile:
+            #
             # The flatfile has two bits of info embedded in it:
             #   - the flatfield, where the values are > 0
             #   - a mask, where the flatfield values are 0
             #
             maskArray = maskBits == 0
+
+            # add 1s to the place where the maskBits are 0 so the ff
+            # at least preserves the pixels.  I don't know the reason for 
+            # this, because flatArray is multiplied rather than divided.
             flatArray = maskBits + maskArray
+
+            # There are some cases where the ff is bad, and will result in
+            # min/max outliers which totally blow the scaling.  What should
+            # be done about these?
             camBits *= flatArray
 
         camBits = self.trimToInt16(cmd, camBits, saturation)
