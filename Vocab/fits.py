@@ -41,9 +41,11 @@ class fits(InternalCmd.InternalCmd):
                              'disblue' : disFITS,
                              'nicfps' : nicfpsFITS,
                              'spicam' : spicamFITS,
+                             'tspec' : tspecFITS,
                              'ecam' : guiderFITS,
                              'gcam' : guiderFITS,
                              'dcam' : guiderFITS,
+                             'tcam' : guiderFITS,
                              }
 
     def getInst(self, cmd, inst):
@@ -792,6 +794,45 @@ class spicamFITS(InstFITS):
                 self.cards['FILENAME'] = StringCard('FILENAME', basename, 'original filename')
             except Exception, ex:
                 CPL.log('spicam.fetchInstCards', CPL.qstr('FILENAME barf: %s' % (ex)))
+                
+    def start(self, cmd, inFile=None):
+        InstFITS.start(self, cmd, inFile=inFile)
+        
+        self.fetchInstCards(cmd)
+
+    def baseTimeCards(self, cmd, expStart, expLength, goodTo=0.1):
+        """ Return the core time cards.
+
+        Args:
+           cmd       - the controlling Command.
+           expStart  - the start of the exposure, TAI
+           expLength - the length of the exposure, seconds.
+           goodTo    - the precision of the timestamps.
+        """
+
+        cards = []
+        cards.append(RealCard('UTC-TAI', self.UTC_TAI, 'UTC offset from TAI, seconds.'))
+
+        return cards
+    
+class tspecFITS(InstFITS):
+    """ The tspec-specific FITS routines.
+    """
+
+    def __init__(self, instName, cmd, **argv):
+        argv['alwaysAllowOverwrite'] = True
+        InstFITS.__init__(self, instName, cmd, **argv)
+
+        # Request WCS cards.
+        self.isImager = True
+
+    def fetchInstCards(self, cmd):
+        if self.outfileName:
+            try:
+                basename = os.path.basename(self.outfileName)
+                self.cards['FILENAME'] = StringCard('FILENAME', basename, 'original filename')
+            except Exception, ex:
+                CPL.log('tspec.fetchInstCards', CPL.qstr('FILENAME barf: %s' % (ex)))
                 
     def start(self, cmd, inFile=None):
         InstFITS.start(self, cmd, inFile=inFile)

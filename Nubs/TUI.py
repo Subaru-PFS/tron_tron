@@ -18,10 +18,11 @@ def acceptTUI(in_f, out_f, addr=None):
     # This is gross, gross, gross. Basically, I want to stop the apollo
     # traffic until it is requested. So I need to add a taster filtering call which
     # specifies that, instead of enumerating all the acceptable ones. Ugh.
-    all = ('dcam', 'ecam', 'gcam',
-           'dcamera', 'ecamera', 'gcamera',
-           'disExpose', 'echelleExpose', 'nicfpsExpose','spicamExpose',
-           'nicfps', 'dis', 'echelle','spicam',
+    all = ('dcam', 'ecam', 'gcam', 'tcam',
+           'dcamera', 'ecamera', 'gcamera', 'tcamera',
+           'disExpose', 'echelleExpose', 'nicfpsExpose',
+           'spicamExpose', 'tspecExpose',
+           'nicfps', 'dis', 'echelle','spicam', 'tspec',
            'tcc', 'tlamps', 'hub', 'msg',
            'perms', 'auth', 'fits',
            'cm', 'nfocus', 'telmech', 'gmech')
