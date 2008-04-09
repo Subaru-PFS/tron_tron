@@ -47,6 +47,10 @@ class dcam(Guider.Guider, TCCGcam.TCCGcam):
         self.GImCamID = 1
         
     def run(self):
+        '''
+        Call the guider loop.  First, get the tspec status and find out the
+        slit and generate the maks name to use.
+        '''
         client.listenFor('dis', ['maskName'], self.listenToMaskName)
         client.call('dis', 'status')
 
