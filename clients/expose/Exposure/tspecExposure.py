@@ -35,14 +35,14 @@ class tspecCB(Exposure.CB):
                 Exposure.CB.cbDribble(self, res)
                 return
             try:
-                self.exposure.cmd.warn('debug=%s' % (CPL.qstr("newstateRaw:%s:" % (newStateRaw))))
+                #self.exposure.cmd.warn('debug=%s' % (CPL.qstr("newstateRaw:%s:" % (newStateRaw))))
                 if type(newStateRaw) == types.StringType:
                     newState = newStateRaw
                     t = 0.
                 else:
                     newState,t = newStateRaw
                 length = float(t)
-                self.exposure.cmd.warn('debug=%s' % (CPL.qstr("newstate:%s,%0.2f" % (newState,length))))
+                #self.exposure.cmd.warn('debug=%s' % (CPL.qstr("newstate:%s,%0.2f" % (newState,length))))
             except Exception, e:
                 msg = 'exposureState barf1 = %s' % (str(e))
                 CPL.log('dribble', msg);
@@ -59,7 +59,7 @@ class tspecCB(Exposure.CB):
                 self.exposure.finishUp()
                     
             CPL.log('tspecCB.cbDribble', "newstate=%s seq=%s what=%s" % (newState, self.sequence,self.what))
-            self.exposure.cmd.warn('debug=%s' % (CPL.qstr("setting newstate:%s,%0.2f" % (newState,length))))
+            #self.exposure.cmd.warn('debug=%s' % (CPL.qstr("setting newstate:%s,%0.2f" % (newState,length))))
             self.exposure.setState(newState, length)
         except Exception, e:
             msg = 'exposureState barf = %s' % (str(e))
@@ -133,6 +133,12 @@ class tspecExposure(Exposure.Exposure):
         if self.comment:
             cmdStr += ' comment=%s' % (CPL.qstr(self.comment))
         self.callback('fits', cmdStr)
+
+        #
+        # let tspec know, so it can log in the telemetry stream
+        #
+        cmdStr = 'outfile="%s"' % (outfile)
+        self.call("tspec", cmdStr)
         
     def finishUp(self, aborting=False):
         """ Clean up and close out the FITS files. """
@@ -144,11 +150,6 @@ class tspecExposure(Exposure.Exposure):
             self.callback('fits', 'abort tspec')
         else:
             self.callback('fits', 'finish tspec infile=%s' % (self.rawpath))
-
-        #
-        # let tspec know, so it can log in the telemetry stream
-        #
-        self.call("tspec", "outfile=%s" % (self._basename()))
 
     def genRawfileName(self, cmd):
         """ Generate a filename for the ICC to write to.
