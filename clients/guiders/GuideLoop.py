@@ -1000,7 +1000,7 @@ class GuideLoop(object):
             
             itime = h['EXPTIME']
             t = t0 + (itime / 2.0)
-        elif h.ha_key('DATE-OBS') and h.has_key('TIMESYS') and h.has_key('EXPTIME'):
+        elif h.has_key('DATE-OBS') and h.has_key('TIMESYS') and h.has_key('EXPTIME'):
             t0 = self._parseISODate(h['DATE-OBS'])
             sys = h['TIMESYS']
             itime = h['EXPTIME']
