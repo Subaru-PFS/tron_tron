@@ -1,0 +1,92 @@
+#!/bin/bash
+#
+# WWW modsecurity
+#
+# add, subtract, or reset REMOTE ADDRESSES in 
+# /usr/local/apache2/conf/modsecurity/modsecurity_15_customrules.conf
+#
+
+usage() {
+    echo "usage: $0 add ip|remove ip|reset|status" >&2
+    exit 1
+}
+
+nargs=$#
+if test $nargs -lt 1; then
+    echo 'wrong parameters ', $nargs
+    usage
+fi
+
+cmd=$1
+if test $nargs == 2; then
+    ip=$2
+    ipsub=`echo $2 | sed -e 's/\./ZZZZ/g'`
+fi
+
+FILE="/usr/local/apache2/conf/modsecurity/modsecurity_crs_15_customrules.conf"
+
+#
+do_add() {
+    if test $nargs != 2; then
+        usage
+    fi
+
+    do_remove
+
+    sed -i -e '3a\
+SecRule REMOTE_ADDR \^XXXX\$ "phase:1,allow,nolog,ctl:ruleEngine=Off"' $FILE
+    sed -i -e "s/XXXX/$ipsub/" $FILE
+    sed -i -e "s/ZZZZ/\\\./g" $FILE
+}
+
+#
+do_remove() {
+    if test $nargs != 2; then
+        usage
+    fi
+    iptmp=`echo $ipsub | sed -e "s/ZZZZ/\.\./g"`
+    sed -i -e "/SecRule REMOTE_ADDR \^$iptmp\$.*/d" $FILE
+}
+
+#
+do_reset() {
+    echo do reset
+    sed -i -e '/SecRule REMOTE_ADDR \^.*\$ "phase:1,allow,nolog,ctl:ruleEngine=Off"/d' $FILE
+}
+
+#
+do_status() {
+    echo
+    sed -n -e "/^SecRule REMOTE_ADDR \^[0-9]/p" $FILE
+    echo
+}
+
+lockfile -1 -r 2 /tmp/www-access.lock
+
+case $cmd in
+    add) 
+        do_add
+        kill -HUP `cat /usr/local/apache2/logs/httpd.pid`
+        ;;
+    remove)
+        do_remove
+        kill -HUP `cat /usr/local/apache2/logs/httpd.pid`
+        ;;
+    status)
+        do_status
+        ;;
+    reset)
+        do_reset
+        kill -HUP `cat /usr/local/apache2/logs/httpd.pid`
+        ;;
+    *)
+        echo 'invalid command ', $1
+        echo
+        usage
+        ;;
+esac
+
+rm -f /tmp/www-access.lock
+
+exit 0
+
