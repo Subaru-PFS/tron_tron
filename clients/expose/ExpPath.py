@@ -289,8 +289,8 @@ class ExpPath(object):
         fileNumbers = map(self._getNumberFromFilename, files)
         fileNumbers.sort()
 
-        CPL.log("_getNextNumberFromFilelist", "%d files = %s" % (len(files), files))
-        CPL.log("_getNextNumberFromFilelist", "%d fileNumbers = %s" % (len(fileNumbers), fileNumbers))
+        #CPL.log("_getNextNumberFromFilelist", "%d files = %s" % (len(files), files))
+        #CPL.log("_getNextNumberFromFilelist", "%d fileNumbers = %s" % (len(fileNumbers), fileNumbers))
         lastNumber = fileNumbers[-1]
 
         return lastNumber + 1

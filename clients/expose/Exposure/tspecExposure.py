@@ -34,15 +34,14 @@ class tspecCB(Exposure.CB):
             if not newStateRaw:
                 Exposure.CB.cbDribble(self, res)
                 return
+            mark = None
             try:
-                #self.exposure.cmd.warn('debug=%s' % (CPL.qstr("newstateRaw:%s:" % (newStateRaw))))
-                if type(newStateRaw) == types.StringType:
-                    newState = newStateRaw
-                    t = 0.
-                else:
-                    newState,t = newStateRaw
+                self.exposure.cmd.warn('debug=%s' % (CPL.qstr("newstateRaw:%s:" % (newStateRaw))))
+                newState,t,remaining = newStateRaw
                 length = float(t)
-                #self.exposure.cmd.warn('debug=%s' % (CPL.qstr("newstate:%s,%0.2f" % (newState,length))))
+                remain = float(remaining)
+                mark = time.time() - length + remain
+                self.exposure.cmd.warn('debug=%s' % (CPL.qstr("newstate:%s,%0.2f" % (newState,length,remain))))
             except Exception, e:
                 msg = 'exposureState barf1 = %s' % (str(e))
                 CPL.log('dribble', msg);
@@ -60,7 +59,7 @@ class tspecCB(Exposure.CB):
                     
             CPL.log('tspecCB.cbDribble', "newstate=%s seq=%s what=%s" % (newState, self.sequence,self.what))
             #self.exposure.cmd.warn('debug=%s' % (CPL.qstr("setting newstate:%s,%0.2f" % (newState,length))))
-            self.exposure.setState(newState, length)
+            self.exposure.setState(newState, length, mark)
         except Exception, e:
             msg = 'exposureState barf = %s' % (str(e))
             CPL.log('dribble', msg)
@@ -93,7 +92,7 @@ class tspecExposure(Exposure.Exposure):
         self.geometryString = self.parseGeometry(opts)
         self.rawDir = ('/export/images/forTron/tspec')
         self.reserveFilenames()
-
+        
     def parseGeometry(self, opts):
         """ """
 
@@ -134,12 +133,6 @@ class tspecExposure(Exposure.Exposure):
             cmdStr += ' comment=%s' % (CPL.qstr(self.comment))
         self.callback('fits', cmdStr)
 
-        #
-        # let tspec know, so it can log in the telemetry stream
-        #
-        cmdStr = 'outfile="%s"' % (outfile)
-        self.call("tspec", cmdStr)
-        
     def finishUp(self, aborting=False):
         """ Clean up and close out the FITS files. """
 

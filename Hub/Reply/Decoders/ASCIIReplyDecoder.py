@@ -65,7 +65,7 @@ class ASCIIReplyDecoder(ReplyDecoder):
             CPL.log("ASCIIReplyDecoder", "Parsing error from %s: %r" % (self.name, e))
             return None, buf
         
-        if self.debug > 0:
+        if self.debug > 3:
             CPL.log('Stdin.extractReply', "extracted %r, returning %r" % (r, buf))
 
         return r, buf
