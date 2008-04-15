@@ -52,6 +52,10 @@ do_start() {
     fi
     
     echo "Starting new tron...\c"
+
+    # reset WWW access.
+    # sudoers: tron hub35m = NOPASSWD: /usr/local/bin/www-access, /bin/kill
+    sudo /usr/local/bin/www-access reset
     
 
     now=`now`.log 
