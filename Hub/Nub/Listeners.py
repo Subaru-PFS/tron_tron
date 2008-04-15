@@ -25,7 +25,7 @@ class SocketListener(object):
         """ Release all resources and shut down. 
 
         If called from "below" (i.e. a socket has been shutdown), just
-        calls the hub's dropNub method, which will shotly call us back.
+        calls the hub's dropNub method, which will shortly call us back.
         
         If called from the hub, close all IO resources.
         """

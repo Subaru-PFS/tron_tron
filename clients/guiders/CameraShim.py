@@ -1,3 +1,7 @@
+'''
+CameraShim - interface high-level guide camera to low-level camera hardware.
+'''
+
 import random
 
 import CPL
@@ -6,6 +10,11 @@ import GuideFrame
 
 class CameraShim(object):
     def __init__(self, name, size, controller):
+        '''
+        name - string name, such as gcam, tcam, dcam
+        size - ccd image size tuple
+        controller - reference to guide camera
+        '''
         self.name = name
         self.size = size
         self.controller = controller

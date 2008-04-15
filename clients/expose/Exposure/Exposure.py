@@ -75,6 +75,8 @@ class Exposure(Actor.Acting):
         """ Return a keyword describing our state.
 
         instExpState=username,state,stateStart,expectedStateLeft,totalForState
+
+        The TUI uses this to fill in the expose displays.
         """
 
         now = time.time()
