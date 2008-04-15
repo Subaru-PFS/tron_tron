@@ -4,6 +4,7 @@ import time
 import Hub
 import g
 import hub
+import os
 
 name = 'TUI'
 listenPort = 9877
@@ -32,6 +33,8 @@ def acceptTUI(in_f, out_f, addr=None):
         otherFQDN = socket.getfqdn(otherIP)
     except:
         otherFQDN = "unknown"
+
+    os.system("/usr/bin/sudo /usr/local/bin/www-access add %s" % (otherIP))
         
     d = Hub.ASCIICmdDecoder(needCID=False, EOL='\r\n', debug=1)
     e = Hub.ASCIIReplyEncoder(EOL='\r', simple=True, debug=1, CIDfirst=True)
