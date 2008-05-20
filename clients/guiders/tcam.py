@@ -37,6 +37,9 @@ def DEBUG_EXC():
     pass
 
 class TCameraShim (CameraShim.CameraShim):
+    '''
+    Override the CameraShim to provide monitoring the exposure progress.
+    '''
     def __init__(self, name, size, controller):
         CameraShim.CameraShim.__init__(self, name, size, controller)
         self.expose_in_progress = False
@@ -47,6 +50,9 @@ class TCameraShim (CameraShim.CameraShim):
 
     def cbFakefile(self, cmd, cb, filename):
         """
+        tcam does not support "expose usefile=%s", so bypass that
+        and set the frame and call the callback here.
+
         Args:
              cb        callback that gets (filename, frame)
         """
@@ -54,6 +60,9 @@ class TCameraShim (CameraShim.CameraShim):
             cb(None, None, failure='no such file')
             return
 
+        # tcam does not support "expose usefile=%s", so bypass that.
+        # just create the frame from the filename and call the callback
+        # directly.
         frame = GuideFrame.ImageFrame(self.size)
         frame.setImageFromFITSFile(filename)
 
@@ -89,8 +98,8 @@ class TCameraShim (CameraShim.CameraShim):
         self.stateMark = time.time()
 
         def _cb(ret, parent=self,cmd=cmd):
-            CPL.log('cbExpose', '_cb got %s' % (ret))
-            CPL.log('cbExpose', '_cb got %s' % (str(ret.KVs)))
+            #CPL.log('cbExpose', '_cb got %s' % (ret))
+            #CPL.log('cbExpose', '_cb got %s' % (str(ret.KVs)))
 
             expose_state = ret.KVs.get('exposureState', None)
 
@@ -147,7 +156,8 @@ class tcam(Guider.Guider):
 
         self.commands.update({'gain':     self.setGainTable})
         self.mask_type = "on"
-        
+        self.last_mask = ''
+        self.maskfileName = ''
 
     def setGainTable(self, cmd):
         """ change gain table to be either off or on.
@@ -293,6 +303,7 @@ class tcam(Guider.Guider):
     def run(self):
         client.listenFor('tcamera', ['slitPosition','slitState'], self.listenToMaskName)
         client.call('tcamera', 'slitStatus')
+        client.call('hub', 'listen addActors tcamera') 
 
         Guider.Guider.run(self)
         
@@ -300,31 +311,33 @@ class tcam(Guider.Guider):
         """
         """
 
-        CPL.log('tcam', 'in listenToMaskName=%s' % (reply,))
+        #CPL.log('tcam', 'in listenToMaskName=%s' % (reply,))
         slitDone = reply.KVs.get('slitState', None)
         if not slitDone:
             return
 
         try:
             slitDone = slitDone[0].replace('"','')
-
             slitmaskName = reply.KVs.get('slitPosition', '').replace('"','')
-            CPL.log('tcam', 'in listenToMaskName=%s, done %s, position %s' % (reply, slitDone,slitmaskName))
+            #CPL.log('tcam', 'in listenToMaskName=%s, status %s, position %s' % (reply, slitDone,slitmaskName))
 
-            if slitDone == "done":
+            if slitmaskName:
                 slitmaskName = Parsing.dequote(slitmaskName)
-
                 slitmaskName = slitmaskName.replace(' ', '-')
                 maskdir, dummy = os.path.split(self.config['maskFile'])
-                maskfileName = os.path.join(maskdir, slitmaskName) + ".fits"
-         
-                CPL.log('tcam', 'slit=%s maskfile=%s' % (slitmaskName, maskfileName))
-            else:
+                self.maskfileName = os.path.join(maskdir, slitmaskName) + ".fits"
+                CPL.log('tcam', 'slit=%s maskfile=%s' % (slitmaskName, self.maskfileName))
+
+            if slitDone != "done":
                 return
 
-            self._setMask(None, maskfileName)
+
+            if self.maskfileName != self.last_mask:
+                self._setMask(None, self.maskfileName)
+                self.last_mask = self.maskfileName
+                #CPL.log('tcam', '_setMask is done')
         except:
-            pass
+            CPL.log('tcam', 'barfed on exception %s' % (format_exc()))
         
     def genFilename(self):
         return self._getFilename()

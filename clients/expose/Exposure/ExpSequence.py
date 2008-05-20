@@ -10,6 +10,10 @@ import spicamExposure
 import tspecExposure
 
 class ExpSequence(Actor.Acting):
+    '''
+    Hi level object that controls an exposure.  It calls lower level Exposure
+    objects to command the camera.
+    '''
     def __init__(self, actor, cmd, inst, expType, path, cnt, **argv):
         """ Track 
         """
@@ -107,6 +111,7 @@ class ExpSequence(Actor.Acting):
         if self.cntLeft <= 0 or self.state in ('stopped', 'aborted'):
             if self.state not in ('stopped', 'aborted'):
                 self.state = 'done'
+            #CPL.log("seq.exposureFailed", "cnt left %s, state %s" % (str(self.cntLeft),self.state))
             self.returnKeys()
             self.actor.seqFinished(self)
             return
@@ -152,11 +157,13 @@ class ExpSequence(Actor.Acting):
 
         if self.exposure and self.exposure.state == "aborted":
             self.state = "aborted"
+            #CPL.log("seq.exposureFailed", "1")
             self.returnKeys()
             self.nextInSequence()
             #self.actor.seqFailed(self, reason)
         else:
             self.state = "failed"
+            #CPL.log("seq.exposureFailed", "2")
             self.returnKeys()
             self.actor.seqFailed(self, reason)
         

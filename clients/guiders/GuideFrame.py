@@ -203,7 +203,7 @@ class ImageFrame(object):
         CPL.log('trimSelf', 'end=%s' % (self))
         
     def imgXY2ccdXY(self, imgXY):
-        """ Convert an image-frame coordinate to a ccd-fram coordinate.
+        """ Convert an image-frame coordinate to a ccd-frame coordinate.
 
         Args:
            imgXY      - (x, y) in binned, frame-coordinate pixels

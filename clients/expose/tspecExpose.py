@@ -48,7 +48,6 @@ import InstExposure
 from Exposure import ExpSequence
 import CPL
 
-
 class TspecExposureActor(InstExposure.InstExposure):
     def __init__(self, **argv):
         InstExposure.InstExposure.__init__(self, 'tspecExpose', debug=1)

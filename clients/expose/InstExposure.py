@@ -29,6 +29,7 @@ class InstExposure(Actor.Actor):
         if seq != None:
             CPL.log('status', "status on %r" % (self.instName))
             seqState, expstate = seq.getKeys()
+            # report back to caller the state
             cmd.respond("%s; %s" % (seqState, expstate))
 
         cmd.finish('')
