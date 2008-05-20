@@ -8,8 +8,13 @@ import Exposure
 import types
 
 class tspecCB(Exposure.CB):
-    """ Encapsulate a callback from the various TSPEC commands.
-    """
+    '''
+    Encapsulate a callback from the various TSPEC commands.
+
+    This is the interface to the TSPEC, and it works for the higher level ExpSequence
+    instance.
+    '''
+
     
     def __init__(self, cmd, sequence, exp, what, failOnFail=True, debug=0):
         """

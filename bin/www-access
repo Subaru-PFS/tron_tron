@@ -1,7 +1,5 @@
 #!/bin/bash
 #
-# WWW modsecurity
-#
 # add, subtract, or reset REMOTE ADDRESSES in 
 # /usr/local/apache2/conf/modsecurity/modsecurity_15_customrules.conf
 #
@@ -31,7 +29,7 @@ do_add() {
         usage
     fi
 
-    do_remove
+    #do_remove
 
     sed -i -e '3a\
 SecRule REMOTE_ADDR \^XXXX\$ "phase:1,allow,nolog,ctl:ruleEngine=Off"' $FILE
@@ -65,19 +63,26 @@ lockfile -1 -r 2 /tmp/www-access.lock
 
 case $cmd in
     add) 
-        do_add
-        kill -HUP `cat /usr/local/apache2/logs/httpd.pid`
+        iptmp=`echo $ipsub | sed -e "s/ZZZZ/\.\./g"`
+        grep $iptmp $FILE > /dev/null
+        if test $? -ne 0; then
+            do_add
+            #kill -HUP `cat /usr/local/apache2/logs/httpd.pid`
+            /etc/init.d/httpd.init graceful
+        fi
         ;;
     remove)
         do_remove
-        kill -HUP `cat /usr/local/apache2/logs/httpd.pid`
+        #kill -HUP `cat /usr/local/apache2/logs/httpd.pid`
+        /etc/init.d/httpd.init graceful
         ;;
     status)
         do_status
         ;;
     reset)
         do_reset
-        kill -HUP `cat /usr/local/apache2/logs/httpd.pid`
+        #kill -HUP `cat /usr/local/apache2/logs/httpd.pid`
+        /etc/init.d/httpd.init graceful
         ;;
     *)
         echo 'invalid command ', $1
