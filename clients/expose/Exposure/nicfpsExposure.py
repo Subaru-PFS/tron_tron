@@ -153,7 +153,7 @@ class nicfpsExposure(Exposure.Exposure):
         return "%s=%s,%s,%s,%s,%s,%s" % \
                (keyName,
                 CPL.qstr(self.cmd.cmdrName),
-                CPL.qstr('tycho.apo.nmsu.edu'),
+                CPL.qstr('newton.apo.nmsu.edu'),
                 CPL.qstr(self.pathParts[0] + os.sep),
                 CPL.qstr(self.pathParts[1] + os.sep),
                 CPL.qstr(userDir),
