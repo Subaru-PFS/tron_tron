@@ -1,7 +1,7 @@
 # Where the camera files are saved.
 imageDir = 'dcam'
 imageRoot = '/export/images/'
-imageHost = 'tycho.apo.nmsu.edu'
+imageHost = 'newton.apo.nmsu.edu'
 maskFile = '/export/images/keep/masks/dis/dcam.fits'
 biasFile = '/export/images/keep/masks/dis/dcam-bias.fits'
 

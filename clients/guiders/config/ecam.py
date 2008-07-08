@@ -1,5 +1,5 @@
 # Where the camera files are saved.
-imageHost = 'tycho.apo.nmsu.edu'
+imageHost = 'newton.apo.nmsu.edu'
 imageRoot = '/export/images/'           # on imageHost
 imageDir = 'ecam'                       # w.r.t. imageRoot
 maskFile = '/export/images/keep/masks/ecam.fits'

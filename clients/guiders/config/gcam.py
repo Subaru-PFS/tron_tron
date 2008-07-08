@@ -1,7 +1,7 @@
 # Where the camera files are saved.
 imageDir = 'gcam'
 imageRoot = '/export/images/'
-imageHost = 'tycho.apo.nmsu.edu'
+imageHost = 'newton.apo.nmsu.edu'
 maskFile = '/export/images/keep/masks/gcam.fits'
 biasFile = None # '/export/images/keep/masks/gcam-bias.fits'
 
