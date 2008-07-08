@@ -46,6 +46,7 @@ g.perms.addActorsToProgram('ZA01', ['apollo'])
 g.perms.addPrograms(['MN01'])
 g.perms.addActors(['echelle'])
 g.perms.addActors(['telmech'])
-g.perms.addActorsToProgram('MN01', ['tcc', 'echelle', 'telmech'])
+g.perms.addActors(['tspec'])
+g.perms.addActorsToProgram('MN01', ['tcc', 'echelle', 'telmech', 'tspec'])
 
 hub.run()
