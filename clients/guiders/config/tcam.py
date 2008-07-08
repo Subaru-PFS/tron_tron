@@ -1,7 +1,7 @@
 # Where the camera files are saved.
 imageDir = 'tcam'
 imageRoot = '/export/images/'
-imageHost = 'hub35m.apo.nmsu.edu'
+imageHost = 'newton.apo.nmsu.edu'
 maskFile = '/export/images/keep/masks/tcam/tcam.fits'
 #biasFile = '/export/images/keep/masks/tcam/tcam-bias.fits'
 biasFile = None
