@@ -4,17 +4,17 @@
 	<title>TclActor Internals</title>
 </head>
 <body>
-<h1>TclActor Internals</h1>
+<h1><a href="TclActor.html">TclActor</a> Internals</h1>
 
 <p>TclActor is a set of classes that allow one to write an actor for the 3.5m control system. An actor can be a script running in the hub (aka "tron") or an Instrument Control Computer (ICC) running elsewhere.
 
-<p>This manual is intended to help people writing code based on TclActor. In addition there is a manul describing the user interface: <a href="TclActor.html">TclActor</a>.
+<p>This manual is intended to help people writing actors based on TclActor. In addition there is a manul describing the user interface: <a href="TclActor.html">TclActor</a>.
 
 <p>TclActor is written in Python and uses the tcl event loop (via Tkinter) for cooperative multitasking. This is as opposed to Actor, the original hub actor that used multithreading. Cooperative multitasking generally results in simpler code than multithreaded code. However, one must be careful not to take too long while handling a particular event.
 
-<p>TclActor is intrinsically asynchronous. Thus, to the extent that the underlying hardware controllers support it, the Tcl Actor can execute multiple commands at the same time. If a new command is received while an old command is executing then the new command will either be accepted (if compatible) or rejected (if not). Note that it will *not* be queued up; this simplifies programming and removes the need for commands to report and clear the queue.
+<p>TclActor is intrinsically asynchronous. Thus, to the extent that the underlying hardware controllers support it, an actor based on TclActor can execute multiple commands at the same time. If a new command is received while an old command is executing then the new command will either be accepted (if compatible) or rejected (if not). Note that it will *not* be queued up; this simplifies programming and removes the need for commands to report and clear the queue.
 
-<h2><a name="Basics">Basics</a2></h2>
+<h2><a name="Basics">Basics</a></h2>
 
 <h3><a name="Commands">Commands</a></h3>
 

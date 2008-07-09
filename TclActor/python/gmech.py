@@ -1,5 +1,11 @@
 #!/usr/local/bin/python
 """gmech actor
+
+To do:
+- Sparse status output: only show things that have changed unless a user status command.
+  In particular during a move only display the intermediate position
+  (after the initial full info) until done. Right now there is a flood of info during a move.
+- Improve error message for missing or invalid arguments.
 """
 import math
 import os
@@ -12,7 +18,7 @@ import RO.CnvUtil
 from RO.StringUtil import quoteStr
 import TclActor
 
-__version__ = "1.0b4"
+__version__ = "1.0rc1"
 ActorPort = 9879
 ControllerAddr = "tccserv35m.apo.nmsu.edu"
 ControllerPort = 2600
@@ -288,15 +294,6 @@ class GMechDev(TclActor.TCPDevice):
     Note: commands are converted to uppercase in the newCmd method.
     """
     MaxPistonError = 1.0
-    ActuatorBitDict = {
-        0: "At forward limit switch",
-        1: "At reverse limit switch",
-        2: "At maximum position",
-        3: "At minimum position",
-        4: "At requested position",
-        5: "Actuator powered down",
-    }
-    MaxActuatorBit = max(ActuatorBitDict.keys())
     _CtrllrStatusRE = re.compile(r"(?P<piston>\d+\.\d+)\s+(?P<filter>\d+)\s+(?:\d+\.\d+)\s+(?P<pistonStatus>\d+)\s+(?P<filterStatus>\d+)")
     _CharsToStrip = "".join([chr(n) for n in xrange(33)]) # control characters and whitespace
     _DefTimeLimitMS = 2000
@@ -326,14 +323,6 @@ class GMechDev(TclActor.TCPDevice):
         self.currCmdTimer = None # ID of command timeout timer
         self._tk = Tkinter.Frame()
         self.conn.addStateCallback(self.connStateCallback)
-    
-    def getActuatorModelStr(self, actuatorStatus):
-        # note: order of severity is 0, 1, 2... so just plow through the bits in order
-        for bit in range(self.MaxActuatorBit):
-            bitSet = (actuatorStatus >> bit) & 0x1
-            if bitSet:
-                return ActatorBitDict[bitSet]
-        return ""
     
     def connStateCallback(self, devConn):
         """Called when a device's connection state changes."""
@@ -489,7 +478,7 @@ class GMechDev(TclActor.TCPDevice):
             isMove = True
             try:
                 actStatus.setMove(cmd)
-            except RuntimeError, e:
+            except RuntimeError:
                 self.clearCurrCmd() # try next command, if any
                 return
         
@@ -635,7 +624,7 @@ class GMechActor(TclActor.Actor):
         except Exception, e:
             sys.stderr.write("Warning: cannot read filter names: %s\n" % (str(e),))
     
-    def newUserOutput(self, userID, tkSock):
+    def newUserOutput(self, userID):
         """Report status to new user"""
         cmd = TclActor.UserCmd(userID = userID)
         self.cmd_parameters(cmd=cmd, writeToOne=True)
@@ -727,7 +716,7 @@ class GMechActor(TclActor.Actor):
         if cmd.cmdArgs:
             try:
                 doQuery = RO.CnvUtil.asBool(cmd.cmdArgs)
-            except Exception, e:
+            except Exception:
                 raise TclActor.CommandError("Could not parse %r as a boolean" % (cmd.cmdArgs,))
                 
         TclActor.Actor.cmd_status(self, cmd)
@@ -741,10 +730,11 @@ class GMechActor(TclActor.Actor):
                 msgCode, statusStr = actStatus.formatStatus()
                 self.writeToOneUser(msgCode, statusStr, cmd=cmd)
 
-
-if __name__ == "__main__":
-    import Tkinter
+def run():
     os.environ['DISPLAY'] = ':1'
     root = Tkinter.Tk()
-    b = GMechActor()
+    GMechActor()
     root.mainloop()
+
+if __name__ == "__main__":
+    run()

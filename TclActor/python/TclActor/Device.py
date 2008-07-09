@@ -1,12 +1,8 @@
 """Base classes for interface to devices controlled by the Tcl Actor
-
-To do:
-- Add support for help strings associated with the list of commands handled by the device.
 """
 __all__ = ["Device", "TCPDevice"]
 
-#import RO.AddCallback
-from RO.StringUtil import quoteStr
+import RO.AddCallback
 import RO.Comm.TCPConnection
 import Command
 
