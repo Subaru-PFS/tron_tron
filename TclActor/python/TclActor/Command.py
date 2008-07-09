@@ -8,7 +8,6 @@ import RO.AddCallback
 import RO.Alg
 from RO.StringUtil import quoteStr
 
-
 class CommandError(Exception):
     """Raise for a "normal" command failure when you want the explanation to be
     nothing more than the text of the exception.

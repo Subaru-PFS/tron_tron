@@ -6,11 +6,9 @@ import operator
 import sys
 import types
 import traceback
-#import RO.AddCallback
+import RO.Comm.TkSocket
 import RO.SeqUtil
 from RO.StringUtil import quoteStr
-import RO.Comm.TkSocket
-
 import Command
 
 
@@ -278,9 +276,9 @@ class Actor(object):
         fakeCmd = Command.UserCmd(userID=userID)
         self.showUserInfo(fakeCmd)
         self.showDevConnStatus(cmd=fakeCmd, onlyOneUser=True, onlyIfNotConn=True)
-        self.newUserOutput(userID, tkSock)
+        self.newUserOutput(userID)
     
-    def newUserOutput(self, userID, tkSock):
+    def newUserOutput(self, userID):
         """Override to report additional status to the new user
         other than userID and bad device status
         """
