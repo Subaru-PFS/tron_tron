@@ -11,6 +11,7 @@ import re
 from traceback import print_exc
 
 LOGFD = file('/home/tron/logfile2','w')
+WITHIN_STEPS = 2000             # if the error is within this # of steps, it is at a position
 
 def DEBUG(msg):
     '''Print a message to a file'''
@@ -281,6 +282,7 @@ degrees' % (self.m1_alt_limit)
         return tcctalk('TCC_TERT', full_cmd, cid, timeout=30.0)
 
     def read_status(self, cid):
+        global WITHIN_STEPS
         reply = tcctalk('TCC_TERT', "XQ#STATUS", cid, timeout=30.0)
 
         eye_valid_states = ['CLOSE','OPEN']
@@ -326,7 +328,7 @@ degrees' % (self.m1_alt_limit)
                         actual = int(match.groups()[1])
                         for port in self.ports:
                             port_def = self.ports[port]
-                            if abs(port_def.epos-actual) < 2000:
+                            if abs(port_def.epos-actual) < WITHIN_STEPS:
                                 self.m3_select = port
                                 break
                     except:
