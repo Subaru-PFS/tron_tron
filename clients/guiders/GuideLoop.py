@@ -53,6 +53,11 @@ class GuideLoop(object):
 
         self.exposing = False
 
+        # flag to synchronize moves with start exposure
+        # 20080910 - FRS guider hangups
+        self.moving = threading.Event()
+        self.moving.set()
+
         self.cmd.warn('debug="new loop"')
         
         # This controls whether the loop continues or stops, and gives the
@@ -200,11 +205,12 @@ class GuideLoop(object):
             else:
                 self.waitingForSlewEnd = True
         else:
-            # If this is an uncomputed offset, tell the loop how long to wait before
-            # it can be restarted
+            # If this is an uncomputed offset, synchronize the move end with
+            # the guide loop, and set when the offset is done (settled).
             endTime = time.time() + CPL.cfg.get('telescope', 'offsetSettlingTime')
             if endTime > self.offsetWillBeDone:
                 self.offsetWillBeDone = endTime
+            self.moving.set()
                 
     def telescopeHasHalted(self):
         """ The telescope has halted.
@@ -491,17 +497,37 @@ class GuideLoop(object):
             self.cmd.warn('text="waiting for old exposure to finish"')
             return
 
-        # Hmm. Where should this go?
+        # The next expose can be cancelled at any time.  The moves can 
+        # not cancel the exposure, but, are synchronized here by a flag.  
+        # Go ahead and take the image, and after the image is done, call back _centerUp(), 
+        # and decide there if to toss the image.  
+        # _guideLoopTop() is controlled only by the state flags. The control logic is higher up.
         self.invalidLoop = False
 
         # Offset in progress. Go away: the offset callback will call us again.
+        # To the user, when they click on guiding during a slew, the guide loop
+        # will keep shutting off.  This catches that.  It seems that this should
+        # go higher up into the control logic, i.e. caught earlier so we
+        # don't need this test here.
         if self.waitingForSlewEnd:
             self.genStateKey(action='deferring')
             self.cmd.warn('text="waiting for offset to finish"')
             return
 
         # Wait for the end of an uncomputed offset.
-        if self.offsetWillBeDone > 0.0:
+        # 20080910 - FRS guider hangups
+        if self.moving.isSet() == 0:
+            diff = CPL.cfg.get('telescope', 'offsetSettlingTime')
+
+            CPL.log('gcam',
+                    'waiting offset guider frame to finish')
+            self.genStateKey(action='deferring')
+            self.moving.wait(5)
+
+        if self.moving.isSet() == 0:
+            self.cmd.warn('text="guider loop waiting for offset timed out."')
+
+        elif self.offsetWillBeDone > 0.0:
             diff = self.offsetWillBeDone - time.time()
 
             if diff > 0.0:
@@ -512,15 +538,15 @@ class GuideLoop(object):
                 time.sleep(diff)        # Yup. Better be short, hunh?
             self.offsetWillBeDone = 0.0
 
-        # Make any requested centering offset synchronously, before launching
-        # a new exposure.
-        # Worry a bit about tweaking here -- CPL
+        # Make any requested centering offset asynchronously.  The offset will
+        # command will complete and call guideLoopTop().  By then, the move
+        # flag is cleared, and guideLoopTop() will have to wait for the move
+        # to be done.
         if self.centerOn:
-            self.centerUp()
+            # If we are centering, then, skip this expose.  When centering is
+            # done, the _doneOffsetting() callback will restart the guide loop.
+            return self.centerUp()
 
-        if self.invalidLoop:
-            return
-        
         # Launch new expose-measure-(offset) loop.
         self.genStateKey(action='exposing')
         self._doExpose(self._handleGuiderFrame)
@@ -569,12 +595,19 @@ class GuideLoop(object):
                                                   doScale=False)
             self.genStateKey(action='offsetting')
 
+            # _doneOffsetting will restart the next guide loop.
+            client.callback('tcc', cmdTxt, self._doneOffsetting,
+                                 cid=self.controller.cidForCmd(self.cmd))
+            self.moving.clear()
+            return
+
             # Synchronous call, here. I just don't want do deal with another bit of
             # callback goo.
             ret = client.call('tcc', cmdTxt,
                               cid=self.controller.cidForCmd(self.cmd))
             if mustWait:
                 time.sleep(CPL.cfg.get('telescope', 'offsetSettlingTime'))
+                self.offsetWillBeDone = 0.0
         except Exception, e:
             CPL.tback('guideloop._firstExposure-2', e)
             self.failGuiding(e)
@@ -838,6 +871,9 @@ class GuideLoop(object):
     
     def _centerUp(self, cmd, star, frame, refGpos, offsetType='guide', doScale=True, fname=''):
         """ Move the given star to/towards the ref pos.
+
+        This is called by the exposure done.  It reads the image, calculates the offsets, and
+        updates tcc.  Then, if invalidLoop) is true, call the guideloop again.
         
         Args:
             cmd        - the command that controls us.
@@ -854,6 +890,7 @@ class GuideLoop(object):
             self.stopGuiding()
             return
         if self.invalidLoop:
+            # skip this image, something happened
             self._guideLoopTop()
             return
 
@@ -876,8 +913,10 @@ class GuideLoop(object):
             # Arrange for the end of uncomputed offsets to be waited for.
             if mustWait:
                 endTime = time.time() + CPL.cfg.get('telescope', 'offsetSettlingTime')
+                # set reasonable guess for offset done, and HasMoved will tweak it.
                 if endTime > self.offsetWillBeDone:
                     self.offsetWillBeDone = endTime
+                self.moving.clear()
 
             # OK, check one last time before actually moving.
             if self.invalidLoop:
