@@ -89,8 +89,11 @@ class GuiderPath(object):
             f = open(os.path.join(dirName, "last.image"), "r+")
             lastFileName = f.read()
             f.close()
-            lastID = int(lastFileName[1:5], 10)
-            id = lastID + 1
+            if len(lastFileName) == 0:
+                id = 1
+            else:
+                lastID = int(lastFileName[1:5], 10)
+                id = lastID + 1
             
             if id > 9999:
                 raise RuntimeError("guider image number in %s is more than 9999." % (dirName))
