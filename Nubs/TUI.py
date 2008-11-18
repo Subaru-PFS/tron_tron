@@ -26,7 +26,8 @@ def acceptTUI(in_f, out_f, addr=None):
            'nicfps', 'dis', 'echelle','spicam', 'tspec',
            'tcc', 'tlamps', 'hub', 'msg',
            'perms', 'auth', 'fits',
-           'cm', 'nfocus', 'telmech', 'gmech')
+           'cm', 'nfocus', 'telmech', 'gmech',
+           'agile','agileExpose')
     
     otherIP, otherPort = in_f.getpeername()
     try:
