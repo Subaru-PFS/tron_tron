@@ -43,7 +43,6 @@ class Device(RO.AddCallback.BaseMixin):
     - isConnected(): return True if connected, False otherwise
     - isDone(): return True if fully connected or disconnected
     - addReadCallback(callFunc, callNow=True)
-    Also, the default command handling mechanism relies on these commands:
     - writeLine(str)
     and this is traditional:
     - readLine()
