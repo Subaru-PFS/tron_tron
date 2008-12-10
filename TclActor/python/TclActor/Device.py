@@ -21,8 +21,7 @@ class Device(RO.AddCallback.BaseMixin):
 
     Inputs:
     - name      a short name to identify the device
-    - conn      a connection to the device; the connection must support the following methods:
-                connect, disconnect, addReadCallback, addStateCallback, write, read, readLine
+    - conn      a connection to the device; more information below
     - cmdInfo   a list of (user command verb, device command verb, help string)
                 for commands that are be sent directly through to this device.
                 Specify None for the device command verb if it is the same as the user command verb
@@ -32,6 +31,22 @@ class Device(RO.AddCallback.BaseMixin):
                 register a callback with "conn" for that task.
     - actor actor that contains this device; this gives access to writeToUsers
     - cmdClass  class for commands for this device
+    
+    conn is an object implementing these methods:
+    - connect()
+    - disconnect()
+    - addStateCallback(callFunc, callNow=True)
+    - getFullState(): Returns the current state as a tuple:
+        - state: a numeric value; named constants are available
+        - stateStr: a short string describing the state
+        - reason: the reason for the state ("" if none)
+    - isConnected(): return True if connected, False otherwise
+    - isDone(): return True if fully connected or disconnected
+    - addReadCallback(callFunc, callNow=True)
+    Also, the default command handling mechanism relies on these commands:
+    - writeLine(str)
+    and this is traditional:
+    - readLine()
     """
     def __init__(self,
         name,

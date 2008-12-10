@@ -45,6 +45,9 @@ class Actor(object):
         maxUsers = None,
     ):
         self.maxUsers = maxUsers
+        # entries are: user's socket: userID
+        self.userDict = dict()
+
         if devs == None:
             devs = ()
         else:
@@ -83,9 +86,6 @@ class Actor(object):
         cmdVerbSet.update(newCmdSet)
         if cmdCollisionSet:
             raise RuntimeError("Multiply defined commands: %s" %  ", ".join(cmdCollisionSet))
-        
-        # entries are: user's socket: userID
-        self.userDict = dict()
         
         self.userListener = RO.Comm.TkSocket.TkServerSocket(
             connCallback = self.newUser,
