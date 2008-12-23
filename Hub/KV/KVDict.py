@@ -117,8 +117,10 @@ class KVDict(CPL.Object):
             
         self.sources[src][key] = KV(key, val, reply)
         
-    def setKVsFromReply(self, reply):
-        self.setKVs(reply.src, reply.KVs, reply)
+    def setKVsFromReply(self, reply, src=None):
+        if src == None:
+            src = reply.src
+        self.setKVs(src, reply.KVs, reply)
         
     def setKVs(self, src, KVs, reply):
         if self.debug > 7:
