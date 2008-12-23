@@ -268,6 +268,7 @@ class HubLink(object):
                                replyCallback=self.copeWithInput,
                                debug=self.debug)
         self.mids = CPL.ID()
+        self.KVs = Hub.KVDict(debug=6)
         
         # A list of filters through which we pass all input from the hub.
         #
@@ -430,7 +431,12 @@ class HubLink(object):
 
         if self.debug > 3:
             CPL.log("HubLink", "coping with new reply: %s" % (reply))
-            
+
+        # Let responses from the keys actor be interpreted as keys from the queried actor.
+        src = reply.src
+        if reply.src[:5] == 'keys.':
+            src = reply.src[5:]
+        self.KVs.setKVsFromReply(reply, src=src)
         for f in self.filters:
             f.copeWithInput(reply)
 
