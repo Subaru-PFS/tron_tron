@@ -1,4 +1,4 @@
->""" Exposure path and file handling.
+""" Exposure path and file handling.
 
     We assign a root directory to each program, under which the users can play as they wish.
     The program can get a sequence of filenames, or a sequence of files. In either case, all
@@ -392,7 +392,7 @@ class ExpPath(object):
             progDir = os.path.join(self.rootDir, programDir)
             tDir = dirName
             while 1:
-                os.chmod(tDir, 0775)
+                os.chmod(tDir, 02775)
                 if tDir == progDir:
                     break
                 tDir, dummy = os.path.split(tDir)
