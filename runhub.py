@@ -37,6 +37,11 @@ startAllConnections(['client',
                      'telmech', 'gmech',
                      ])
 
+# Manually add TS01 as an always-active commander of apollo.
+g.perms.addPrograms(['TS01'])
+g.perms.addActors(['tspec', 'tcam'])
+g.perms.addActorsToProgram('TS01', ['tspec','tcam'])
+
 # Manually add ZA01 as an always-active commander of apollo.
 g.perms.addPrograms(['ZA01'])
 g.perms.addActors(['apollo'])
