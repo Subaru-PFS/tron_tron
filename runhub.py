@@ -37,7 +37,7 @@ startAllConnections(['client',
                      'telmech', 'gmech',
                      ])
 
-# Manually add TS01 as an always-active commander of apollo.
+# Manually add TS01 as an always-active commander of tspec.
 g.perms.addPrograms(['TS01'])
 g.perms.addActors(['tspec', 'tcam'])
 g.perms.addActorsToProgram('TS01', ['tspec','tcam'])
