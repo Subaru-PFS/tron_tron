@@ -470,7 +470,7 @@ class InstFITS(object):
             begx = h.get('BEGX', 1.0)
             begy = h.get('BEGY', 1.0)
         except Exception, e:
-            cmd.warn('debug="%s"' % (CPL.str('Could not read geometry cards: %s', (e))))
+            cmd.warn('debug="%s"' % (CPL.qstr('Could not read geometry cards: %s' % (e))))
             binx = biny = 1
             begx = begy = 1.0
             
@@ -898,33 +898,40 @@ class disFITS(InstFITS):
               . if any quartz bulb is lit, "flat"
               . if any other bulb is lit, "arc",
               . otherwise "object".
+
+        Exceptions:
+            pass them to the caller and let them handle it.
+
+        20090105 - FRS fixed lampInfo and tested.
         """
 
         names = g.KVs.getKey('tlamps', 'lampNames', None)
         states = g.KVs.getKey('tlamps', 'lampStates', None)
 
         on = []
-        isFlat = False
-        try:
-            for i in range(len(names)):
-                name = names[i]
-                if states[i] == 'On':
-                    on += name
-                name = name.upper()
-                if name.find('qtz') != -1 or \
-                   name.find('quartz') != -1 or \
-                   name.find('qrtz') != -1:
-                    isFlat = True
-        except:
-            pass
+        lampString = ''
+        lampState = 'object'
+
+        if names == None:
+            return lampString, lampState
+
+        for i in range(len(names)):
+            # remove any " marks
+            name = names[i].replace('"','')
+            # stupid values sometimes have " marks, general safe test
+            if states[i].lower().find('on') != -1:
+                on.append(name)
+            else:
+                continue
+            name = name.lower()
+            if name.find('qtz') != -1 or \
+               name.find('quartz') != -1 or \
+               name.find('qrtz') != -1:
+                lampState = 'flat'
+            else:
+                lampState = 'comp'
 
         lampString = "+".join(on)
-        if isFlat:
-            lampState = 'flat'
-        elif len(lampString) != 0:
-            lampState = 'comp'
-        else:
-            lampState = 'object'
 
         return lampString, lampState
     
@@ -940,12 +947,11 @@ class disFITS(InstFITS):
             h = pyInFITS[0].header
             IMAGETYP = h.get('IMAGETYP', 'unknown')
         except Exception, e:
-            cmd.warn('debug="%s"' % (CPL.str('Could not read IMAGETYP card: %s', (e))))
+            cmd.warn('debug="%s"' % (CPL.qstr('Could not read IMAGETYP card: %s' % (e))))
             IMAGETYP = 'unknown'
 
         try:
             lampString, lampState = self.lampInfo()
-            fits.addCard(StringCard('LAMP', lampString, 'Calibration lamps'))
         
             if IMAGETYP in ('object', 'comp') and lampState == 'flat':
                 fits.addCard(StringCard('IMAGETYP', 'flat', 'overwritten due to LAMPS'),
@@ -953,9 +959,14 @@ class disFITS(InstFITS):
             elif IMAGETYP == 'object' and lampState == 'comp':
                 fits.addCard(StringCard('IMAGETYP', 'comp', 'overwritten due to LAMPS'),
                              allowOverwrite=True)
+
+            # FRS - 20090105 fixed this and tested
+            if lampState != 'object':
+                fits.addCard(StringCard('LAMP', lampString, 'Calibration lamps'), 
+                                after='IMAGETYP')
                 
         except Exception, e:
-            cmd.warn('debug="%s"' % (CPL.str('Failed to handle truss LAMPs', (e))))
+            cmd.warn('debug="%s"' % (CPL.qstr('Failed to handle truss LAMPs: %s' % (e))))
         
     def fetchInstCards(self, cmd):
         if self.outfileName:
