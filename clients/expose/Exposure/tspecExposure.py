@@ -46,7 +46,7 @@ class tspecCB(Exposure.CB):
                 length = float(t)
                 remain = float(remaining)
                 mark = time.time() - length + remain
-                self.exposure.cmd.warn('debug=%s' % (CPL.qstr("newstate:%s,%0.2f" % (newState,length,remain))))
+                self.exposure.cmd.warn('debug=%s' % (CPL.qstr("newstate:%s,%0.2f,%0.2f" % (newState,length,remain))))
             except Exception, e:
                 msg = 'exposureState barf1 = %s' % (str(e))
                 CPL.log('dribble', msg);
