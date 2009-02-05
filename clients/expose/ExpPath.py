@@ -17,6 +17,8 @@ import time
 
 import CPL
 
+APOWRITE = 10000        # group write for /export/images
+
 class ExpPath(object):
 
     month2quarters = { '01' : 'Q1',
@@ -386,6 +388,7 @@ class ExpPath(object):
             tDir = dirName
             while 1:
                 os.chmod(tDir, 0775)
+                os.chown(tDir, -1, APOWRITE)
                 if tDir == progDir:
                     break
                 tDir, dummy = os.path.split(tDir)
