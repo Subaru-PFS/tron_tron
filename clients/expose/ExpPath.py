@@ -17,8 +17,6 @@ import time
 
 import CPL
 
-APOWRITE = 10000        # group write for /export/images
-
 class ExpPath(object):
 
     month2quarters = { '01' : 'Q1',
@@ -330,8 +328,12 @@ class ExpPath(object):
 
         return self._getNextNumberFromFilelist(files)
     
-    def _getNumber(self):
-        """ Return the next sequence number. Find the next free file if necessary. """
+    def _getNumber(self, doPad=True):
+        """ Return the next sequence number. Find the next free file if necessary.
+
+        Args:
+           doPad   - If True, pad out to .places. [True]
+        """
         
         if self.number == 'next':
             n = self._getNextNumber()
@@ -344,7 +346,10 @@ class ExpPath(object):
 
         CPL.log("_getNumber", "n = %s" % (n))
 
-        return "%0*d" % (self.places, n)
+        if doPad:
+            return "%0*d" % (self.places, n)
+        else:
+            return "%d" % (n)
     
     def _incrNumber(self):
         """ Increment the sequence number. """
@@ -387,8 +392,7 @@ class ExpPath(object):
             progDir = os.path.join(self.rootDir, programDir)
             tDir = dirName
             while 1:
-                os.chmod(tDir, 0775)
-                os.chown(tDir, -1, APOWRITE)
+                os.chmod(tDir, 02775)
                 if tDir == progDir:
                     break
                 tDir, dummy = os.path.split(tDir)
@@ -399,14 +403,34 @@ class ExpPath(object):
     def _fullName(self):
         return "%s%s%s" % (self.name, self._getNumber(), self.suffix)
 
+    def _fullDir(self):
+        return os.path.join(self.rootDir, self.programDir, self.userDir)
+        
     def _fullPath(self):
-        return os.path.join(self.rootDir, self.programDir, self.userDir, self._fullName())
+        return os.path.join(self._fullDir(), self._fullName())
+        
+    def _fullBasename(self):
+        return os.path.join(self._fullDir(), self.name)
         
     def _allParts(self, keepPath):
         if self.forcePathUpdate or not keepPath:
             self._adjustProgramDir()
         return self.rootDir, self.programDir, self.userDir, self._fullName()
 
+    def getPathDict(self):
+        d = {'rootDir':self.rootDir,
+             'programDir':self.programDir,
+             'userDir':self.userDir,
+             'fullDir':self._fullDir(),
+             'name':self.name,
+             'fullName':self._fullName(),
+             'fullPath':self._fullPath(),
+             'seq':self._getNumber(doPad=False),
+             'places':self.places,
+             'suffix':self.suffix,
+             }
+        return d
+    
     def _checkSimpleFileAccess(self, parts):
         """ Confirm that the parts describe a useable filename.
         """
@@ -464,6 +488,18 @@ class ExpPath(object):
 
         # CPL.log("getFilename", "parts=%s" % (parts))
         return parts
+
+    def getFilenameAsDict(self, keepPath=False):
+        parts = self._allParts(keepPath)
+        d = self.getPathDict()
+        
+        CPL.log("getFilename", "parts=%s" % (parts,))
+
+        self._checkFileAccess(parts)
+        self._incrNumber()
+
+        # CPL.log("getFilename", "parts=%s" % (parts))
+        return d
 
     def getFilename(self):
         """ Returns the next filename in the sequence.
