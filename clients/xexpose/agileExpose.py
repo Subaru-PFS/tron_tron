@@ -194,6 +194,7 @@ class AgileExposureActor(InstExposure.InstExposure):
                               **seqArgv)
             self.lastSequence = self.sequence
             self.sequence = seq
+            ret = client.call('keys', 'getFor=tcc')
             seq.run()
         else:
             cmd.fail('exposeTxt="command %s has not even been imagined"' % (CPL.qstr(command, tquote="'")))

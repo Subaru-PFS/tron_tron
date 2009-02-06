@@ -47,6 +47,7 @@ class Exposure(Actor.Acting):
         """
 
         CPL.log("Exposure", "setState %s %s %s" % (newState, expectedLength, mark))
+        #self.cmd.warn('debug="setState %s %s %s"' % (newState, expectedLength, mark))
         
         if mark == None:
             mark = time.time()
@@ -172,13 +173,14 @@ class CB(object):
         done = res.flag in 'fF:'
         failed = res.flag in 'fF'
 
+        CPL.log('CB.cbDribble', "cbDribble done=%s failed=%s" % (done, failed))
         if done:
             if failed:
                 if self.sequence:
                     if self.failOnFail:
                         self.sequence.exposureFailed('exposeTxt="%s failed"' % (self.what))
                     else:
-                        self.sequence.nextInSequence()
+                        self.sequence.nextInSequence(done=True)
                 if self.cmd:
                     if self.failOnFail:
                         self.cmd.fail('exposeTxt="%s failed"' % (self.what))
@@ -188,9 +190,6 @@ class CB(object):
                     
             else:
                 if self.sequence:
-                    self.sequence.nextInSequence()
+                    self.sequence.nextInSequence(done=True)
                 if self.cmd:
                     self.cmd.finish('exposeTxt="%s done"' % (self.what))
-        else:
-            if self.sequence and self.sequence.instDoesSequence:
-                self.sequence.nextInSequence()
