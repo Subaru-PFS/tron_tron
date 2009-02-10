@@ -11,6 +11,12 @@ import hub
 
 class hubCommands(InternalCmd.InternalCmd):
     """ All the commands that the "hub" package provides.
+
+    The user executes these from the command window:
+
+    hub startNubs tspec
+    hub status
+    etc.
     """
     
     def __init__(self, **argv):
