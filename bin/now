@@ -1,0 +1,7 @@
+#!/bin/sh
+
+# Print out an ISO-style date-time string
+
+TZ=GMT date +"%Y-%m-%dT%H:%M:%S"
+
+exit 0
