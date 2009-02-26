@@ -21,37 +21,7 @@ hub.init()
 startAllConnections(['client',
                      'ping',
                      'TUI','cmdinauth',
-                     'tcc', 
-                     'tcamera','tcam',
-                     'dcamera','dcam',
-                     'gcamera','gcam',
-                     'ecamera','ecam',
-                     'tcc2gcam','tcc2ecam',
-                     'disExpose', 'dis',
-                     'nicfpsExpose', 'nicfps',
-                     'echelleExpose', 'echelle',
-                     'spicam','spicamExpose', "sfocus",
-                     'tspec', 'tspecExpose',
-                     'nfake', 'nfocus',
-                     'cmiccServer', 'cm',
-                     'telmech', 'gmech',
+                     'tcc25m', 
                      ])
-
-# Manually add TS01 as an always-active commander of tspec.
-g.perms.addPrograms(['TS01'])
-g.perms.addActors(['tspec', 'tcam'])
-g.perms.addActorsToProgram('TS01', ['tspec','tcam'])
-
-# Manually add ZA01 as an always-active commander of apollo.
-g.perms.addPrograms(['ZA01'])
-g.perms.addActors(['apollo'])
-g.perms.addActorsToProgram('ZA01', ['apollo'])
-
-# Instrument monitoring, echelle
-g.perms.addPrograms(['MN01'])
-g.perms.addActors(['echelle'])
-g.perms.addActors(['telmech'])
-g.perms.addActors(['tspec'])
-g.perms.addActorsToProgram('MN01', ['tcc', 'echelle', 'telmech', 'tspec'])
 
 hub.run()
