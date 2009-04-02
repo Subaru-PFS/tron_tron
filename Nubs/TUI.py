@@ -19,15 +19,19 @@ def acceptTUI(in_f, out_f, addr=None):
     # This is gross, gross, gross. Basically, I want to stop the apollo
     # traffic until it is requested. So I need to add a taster filtering call which
     # specifies that, instead of enumerating all the acceptable ones. Ugh.
-    all = ('dcam', 'ecam', 'gcam', 'tcam',
-           'dcamera', 'ecamera', 'gcamera', 'tcamera',
-           'disExpose', 'echelleExpose', 'nicfpsExpose',
-           'spicamExpose', 'tspecExpose',
-           'nicfps', 'dis', 'echelle','spicam', 'tspec',
-           'tcc', 'tlamps', 'hub', 'msg',
-           'perms', 'auth', 'fits',
-           'cm', 'nfocus', 'telmech', 'gmech',
-           'agile','agileExpose')
+    all = ('tcc','mcp',
+           'hub','msg')
+    all = ('*',)
+    
+    allXX = ('dcam', 'ecam', 'gcam', 'tcam',
+             'dcamera', 'ecamera', 'gcamera', 'tcamera',
+             'disExpose', 'echelleExpose', 'nicfpsExpose',
+             'spicamExpose', 'tspecExpose',
+             'nicfps', 'dis', 'echelle','spicam', 'tspec',
+             'tcc', 'tlamps', 'hub', 'msg',
+             'perms', 'auth', 'fits',
+             'cm', 'nfocus', 'telmech', 'gmech',
+             'agile','agileExpose')
     
     otherIP, otherPort = in_f.getpeername()
     try:
@@ -35,7 +39,7 @@ def acceptTUI(in_f, out_f, addr=None):
     except:
         otherFQDN = "unknown"
 
-    os.system("/usr/bin/sudo /usr/local/bin/www-access add %s" % (otherIP))
+    # os.system("/usr/bin/sudo /usr/local/bin/www-access add %s" % (otherIP))
         
     d = Hub.ASCIICmdDecoder(needCID=False, EOL='\r\n', debug=1)
     e = Hub.ASCIIReplyEncoder(EOL='\r', simple=True, debug=1, CIDfirst=True)
