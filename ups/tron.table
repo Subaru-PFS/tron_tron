@@ -1,13 +1,4 @@
-File=Table
-Product=tron
-Group:
-Flavor=ANY
-Common:
-  Action=setup
-    proddir()
-    setupenv()
-#    setupRequired("PyGuide 2006-05-03_V2.1.1")
-    pathPrepend(PATH, ${UPS_PROD_DIR}/bin)
-    pathPrepend(PYTHONPATH, ${UPS_PROD_DIR})
-    pathPrepend(IDL_PATH, ${UPS_PROD_DIR}/pro)
-End:
+setupRequired("RO")
+pathPrepend(PATH, ${UPS_PROD_DIR}/bin)
+pathPrepend(PYTHONPATH, ${UPS_PROD_DIR})
+pathPrepend(IDL_PATH, ${UPS_PROD_DIR}/pro)
