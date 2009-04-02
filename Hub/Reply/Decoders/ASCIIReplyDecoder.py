@@ -10,7 +10,7 @@ class ASCIIReplyDecoder(ReplyDecoder):
         ReplyDecoder.__init__(self, **argv)
         
         self.EOL = argv.get('EOL', '\n')
-        self.cidFirst = argv.get('CIDfirst', False)
+        self.cidFirst = argv.get('CIDfirst', True)
         self.stripChars = argv.get('stripChars', '')
         
     def decode(self, buf, newData):

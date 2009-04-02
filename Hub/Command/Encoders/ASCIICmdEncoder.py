@@ -17,13 +17,17 @@ class ASCIICmdEncoder(CommandEncoder):
         CommandEncoder.__init__(self, **argv)
         self.EOL = argv.get('EOL','\n')
         self.useCID = argv.get('useCID', True)
+        self.CIDfirst = argv.get('CIDfirst', True)
         self.useTarget = argv.get('useTarget', False)
         self.sendCmdr = argv.get('sendCommander', False)
         self.sendCmdrCID = argv.get('sendCommanderCID', False)
         
     def encode(self, cmd):
         if self.useCID:
-            ids = "%s %s " % (cmd.actorMid, cmd.actorCid)
+            if self.CIDfirst:
+                ids = "%s %s " % (cmd.actorCid, cmd.actorMid)
+            else:
+                ids = "%s %s " % (cmd.actorMid, cmd.actorCid)
         else:
             ids = "%s 0 " % (cmd.actorMid,)
 
