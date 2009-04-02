@@ -80,7 +80,10 @@ class ActorNub(CoreNub):
         """
 
         if self.grabCID != False and self.cid == None:
-            initCmds = [self.grabCID]
+            if isinstance(self.grabCID, basestring):
+                initCmds = [self.grabCID]
+            else:
+                initCmds = []
             doRegister = False
         else:
             initCmds = self.initCmds
