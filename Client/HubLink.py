@@ -33,8 +33,9 @@ import CPL
 import IO.PollHandler
 import IO.IOHandler
 import FilterQueue
-import Hub
 
+import Hub.Reply.Decoders as Decoders
+import Hub.KV.KVDict as KVs
 import CommandLink
 
 class Command(object):
@@ -261,14 +262,14 @@ class HubLink(object):
         
         # Create a connection to the hub and register it.
         #
-        decoder = Hub.PyReplyDecoder(debug=1)
+        decoder = Decoders.PyReplyDecoder(debug=1)
         encoder = ASCIICmdEncoder(debug=1)
         self.toHub = ClientNub(self.poller, self, host, port,
                                name='client', encoder=encoder, decoder=decoder,
                                replyCallback=self.copeWithInput,
                                debug=self.debug)
         self.mids = CPL.ID()
-        self.KVs = Hub.KVDict(debug=6)
+        self.KVs = KVs.KVDict(debug=3)
         
         # A list of filters through which we pass all input from the hub.
         #
@@ -317,7 +318,6 @@ class HubLink(object):
             the queue upon which replies will be sent.
             
         We build a filter matching the command.
-
         
         """
 
