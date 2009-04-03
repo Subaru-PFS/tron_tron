@@ -41,8 +41,8 @@ import threading
 import Queue
 import time
 
-import HubLink
-import OrderedDict
+from Client import HubLink
+from RO.Alg import OrderedDict
 import CPL
 
 interpreter = 0
