@@ -37,7 +37,8 @@ from RO.Alg import OrderedDict
 from Misc.cdict import cdict
 
 import IO
-import Hub
+import Hub.KV.KVDict
+import Hub.Command.Command
 import Auth
 import g
 
@@ -76,16 +77,15 @@ def init():
     #   All of these are in the global namespace "g".
     #
     #   - A dictionary of KVs
-    g.KVs = Hub.KVDict(debug=6)
+    g.KVs = Hub.KV.KVDict.KVDict(debug=3)
 
     g.commanders = cdict()
     g.actors = cdict()
     
-    g.hubcmd = None
-    g.hubcmd = Hub.Command('.hub', '0', 0, 'hub', None, actorCid=0, actorMid=0, neverEnd=True)
+    g.hubcmd = Hub.Command.Command('.hub', '0', 0, 'hub', None, actorCid=0, actorMid=0, neverEnd=True)
 
     #   - An authorization manager
-    permsCmd = Hub.Command('.perms', '0', 0, 'perms', None, actorCid=0, actorMid=0, neverEnd=True)
+    permsCmd = Hub.Command.Command('.perms', '0', 0, 'perms', None, actorCid=0, actorMid=0, neverEnd=True)
     g.perms = Auth.Auth(permsCmd, debug=9)
     
     #   - A dictionary of Commander Nubs, indexed by unique ID.
@@ -390,13 +390,13 @@ def validateCommanderNames(nub, programName, username):
     """ Transform a proposed CommanderNub name into a unique CommanderNub name.
 
     A Commander name must consist of a program name and a username separated by a period.
-    Basically, take the proposed name and add -%d until there is no collision.
+    Basically, take the proposed name and add _%d until there is no collision.
     """
 
     # Severely normalize the username
     #
-    programName = re.sub('[^a-zA-Z0-9_-]+', '_', programName)
-    username = re.sub('[^a-zA-Z0-9_-]+', '_', username)
+    programName = re.sub('[^a-zA-Z0-9_]+', '_', programName)
+    username = re.sub('[^a-zA-Z0-9_]+', '_', username)
 
     if re.match('[a-zA-Z_]', username) == None:
         username = '_' + username
@@ -415,7 +415,7 @@ def validateCommanderNames(nub, programName, username):
                 ok = False
                 break
         if not ok:
-            proposedName = "%s-%d" % (fullName, n)
+            proposedName = "%s_%d" % (fullName, n)
             n += 1
 
     return proposedName
