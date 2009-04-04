@@ -1,3 +1,3 @@
-from Command import *
-from Decoders import *
-from Encoders import *
+from Command import Command
+#from Decoders import *
+#from Encoders import *

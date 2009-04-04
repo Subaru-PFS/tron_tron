@@ -3,9 +3,9 @@ __all__ = ['RawCmdDecoder']
 import CPL
 from Hub.Command import Command
 
-from CommandDecoder import CommandDecoder
+import CommandDecoder
 
-class RawCmdDecoder(CommandDecoder):
+class RawCmdDecoder(CommandDecoder.CommandDecoder):
     """ A Command decoder for accepting commands which have no target, MID, or CID. We
     know our target, and assign an incrementing MID. In other words, we transform:
 
@@ -21,7 +21,7 @@ class RawCmdDecoder(CommandDecoder):
         Optargs:
            EOL      - the EOL string (default='\n')
         """
-        CommandDecoder.__init__(self, **argv)
+        CommandDecoder.CommandDecoder.__init__(self, **argv)
         
         self.target = target
         self.EOL = argv.get('EOL', '\n')

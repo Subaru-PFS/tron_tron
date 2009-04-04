@@ -1,7 +1,7 @@
 __all__ = ['TCCShellNub']
 
 import CPL
-import Hub
+import Hub.Reply
 from ShellNub import ShellNub
 
 class TCCShellNub(ShellNub):
@@ -57,6 +57,6 @@ class TCCShellNub(ShellNub):
                     self.connected()
                     
             cmd = self.getCmdForReply(reply)
-            r = Hub.Reply(cmd, reply['flag'], reply['KVs'])
+            r = Hub.Reply.Reply(cmd, reply['flag'], reply['KVs'])
             cmd.reply(r)
         
