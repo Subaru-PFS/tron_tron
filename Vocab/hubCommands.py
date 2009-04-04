@@ -1,5 +1,6 @@
 __all__ = ['hubCommands']
 
+import sys
 import time
 import os
 
@@ -65,13 +66,13 @@ class hubCommands(InternalCmd.InternalCmd):
         if 'addActors' in matched:
             actors = leftovers.keys()
             CPL.log("doListen", "addActors: %s" % (actors))
-            #cmd.respond('text=%s' % (CPL.qstr("adding actors: %s" % (actors))))
+            #cmd.respond('text="%s"' % (CPL.qstr("adding actors: %s" % (actors))))
             cmdr.taster.addToFilter(actors, [], actors)
             cmd.finish()
         elif 'delActors' in matched:
             actors = leftovers.keys()
             CPL.log("doListen", "delActors: %s" % (actors))
-            #cmd.respond('text=%s' % (CPL.qstr("removing actors: %s" % (actors))))
+            #cmd.respond('text="%s"' % (CPL.qstr("removing actors: %s" % (actors))))
             cmdr.taster.removeFromFilter(actors, [], actors)
             cmd.finish()
         else:
@@ -100,9 +101,6 @@ class hubCommands(InternalCmd.InternalCmd):
         host = CPL.cfg.get('hub', 'httpHost')
 
         g.KVs.setKV('hub', 'httpRoot', (host, rootDir), None)
-        cmd.inform('httpRoot=%s,%s' % (CPL.qstr(host),
-                                       CPL.qstr(rootDir)))
-
         cmd.inform('version=%s' % (g.KVs.getKV('hub', 'version', default='Unknown')))
         
         self.actors(cmd, finish=False)
@@ -138,7 +136,7 @@ class hubCommands(InternalCmd.InternalCmd):
             try:
                 hub.startNub(nub)
             except Exception, e:
-                cmd.warn('hubTxt=%s' % (CPL.qstr("failed to start nub %s: %s" % (nub, e))))
+                cmd.warn('text=%s' % (CPL.qstr("failed to start nub %s: %s" % (nub, e))))
 
         cmd.finish('')
 
@@ -155,7 +153,7 @@ class hubCommands(InternalCmd.InternalCmd):
                 nub = g.actors[n]
                 nub.statusCmd(cmd, doFinish=False)
             except Exception, e:
-                cmd.warn('hubTxt=%s' % (CPL.qstr("failed to query actor %s: %s" % (n, e))))
+                cmd.warn('text=%s' % (CPL.qstr("failed to query actor %s: %s" % (n, e))))
 
         cmd.finish('')
 
@@ -172,7 +170,7 @@ class hubCommands(InternalCmd.InternalCmd):
                 nub = g.actors[n]
                 nub.listCommandsCmd(cmd, doFinish=False)
             except Exception, e:
-                cmd.warn('hubTxt=%s' % (CPL.qstr("failed to query actor %s: %s" % (n, e))))
+                cmd.warn('text=%s' % (CPL.qstr("failed to query actor %s: %s" % (n, e))))
 
         cmd.finish('')
 
@@ -189,7 +187,7 @@ class hubCommands(InternalCmd.InternalCmd):
             hub.loadWords(words)
         except Exception, e:
             CPL.tback('hub.loadWords', e)
-            cmd.fail('hubTxt=%s' % (CPL.qstr(e)))
+            cmd.fail('text=%s' % (CPL.qstr(e)))
             return
         
         if finish:
@@ -205,7 +203,7 @@ class hubCommands(InternalCmd.InternalCmd):
         
         words = cmd.cmd.split()
         if len(words) < 3:
-            cmd.fail('hubTxt="usage: getKeys srcName key1 [key2 ... keyN]"')
+            cmd.fail('text="usage: getKeys srcName key1 [key2 ... keyN]"')
             return
         
         src = words[1]
@@ -217,13 +215,13 @@ class hubCommands(InternalCmd.InternalCmd):
             kvString = kvAsASCII(k, v)
             cmd.inform(kvString, src="hub.%s" % (src))
         if unmatched:
-            cmd.warn("hubTxt=%s" % (CPL.qstr("unmatched %s keys: %s" % (src, ', '.join(unmatched)))))
+            cmd.warn("text=%s" % (CPL.qstr("unmatched %s keys: %s" % (src, ', '.join(unmatched)))))
         cmd.finish('')
 
     def reallyReallyRestart(self, cmd):
         """ Restart the entire MC. Which among other things kills us now. """
 
-        cmd.warn('hubTxt=%s' % \
+        cmd.warn('text=%s' % \
                  (CPL.qstr('Restarting the hub now... bye, bye, and please call back soon!')))
 
         # Give the poller a chance to flush out the warning.
