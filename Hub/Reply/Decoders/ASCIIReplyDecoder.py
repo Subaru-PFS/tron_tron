@@ -52,7 +52,7 @@ class ASCIIReplyDecoder(ReplyDecoder):
         buf = buf[eol+len(self.EOL):]
 
         if self.debug > 2:
-            CPL.log('Stdin.extractReply', "hoping to parse %r" % (replyString))
+            CPL.log('Stdin.extractReply', "hoping to parse (CIDfirst=%s) %r" % (self.cidFirst, replyString))
 
         for c in self.stripChars:
             replyString = replyString.replace(c, '')

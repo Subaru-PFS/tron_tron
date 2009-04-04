@@ -47,7 +47,7 @@ class RawReplyEncoder(ReplyEncoder):
         
         """
         
-        if self.debug > 3:
+        if self.debug > 5:
             CPL.log("ASCIIReplyEnc.encode", "encoding %r" % (KVs,))
         if KVs == None:
             return ""
