@@ -5,7 +5,7 @@ import time
 
 from RO.Alg import OrderedDict
 import CPL
-import Hub
+from Hub.Reply.Reply import Reply
 import Parsing
 import g
 
@@ -23,11 +23,8 @@ class Command(CPL.Object):
                      programName.username[.trail]
                 Any real Commander will have a real programName and username.
                 Synthetic Commands can be created from Replys to commands which
-                we did not send. Those are assigned to .actorName[.actorCID]
+                we did not send. Those are assigned to .actorName
       cmdrMID - the Commander's MID
-
-    
-    
     """
 
     def __init__(self, cmdrID, cid, mid, tgt, cmd, **argv):
@@ -94,15 +91,14 @@ class Command(CPL.Object):
         self.bcastCmdInfo = argv.get('bcastCmdInfo', True)
         
         if g.hubcmd != None and self.bcastCmdInfo:
-            g.hubcmd.inform(("NewCmd=%s" % (self.xid),
-                             "CmdTime=%s" % (self.ctime),
-                             "Cmdr=%s" % (CPL.qstr(self.cmdrName)),
-                             "CmdrMID=%s" % (self.cmdrMid),
-                             "CmdrCID=%s" % (CPL.qstr(cid_s)),
-                             "CmdActor=%s" % (CPL.qstr(self.actorName)),
-                             "CmdText=%s" % (CPL.qstr(cmd_s))),
-                             src='cmds')
-
+            g.hubcmd.diag(("NewCmd=%s" % (self.xid),
+                           "CmdTime=%s" % (self.ctime),
+                           "Cmdr=%s" % (CPL.qstr(self.cmdrName)),
+                           "CmdrMID=%s" % (self.cmdrMid),
+                           "CmdActor=%s" % (CPL.qstr(self.actorName)),
+                           "CmdText=%s" % (CPL.qstr(cmd_s))),
+                          src='cmds')
+            
     def __str__(self):
         return "Command(xid=%s, cmdr=%s, cmdrCid=%s, cmdrMid=%s, actor=%s, cmd=%s)" % \
                (self.xid, self.cmdrName, self.cmdrCid, self.cmdrMid, self.actorName,
@@ -441,6 +437,9 @@ class Command(CPL.Object):
     def warn(self, KVs='', **argv):
         self.makeAndSendReply('w', KVs, **argv)
 
+    def diag(self, KVs='', **argv):
+        self.makeAndSendReply('d', KVs, **argv)
+
     def finish(self, KVs='', **argv):
         if self.neverEnd:
             self.makeAndSendReply('i', KVs, **argv)
@@ -467,7 +466,7 @@ class Command(CPL.Object):
         if self.debug > 0:
             CPL.log("Command.makeAndSendReply", "src = %r, flag = %s, KVs = %r" % (src, flag, KVs))
         
-        r = Hub.Reply(self, flag, KVs, src=src, bcast=bcast)
+        r = Reply(self, flag, KVs, src=src, bcast=bcast)
         self.reply(r, **argv)
         
     def reply(self, r, **argv):
@@ -485,5 +484,5 @@ class Command(CPL.Object):
         if r.finishesCommand():
             # del g.pendingCommands[self.xid]
             if self.bcastCmdInfo:
-                g.hubcmd.inform("CmdDone=%s" % (self.xid), src="cmds")
+                g.hubcmd.diag("CmdDone=%s" % (self.xid), src="cmds")
             
