@@ -2,7 +2,7 @@ __all__ = ['ActorNub']
 
 import re
 
-from Hub import Command
+from Hub.Command.Command import Command
 from CoreNub import CoreNub
 
 import CPL
@@ -41,12 +41,6 @@ class ActorNub(CoreNub):
         self.needsAuth = argv.get("needsAuth", False)
         if self.needsAuth == True:
             self.needsAuth = self.name
-            
-        logDir = argv.get("logDir", None)
-        if logDir:
-            self.log = CPL.Logfile(logDir, EOL='', doEncode=True)
-        else:
-            self.log = None
             
         safeCmds = argv.get('safeCmds', None)
         if safeCmds == None:
@@ -92,7 +86,7 @@ class ActorNub(CoreNub):
         CPL.log("ActorNub.connected", "sending initCmds to %s (cid=%s)" % (self.ID, self.cid))
         for c in initCmds:
             CPL.log("ActorNub.connected", "sending initCmd %s" % (c))
-            self.sendCommand(Command('hub.init',
+            self.sendCommand(Command('hub',
                                      '.hub', g.hubMIDs.gimme(),
                                      self.name, c),
                              doRegister=doRegister)
@@ -213,7 +207,7 @@ class ActorNub(CoreNub):
         cmd = self.liveCommands.get(key)
         if not cmd:
             fullName = ".%s" % (self.name)
-            cmd = Command(fullName, ".%s.%s" % (self.name, cid), mid, self.name, None, actorCid=cid, actorMid=mid)
+            cmd = Command(fullName, ".%s" % (self.name), mid, self.name, None, actorCid=cid, actorMid=mid)
             self.__registerCmd(cmd, ours=False)
 
         return cmd
