@@ -1,13 +1,9 @@
 __all__ = ['keys']
 
-import time
-import os
-
 import CPL
-from Hub.KV.KVDict import *
-from Vocab.InternalCmd import *
+from Vocab.InternalCmd import InternalCmd
+from Hub.KV.KVDict import kvAsASCII
 import g
-import hub
 
 class keys(InternalCmd):
     """ All the commands that the "keys" package provides.
@@ -16,15 +12,13 @@ class keys(InternalCmd):
         keys getFor=actor K1 [K2 [K3 ...]]
 
         Keywords returned:
-           The requested keywords. But the src of the keywords is keys.actor instead of the actual actor.
-           
+           The requested keywords. But the src of the keywords is keys_actor instead of the actual actor.
     """
     
     def __init__(self, **argv):
         InternalCmd.__init__(self, 'keys', **argv)
 
         self.commands = {'getFor': self.getFor}
-
 
     def getFor(self, cmd, finish=True):
         """ Fetch keywords for a given actor
@@ -60,9 +54,9 @@ class keys(InternalCmd):
             values.append(kvAsASCII(k, v))
 
         if values:
-            cmd.inform("; ".join(values), noRegister=True, src="keys.%s" % (actor), bcast=False)
+            cmd.inform("; ".join(values), noRegister=True, src="keys_%s" % (actor), bcast=False, debug=9)
         if finish:
-            cmd.finish()
+            cmd.finish(bcast=False)
         
 def _test():
     a = auth()
