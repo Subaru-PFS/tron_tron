@@ -42,6 +42,12 @@ class CoreNub(IO.IOHandler):
         self.inputBuffer = ""
         self.outputBuffer = ""
 
+        logDir = argv.get("logDir", None)
+        if logDir:
+            self.log = CPL.Logfile(logDir, EOL='', doEncode=True)
+        else:
+            self.log = None
+            
     def __str__(self):
         return "CoreNub(id=%s, name=%s, type=%s)" % (self.ID, self.name, self.nubType)
     

@@ -5,7 +5,7 @@ __all__ = ['CommanderNub',
 
 from NubAuth import NubAuth
 import CoreNub
-import Hub
+from Hub.Reply.ReplyTaster import ReplyTaster
 import CPL
 
 import g
@@ -27,7 +27,7 @@ class CommanderNub(CoreNub.CoreNub):
         # Note which Replies we want to accept. The default
         # is to accept only responses to our own commands.
         #
-        self.taster = Hub.ReplyTaster()
+        self.taster = ReplyTaster()
         self.taster.setFilter((), (self.name,), (self.name,))
 
         self.isUser = argv.get('isUser', False)
@@ -80,6 +80,13 @@ class CommanderNub(CoreNub.CoreNub):
             if cmd == None:
                 break
 
+            if self.log:
+                try:
+                    txt = cmd['RawText']
+                except:
+                    txt = "UNKNOWN INPUT"
+                self.log.log(txt, note='<')
+
             intercepted = False
             if hasattr(self, 'interceptCmd'):
                 intercepted = self.interceptCmd(cmd)
@@ -113,7 +120,9 @@ class CommanderNub(CoreNub.CoreNub):
             if r.finishesCommand():
                 er = self.encoder.encode(r, self, noKeys=True)
                 self.queueForOutput(er)
-            
+        CPL.log("CommanderNub.reply", "here")
+        if self.log:
+            self.log.log(er, note='>')
         
     def tasteReply(self, r):
         if self.debug > 3:
