@@ -5,9 +5,9 @@
 import sys
 import time
 
-import client
+from Client import client
+from Client import Actor
 import CPL
-import Actor
 import Parsing
 
 class Ping(Actor.Actor):
