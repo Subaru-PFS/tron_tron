@@ -61,6 +61,7 @@ class InternalCmd(object):
         try:
             cmdHandler(cmd)
         except Exception, e:
+            CPL.tback('Vocab.sendCommand', e)
             cmd.fail('%sTxt=%s' % (self.name, CPL.qstr(e, tquote='"')))
             return
 
