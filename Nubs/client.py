@@ -1,6 +1,10 @@
 import time
 
-import Hub
+from Hub.Command.Decoders.ASCIICmdDecoder import ASCIICmdDecoder
+from Hub.Reply.Encoders.PyReplyEncoder import PyReplyEncoder
+from Hub.Nub.Commanders import StdinNub
+from Hub.Nub.Listeners import SocketListener
+
 import g
 import hub
 
@@ -10,20 +14,15 @@ listenPort = 6094
 def acceptStdin(in_f, out_f, addr=None):
     """ Create a command source with the given fds as input and output. """
     
-    # Force new versions to be loaded.
-    #
-    reload(Hub)
-    
     nubID = g.nubIDs.gimme()
 
-    d = Hub.ASCIICmdDecoder(needCID=True, needMID=True, 
-                            EOL='\n', name=name,
-                            debug=1)
-    e = Hub.PyReplyEncoder(name=name, debug=1)
-    c = Hub.StdinNub(g.poller, in_f, out_f,
-                     name='%s-%d' % (name, nubID),
-                     encoder=e, decoder=d, debug=1)
-    # , forceUser='APO.%s' % (nubID),
+    d = ASCIICmdDecoder(needCID=True, needMID=True, 
+                        EOL='\n', name=name,
+                        debug=1)
+    e = PyReplyEncoder(name=name, debug=1)
+    c = StdinNub(g.poller, in_f, out_f,
+                 name='%s_%d' % (name, nubID),
+                 encoder=e, decoder=d, debug=1)
 
     c.taster.addToFilter(('tcc', 'dis', 'hub', 'msg'), (), ('hub'))
     hub.addCommander(c)
@@ -34,7 +33,7 @@ def acceptStdin(in_f, out_f, addr=None):
 def start(poller):
     stop()
     
-    l = Hub.SocketListener(poller, listenPort, name, acceptStdin)
+    l = SocketListener(poller, listenPort, name, acceptStdin)
     hub.addAcceptor(l)
     
     time.sleep(1)
