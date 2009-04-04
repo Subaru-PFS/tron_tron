@@ -221,7 +221,7 @@ line_midcid_re = re.compile(r"""
   \s+
   (?P<cid>[a-z0-9_][a-z0-9_.]*)                 # Integer CID. Should be more forgiving.
   \s+
-  (?P<flag>[iw:f>!])           # The flag. Should allow more characters, and check them elsewhere.
+  (?P<flag>[diw:f>!])           # The flag. Should allow more characters, and check them elsewhere.
   (?P<rest>.*)""",
                      re.VERBOSE | re.IGNORECASE)
 
@@ -231,7 +231,7 @@ line_cidmid_re = re.compile(r"""
   \s+
   (?P<mid>\d+)                 # integer MID
   \s+
-  (?P<flag>[iw:f>!])           # The flag. Should allow more characters, and check them elsewhere.
+  (?P<flag>[diw:f>!])           # The flag. Should allow more characters, and check them elsewhere.
   (?P<rest>.*)""",
                      re.VERBOSE | re.IGNORECASE)
 
