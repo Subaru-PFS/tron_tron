@@ -6,30 +6,31 @@ import CPL
 from Hub.Command import Command
 import g
 
-from CommandDecoder import CommandDecoder
+import CommandDecoder
 
-class ASCIICmdDecoder(CommandDecoder):
+class ASCIICmdDecoder(CommandDecoder.CommandDecoder):
 
     # REs to match commands like:
-    #   MID CID TGT command
+    #   cmdrName TGT command
     #
     mctc_re = re.compile(r"""
       \s*
+      (?P<cid>[a-z_][a-z0-9_]*(\.[a-z_][a-z0-9_]*)*)
+      \s+
       (?P<mid>[0-9]+)
       \s+
-      (?P<cid>[a-z0-9_-]+(\.[a-z_][a-z0-9_-]*)*)
-      \s+
-      (?P<tgt>[a-z_][a-z0-9_-]*(\.[a-z_][a-z0-9_-]*)*)
+      (?P<tgt>[a-z_][a-z0-9_]*(\.[a-z_][a-z0-9_]*)*)
       \s+
       (?P<cmd>.*)""",
                          re.IGNORECASE | re.VERBOSE)
+
     #   MID TGT command
     #
     mtc_re = re.compile(r"""
       \s*
       (?P<mid>[0-9]+)
       \s+
-      (?P<tgt>[a-z_][a-z0-9_-]*(\.[a-z_][a-z0-9_-]*)*)
+      (?P<tgt>[a-z_][a-z0-9_]*(\.[a-z_][a-z0-9_]*)*)
       \s+
       (?P<cmd>.*)""",
                         re.IGNORECASE | re.VERBOSE)
@@ -37,19 +38,19 @@ class ASCIICmdDecoder(CommandDecoder):
     #
     tc_re = re.compile(r"""
       \s*
-      (?P<tgt>[a-z_][a-z0-9_-]*(\.[a-z_][a-z0-9_-]*)*)
+      (?P<tgt>[a-z_][a-z0-9_]*(\.[a-z_][a-z0-9_]*)*)
       \s+
       (?P<cmd>.*)""",
                        re.IGNORECASE | re.VERBOSE)
 
     def __init__(self, **argv):
 
-        CommandDecoder.__init__(self, **argv)
+        CommandDecoder.CommandDecoder.__init__(self, **argv)
         
         self.EOL = argv.get('EOL', '\n')
         self.needCID = argv.get('needCID', True)
         self.needMID = argv.get('needMID', True)
-        self.CIDfirst = argv.get('CIDfirst', False)
+        self.hackEOL = argv.get('hackEOL', False)
         
         if self.needCID and not self.needMID:
             CPL.log("ASCIICmdDecoder", "if CID is needed, than MID must also be.")
@@ -82,6 +83,19 @@ class ASCIICmdDecoder(CommandDecoder):
         if eol == -1:
             return None, buf
 
+        # Telnet connections provide '\r\n'. Or worse, I fear.
+        if self.hackEOL and len(buf) > 0:
+            if buf[eol-1] == '\r':
+                self.EOL = '\r' + self.EOL
+                self.hackEOL = False
+                eol = buf.find(self.EOL)
+                CPL.log('ASCIICmdDecoder.decode', "adjusted EOL to %r (at %d) in: %r" % (self.EOL, eol, buf))
+                g.hubcmd.warn('Text=%s' % \
+                              CPL.qstr("adjusted EOL for %s to %r (at %d) in: %r" % (self.name, self.EOL, eol, buf)),
+                              src='hub')
+                if eol == -1:
+                    return None, buf
+               
         cmdString = buf[:eol]
         buf = buf[eol+len(self.EOL):]
 
@@ -121,7 +135,4 @@ class ASCIICmdDecoder(CommandDecoder):
                 d['cid'] = self.name
                 d['mid'] = str(mid)
 
-        if self.CIDfirst:
-            d['cid'], d['mid'] = d['mid'], d['cid']
-            
         return Command(self.nubID, d['cid'], d['mid'], d['tgt'], d['cmd']), buf
