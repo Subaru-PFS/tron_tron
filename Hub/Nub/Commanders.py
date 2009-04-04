@@ -115,12 +115,15 @@ class CommanderNub(CoreNub.CoreNub):
         if r.bcast or r.cmd.cmdrID == self.ID:
             er = self.encoder.encode(r, self)
             self.queueForOutput(er)
+            if self.log:
+                self.log.log(er, note='>')
         else:
             CPL.log("CommanderNub.reply", "not bcast; rID=%s selfID=%s" % (r.cmd.cmdrID, self.ID))
             if r.finishesCommand():
                 er = self.encoder.encode(r, self, noKeys=True)
                 self.queueForOutput(er)
-        CPL.log("CommanderNub.reply", "here")
+                if self.log:
+                    self.log.log(er, note='>')
         if self.log:
             self.log.log(er, note='>')
         
