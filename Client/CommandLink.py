@@ -4,7 +4,7 @@ import os
 import re
 import sys
 
-import Command
+from Client import Command
 import CPL
 import IO
 

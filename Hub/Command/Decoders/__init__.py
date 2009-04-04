@@ -1,3 +1,3 @@
-from CommandDecoder import *
-from ASCIICmdDecoder import *
-from RawCmdDecoder import *
+from CommandDecoder import CommandDecoder
+from ASCIICmdDecoder import ASCIICmdDecoder
+from RawCmdDecoder import RawCmdDecoder
