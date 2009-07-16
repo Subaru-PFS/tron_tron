@@ -19,7 +19,7 @@ def acceptStdin(in_f, out_f, addr=None):
     c = StdinNub(g.poller, in_f, out_f,
                  name='%s-%d' % (name, nubID),
                  encoder=e, decoder=d, debug=1)
-    c.taster.addToFilter(('tcc', 'dis', 'hub', 'msg'), (), ('hub'))
+    c.taster.addToFilter(('*'), (), ('*'))
     hub.addCommander(c)
     
 def start(poller):
