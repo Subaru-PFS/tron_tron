@@ -13,19 +13,19 @@ name = 'mcp'
 def start(poller):
     stop()
 
-    # initCmds = ('ping',)
-    # safeCmds = r'^\s*status\s*$'
+    initCmds = ('info',)
+    safeCmds = r'^\s*info\s*$'
 
     d = ASCIIReplyDecoder(debug=1)
     e = ASCIICmdEncoder(debug=1)
-    dis = SocketActorNub(poller, 'sdssmcp', 31012,
+    nub = SocketActorNub(poller, 'sdssmcp', 31012,
                          name=name, encoder=e, decoder=d,
                          grabCID=True, # the MCP spontaneously generates a line we can eat.
-                         # initCmds=initCmds, safeCmds=safeCmds,
+                         initCmds=initCmds, safeCmds=safeCmds,
                          needsAuth=False,
                          logDir=os.path.join(g.logDir, name),
                          debug=1)
-    hub.addActor(dis)
+    hub.addActor(nub)
     
 def stop():
     n = hub.findActor(name)

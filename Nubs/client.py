@@ -1,7 +1,7 @@
 import time
 
 from Hub.Command.Decoders.ASCIICmdDecoder import ASCIICmdDecoder
-from Hub.Reply.Encoders.PyReplyEncoder import PyReplyEncoder
+from Hub.Reply.Encoders.ASCIIReplyEncoder import ASCIIReplyEncoder
 from Hub.Nub.Commanders import StdinNub
 from Hub.Nub.Listeners import SocketListener
 
@@ -9,7 +9,7 @@ import g
 import hub
 
 name = 'client'
-listenPort = 6094
+listenPort = 6093
 
 def acceptStdin(in_f, out_f, addr=None):
     """ Create a command source with the given fds as input and output. """
@@ -19,16 +19,15 @@ def acceptStdin(in_f, out_f, addr=None):
     d = ASCIICmdDecoder(needCID=True, needMID=True, 
                         EOL='\n', name=name,
                         debug=1)
-    e = PyReplyEncoder(name=name, debug=1)
+    e = ASCIIReplyEncoder(EOL='\n', simple=True, debug=1, CIDfirst=True)
     c = StdinNub(g.poller, in_f, out_f,
                  name='%s_%d' % (name, nubID),
                  encoder=e, decoder=d, debug=1)
 
-    c.taster.addToFilter(('tcc', 'dis', 'hub', 'msg'), (), ('hub'))
+    c.taster.addToFilter(('*'), (), ('hub'))
     hub.addCommander(c)
 
     time.sleep(1)
-
     
 def start(poller):
     stop()

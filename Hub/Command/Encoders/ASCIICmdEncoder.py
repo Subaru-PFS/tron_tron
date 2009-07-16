@@ -29,7 +29,7 @@ class ASCIICmdEncoder(CommandEncoder):
             else:
                 ids = "%s %s " % (cmd.actorMid, cmd.actorCid)
         else:
-            ids = "%s 0 " % (cmd.actorMid,)
+            ids = "%s " % (cmd.actorMid,)
 
         if self.sendCmdrCID:
             cmdrInfo = "%s " % (cmd.cmdrCid)

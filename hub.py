@@ -81,7 +81,8 @@ def init():
 
     g.commanders = cdict()
     g.actors = cdict()
-    
+
+    g.hubcmd = None
     g.hubcmd = Hub.Command.Command('.hub', '0', 0, 'hub', None, actorCid=0, actorMid=0, neverEnd=True)
 
     #   - An authorization manager

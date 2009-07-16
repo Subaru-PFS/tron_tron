@@ -124,8 +124,6 @@ class CommanderNub(CoreNub.CoreNub):
                 self.queueForOutput(er)
                 if self.log:
                     self.log.log(er, note='>')
-        if self.log:
-            self.log.log(er, note='>')
         
     def tasteReply(self, r):
         if self.debug > 3:
