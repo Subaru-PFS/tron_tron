@@ -1,9 +1,0 @@
-#!/bin/bash
-
-if test "_$5" = "_"; then
-    echo usage: $0 flatfile1 flatfile1 flatfile1 outputfile threshold
-    exit 1
-fi
-
-echo "mkcammask,['$1','$2','$3'],'$4',$5,[512,512],/dopad" | idl
-
