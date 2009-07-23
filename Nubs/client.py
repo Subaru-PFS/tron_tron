@@ -17,11 +17,11 @@ def acceptStdin(in_f, out_f, addr=None):
     nubID = g.nubIDs.gimme()
 
     d = ASCIICmdDecoder(needCID=True, needMID=True, 
-                        EOL='\n', name=name,
-                        debug=1)
+                        EOL='\n', hackEOL=True, name=name,
+                        debug=3)
     e = ASCIIReplyEncoder(EOL='\n', simple=True, debug=1, CIDfirst=True)
     c = StdinNub(g.poller, in_f, out_f,
-                 name='%s_%d' % (name, nubID),
+                 name='%s.v%d' % (name, nubID),
                  encoder=e, decoder=d, debug=1)
 
     c.taster.addToFilter(('*'), (), ('hub'))
