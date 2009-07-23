@@ -7,7 +7,7 @@ class ReplyEncoder(CPL.Object):
     def __init__(self, **argv):
         CPL.Object.__init__(self, **argv)
 
-        self.name = argv.get('name', 'unnamed')
+        self.name = argv.get('name', '.unnamed')
         self.nubID = None
         
     def setNub(self, n):

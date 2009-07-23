@@ -43,7 +43,7 @@ class hubCommands(InternalCmd.InternalCmd):
 
         hub.getSetHubVersion()
 
-        vString = 'hubVersion=%s' % (g.KVs.getKV('hub', 'version', default='Unknown'))
+        vString = 'version=%s' % (g.KVs.getKV('hub', 'version', default='Unknown'))
         if finish:
             cmd.finish(vString)
         else:
@@ -97,14 +97,10 @@ class hubCommands(InternalCmd.InternalCmd):
     def status(self, cmd, finish=True):
         CPL.cfg.flush()
 
-        rootDir = CPL.cfg.get('hub', 'httpRoot')
-        host = CPL.cfg.get('hub', 'httpHost')
-
-        g.KVs.setKV('hub', 'httpRoot', (host, rootDir), None)
-        cmd.inform('version=%s' % (g.KVs.getKV('hub', 'version', default='Unknown')))
-        
+        self.version(cmd, finish=False)
         self.actors(cmd, finish=False)
         self.commanders(cmd, finish=False)
+
         if finish:
             cmd.finish('')
             
