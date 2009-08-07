@@ -18,7 +18,7 @@ def acceptStdin(in_f, out_f, addr=None):
 
     d = ASCIICmdDecoder(needCID=True, needMID=True, 
                         EOL='\n', hackEOL=True, name=name,
-                        debug=3)
+                        debug=1)
     e = ASCIIReplyEncoder(EOL='\n', simple=True, debug=1, CIDfirst=True)
     c = StdinNub(g.poller, in_f, out_f,
                  name='%s.v%d' % (name, nubID),
