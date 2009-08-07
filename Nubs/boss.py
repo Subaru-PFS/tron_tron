@@ -20,7 +20,7 @@ def start(poller):
     nub = SocketActorNub(poller, 'boss-icc', 9998,
                          name=name, encoder=e, decoder=d,
                          grabCID=True, # BOSS spontaneously generates a line we can eat.
-                         # initCmds=initCmds, # safeCmds=safeCmds,
+                         initCmds=initCmds, # safeCmds=safeCmds,
                          needsAuth=False,
                          logDir=os.path.join(g.logDir, name),
                          debug=1)
