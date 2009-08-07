@@ -1,36 +1,31 @@
-import os
+import os.path
 
-import g
-import Hub
+from Hub.Command.Encoders.ASCIICmdEncoder import ASCIICmdEncoder
+from Hub.Reply.Decoders.ASCIIReplyDecoder import ASCIIReplyDecoder
+from Hub.Nub.SocketActorNub import SocketActorNub
+from Hub.Nub.Listeners import SocketListener
 import hub
+import g
 
 name = 'gcamera'
 
 def start(poller):
-
     stop()
 
-    initCmds = ('status',)
-    # safeCmds = r'status\s*$'
-    safeCmds = r'.*'
+    initCmds = ('ping',
+                'status')
 
-    existingPyPath = os.environ.get('PYTHONPATH', '')
-    if existingPyPath:
-        existingPyPath = ":" + existingPyPath
-        
-    d = Hub.ASCIIReplyDecoder(debug=1)
-    e = Hub.ASCIICmdEncoder(debug=1, sendCommander=True)
-    nub = Hub.ShellNub(poller, ['/usr/bin/env',
-                                'PATH=/usr/local/bin:/bin:/usr/bin',
-                                'PYTHONPATH=%s/Client:%s%s' % (g.home, g.home, existingPyPath),
-                                'clients/guiders/%s.py' % (name)],
-                       name=name, encoder=e, decoder=d,
-                       logDir=os.path.join(g.logDir, name),
-                       needsAuth=False,
-                       grabCID=True,
-                       initCmds=initCmds,
-                       safeCmds=safeCmds,
-                       debug=1)
+    # safeCmds = r'^\s*info\s*$'
+
+    d = ASCIIReplyDecoder(debug=1)
+    e = ASCIICmdEncoder(sendCommander=True, useCID=False, debug=1)
+    nub = SocketActorNub(poller, 'hub25m.apo.nmsu.edu', 9993,
+                         name=name, encoder=e, decoder=d,
+                         grabCID=True, # the actor spontaneously generates a line we can eat.
+                         initCmds=initCmds, # safeCmds=safeCmds,
+                         needsAuth=False,
+                         logDir=os.path.join(g.logDir, name),
+                         debug=1)
     hub.addActor(nub)
     
 def stop():
@@ -38,4 +33,3 @@ def stop():
     if n:
         hub.dropActor(n)
         del n
-
