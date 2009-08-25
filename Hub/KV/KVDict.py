@@ -54,7 +54,10 @@ def kvAsASCII(key, val, escape=None):
         else:
             values.append(_doEscape(v, escape))
 
-    return "%s=%s" % (key, ','.join(values))
+    if values:
+        return "%s=%s" % (key, ','.join(values))
+    else:
+        return str(key)
 
 class KV(object):
     def __init__(self, key, val, reply):
