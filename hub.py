@@ -55,14 +55,6 @@ def init():
     CPL.cfg.init(path=configPath)
     os.environ['CONFIG_DIR'] = configPath
     
-    # We have a couple of IDL pro files. Let idl see them.
-    idlPath = os.environ.get('IDL_PATH', None)
-    if idlPath:
-        idlPath = [idlPath, os.path.join(g.home, 'pro')]
-    else:
-        idlPath = [os.path.join(g.home, 'pro')]
-    os.environ['IDL_PATH'] = ':'.join(idlPath)
-
     g.logDir = CPL.cfg.get('hub', 'logDir')
 
     CPL.setLogfile('logs/hub.log', truncate=True)
