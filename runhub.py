@@ -19,8 +19,9 @@ def startAllConnections(names):
     
 hub.init()
 startAllConnections(['client',
-                     'tcc25m',
+                     'nclient'
                      'mcp',
+                     'tcc25m',
                      'TUI',
                      ])
 
