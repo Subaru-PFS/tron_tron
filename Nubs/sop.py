@@ -17,10 +17,10 @@ def start(poller):
 
     d = ASCIIReplyDecoder(debug=1)
     e = ASCIICmdEncoder(sendCommander=True, useCID=False, debug=1)
-    nub = SocketActorNub(poller, 'hub25m.apo.nmsu.edu', 9997,
+    nub = SocketActorNub(poller, 'hub25m', 9989,
                          name=name, encoder=e, decoder=d,
-                         grabCID=True, # the actor spontaneously generates a line we can eat.
-                         # initCmds=initCmds, # safeCmds=safeCmds,
+                         grabCID=True, # BOSS spontaneously generates a line we can eat.
+                         initCmds=initCmds, # safeCmds=safeCmds,
                          needsAuth=False,
                          logDir=os.path.join(g.logDir, name),
                          debug=1)
