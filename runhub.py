@@ -22,7 +22,11 @@ startAllConnections(['client',
                      'nclient'
                      'mcp',
                      'tcc25m',
+                     'platedb',
+                     'guider',
+                     'gcamera'
                      'TUI',
+                     'boss',
                      ])
 
 hub.run()
