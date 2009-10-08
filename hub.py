@@ -583,6 +583,10 @@ def forceReload(name, all=True):
 
     return mod
 
+def stopNub(name):
+    n = hub.findActor(name)
+    if n:
+        dropActor(n)
 
 def startNub(name):
     """ Launch a single Nub. 
