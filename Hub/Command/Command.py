@@ -126,7 +126,7 @@ class Command(CPL.Object):
                            (self.xid, self.ctime,
                             CPL.qstr(self.cmdrName), self.cmdrMid,
                             CPL.qstr(self.actorName), self.actorMid,
-                            CPL.qstr(cmd_s))),
+                            CPL.qstr(self.cmd))),
                           src='cmds')
 
     def connectToActor(self, cid, mid):
