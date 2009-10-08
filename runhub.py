@@ -19,12 +19,12 @@ def startAllConnections(names):
     
 hub.init()
 startAllConnections(['client',
-                     'nclient'
+                     'nclient',
                      'mcp',
                      'tcc25m',
                      'platedb',
                      'guider',
-                     'gcamera'
+                     'gcamera',
                      'TUI',
                      'boss',
                      ])
