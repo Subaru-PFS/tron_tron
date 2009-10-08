@@ -112,7 +112,7 @@ class ActorNub(CoreNub):
                          ("ActorMID", c.actorMid),
                          ("ActorCID", c.actorCid)),
                         src="cmds")
-
+        c.reportQueued()
         self.queueForOutput(ec)
         if self.log:
             self.log.log(ec, note='>')
@@ -207,7 +207,9 @@ class ActorNub(CoreNub):
         cmd = self.liveCommands.get(key)
         if not cmd:
             fullName = ".%s" % (self.name)
-            cmd = Command(fullName, ".%s" % (self.name), mid, self.name, None, actorCid=cid, actorMid=mid)
+            cmd = Command(fullName, ".%s" % (self.name), mid, self.name, None,
+                          actorCid=cid, actorMid=mid,
+                          bcastCmdInfo=False)
             self.__registerCmd(cmd, ours=False)
 
         return cmd

@@ -28,6 +28,7 @@ class hubCommands(InternalCmd.InternalCmd):
                           'commanders' : self.commanders,
                           'restart!' : self.reallyReallyRestart,
                           'startNubs' : self.startNubs,
+                          'stopNubs' : self.stopNubs,
                           'actorInfo' : self.actorInfo,
                           'commands' : self.commandInfo,
                           'setUsername' : self.setUsername,
@@ -119,6 +120,24 @@ class hubCommands(InternalCmd.InternalCmd):
         cmdr.setName(username)
         cmd.finish('')
 
+    def stopNubs(self, cmd):
+        """ stop a list of nubs. """
+
+        nubs = cmd.argDict.keys()[1:]
+        if len(nubs) == 0:
+            cmd.fail('text="must specify one or more nubs to stop..."')
+            return
+
+        ok = True
+        for nub in nubs:
+            try:
+                cmd.respond('text=%s' % (CPL.qstr("stopping nub %s" % (nub))))
+                hub.stopNub(nub)
+            except Exception, e:
+                cmd.warn('text=%s' % (CPL.qstr("failed to stop nub %s: %s" % (nub, e))))
+
+        cmd.finish('')
+
     def startNubs(self, cmd):
         """ (re-)start a list of nubs. """
 
@@ -130,6 +149,7 @@ class hubCommands(InternalCmd.InternalCmd):
         ok = True
         for nub in nubs:
             try:
+                cmd.respond('text=%s' % (CPL.qstr("(re-)starting nub %s" % (nub))))
                 hub.startNub(nub)
             except Exception, e:
                 cmd.warn('text=%s' % (CPL.qstr("failed to start nub %s: %s" % (nub, e))))

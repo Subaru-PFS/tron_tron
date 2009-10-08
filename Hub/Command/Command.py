@@ -97,7 +97,7 @@ class Command(CPL.Object):
                            "CmdrMID=%s" % (self.cmdrMid),
                            "CmdActor=%s" % (CPL.qstr(self.actorName)),
                            "CmdText=%s" % (CPL.qstr(cmd_s))),
-                          src='cmds')
+                         src='cmds')
             
     def __str__(self):
         return "Command(xid=%s, cmdr=%s, cmdrCid=%s, cmdrMid=%s, actor=%s, cmd=%s)" % \
@@ -119,6 +119,15 @@ class Command(CPL.Object):
         """ Return the program that we belong to. """
 
         return self._names()[0]
+
+    def reportQueued(self):
+        if g.hubcmd != None and self.bcastCmdInfo:
+            g.hubcmd.diag(("CmdQueued=%d,%0.2f,%s,%s,%s,%s,%s" %
+                           (self.xid, self.ctime,
+                            CPL.qstr(self.cmdrName), self.cmdrMid,
+                            CPL.qstr(self.actorName), self.actorMid,
+                            CPL.qstr(cmd_s))),
+                          src='cmds')
 
     def connectToActor(self, cid, mid):
         """ Note the parts of the command we can only figure out when connected to the target. """
