@@ -58,6 +58,7 @@ class InternalCmd(object):
                      (self.name, CPL.qstr("No command named %s" % (cmdWord))))
             return
 
+        cmd.reportQueued()
         try:
             cmdHandler(cmd)
         except Exception, e:
