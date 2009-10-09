@@ -67,13 +67,13 @@ class hubCommands(InternalCmd.InternalCmd):
         if 'addActors' in matched:
             actors = leftovers.keys()
             CPL.log("doListen", "addActors: %s" % (actors))
-            #cmd.respond('text="%s"' % (CPL.qstr("adding actors: %s" % (actors))))
+            #cmd.inform('text="%s"' % (CPL.qstr("adding actors: %s" % (actors))))
             cmdr.taster.addToFilter(actors, [], actors)
             cmd.finish()
         elif 'delActors' in matched:
             actors = leftovers.keys()
             CPL.log("doListen", "delActors: %s" % (actors))
-            #cmd.respond('text="%s"' % (CPL.qstr("removing actors: %s" % (actors))))
+            #cmd.inform('text="%s"' % (CPL.qstr("removing actors: %s" % (actors))))
             cmdr.taster.removeFromFilter(actors, [], actors)
             cmd.finish()
         else:
@@ -131,7 +131,7 @@ class hubCommands(InternalCmd.InternalCmd):
         ok = True
         for nub in nubs:
             try:
-                cmd.respond('text=%s' % (CPL.qstr("stopping nub %s" % (nub))))
+                cmd.inform('text=%s' % (CPL.qstr("stopping nub %s" % (nub))))
                 hub.stopNub(nub)
             except Exception, e:
                 cmd.warn('text=%s' % (CPL.qstr("failed to stop nub %s: %s" % (nub, e))))
@@ -149,7 +149,7 @@ class hubCommands(InternalCmd.InternalCmd):
         ok = True
         for nub in nubs:
             try:
-                cmd.respond('text=%s' % (CPL.qstr("(re-)starting nub %s" % (nub))))
+                cmd.inform('text=%s' % (CPL.qstr("(re-)starting nub %s" % (nub))))
                 hub.startNub(nub)
             except Exception, e:
                 cmd.warn('text=%s' % (CPL.qstr("failed to start nub %s: %s" % (nub, e))))
