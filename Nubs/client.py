@@ -1,9 +1,13 @@
 import time
 
-from Hub.Command.Decoders.ASCIICmdDecoder import ASCIICmdDecoder
-from Hub.Reply.Encoders.ASCIIReplyEncoder import ASCIIReplyEncoder
-from Hub.Nub.Commanders import StdinNub
+import Hub.Command.Decoders as hubDecoders
+import Hub.Reply.Encoders as hubEncoders
+import Hub.Nub.Commanders as hubCommanders 
 from Hub.Nub.Listeners import SocketListener
+
+#reload(hubDecoder)
+#reload(hubEncoder)
+#reload(hubCommanders)
 
 import g
 import hub
@@ -16,13 +20,13 @@ def acceptStdin(in_f, out_f, addr=None):
     
     nubID = g.nubIDs.gimme()
 
-    d = ASCIICmdDecoder(needCID=True, needMID=True, 
-                        EOL='\n', hackEOL=True, name=name,
-                        debug=1)
-    e = ASCIIReplyEncoder(EOL='\n', simple=True, debug=1, CIDfirst=True)
-    c = StdinNub(g.poller, in_f, out_f,
+    d = hubDecoders.ASCIICmdDecoder(needCID=True, needMID=True, 
+                                    EOL='\n', hackEOL=True, name=name,
+                                    debug=6)
+    e = hubEncoders.ASCIIReplyEncoder(EOL='\n', simple=True, debug=6, CIDfirst=True)
+    c = hubCommanders.StdinNub(g.poller, in_f, out_f,
                  name='%s.v%d' % (name, nubID),
-                 encoder=e, decoder=d, debug=1)
+                 encoder=e, decoder=d, debug=6)
 
     c.taster.addToFilter(('*'), (), ('hub'))
     hub.addCommander(c)
