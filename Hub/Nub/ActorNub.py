@@ -107,11 +107,6 @@ class ActorNub(CoreNub):
             
         ec = self.encoder.encode(c)
 
-        if self.inform != None:
-            self.inform((("CmdQueued", c.xid),
-                         ("ActorMID", c.actorMid),
-                         ("ActorCID", c.actorCid)),
-                        src="cmds")
         c.reportQueued()
         self.queueForOutput(ec)
         if self.log:
