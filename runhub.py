@@ -25,8 +25,8 @@ startAllConnections(['client',
                      'platedb',
                      'guider',
                      'gcamera',
-                     'TUI',
                      'boss',
+                     'TUI',
                      ])
 
 hub.run()
