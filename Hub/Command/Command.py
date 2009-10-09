@@ -91,13 +91,11 @@ class Command(CPL.Object):
         self.bcastCmdInfo = argv.get('bcastCmdInfo', True)
         
         if g.hubcmd != None and self.bcastCmdInfo:
-            g.hubcmd.diag(("NewCmd=%s" % (self.xid),
-                           "CmdTime=%s" % (self.ctime),
-                           "Cmdr=%s" % (CPL.qstr(self.cmdrName)),
-                           "CmdrMID=%s" % (self.cmdrMid),
-                           "CmdActor=%s" % (CPL.qstr(self.actorName)),
-                           "CmdText=%s" % (CPL.qstr(cmd_s))),
-                         src='cmds')
+            g.hubcmd.diag("CmdIn=%s,%s,%s" %
+                          (CPL.qstr(self.cmdrCid), 
+                           CPL.qstr(self.actorName),
+                           CPL.qstr(self.cmd)),
+                          src='cmds')
             
     def __str__(self):
         return "Command(xid=%s, cmdr=%s, cmdrCid=%s, cmdrMid=%s, actor=%s, cmd=%s)" % \
@@ -124,7 +122,7 @@ class Command(CPL.Object):
         if g.hubcmd != None and self.bcastCmdInfo:
             g.hubcmd.diag(("CmdQueued=%d,%0.2f,%s,%s,%s,%s,%s" %
                            (self.xid, self.ctime,
-                            CPL.qstr(self.cmdrName), self.cmdrMid,
+                            CPL.qstr(self.cmdrCid), self.cmdrMid,
                             CPL.qstr(self.actorName), self.actorMid,
                             CPL.qstr(self.cmd))),
                           src='cmds')
