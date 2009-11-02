@@ -22,12 +22,12 @@ def acceptStdin(in_f, out_f, addr=None):
     
     d = ASCIICmdDecoder(needCID=True, needMID=True, 
                         EOL='\n', hackEOL=True,
-                        name=name, debug=9)
-    e = ASCIIReplyEncoder(CIDfirst=True, name=name, debug=9)
+                        name=name, debug=2)
+    e = ASCIIReplyEncoder(CIDfirst=True, name=name, debug=2)
     c = StdinNub(g.poller, in_f, out_f,
                  name=fullname,
                  logDir=os.path.join(g.logDir, fullname),
-                 encoder=e, decoder=d, debug=1)
+                 encoder=e, decoder=d, debug=2)
 
     c.taster.addToFilter(all, (), all)
     hub.addCommander(c)

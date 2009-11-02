@@ -4,7 +4,7 @@ if test -z "$TRON_DIR"; then
     echo "TRON_DIR is not set, and needs to be setup" >&1
     exit 1
 fi
-export LOG_DIR=$HOME/logs
+export LOG_DIR=/data/logs/tron/tron
 
 #if test -z "$PYGUIDE_DIR"; then
 #    echo "PYGUIDE_DIR is not set, and needs to be setup" >&1
