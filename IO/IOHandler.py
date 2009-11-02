@@ -44,7 +44,7 @@ class IOHandler(CPL.Object):
         self.in_f = self.out_f = None
         self.in_fd = self.out_fd = None
         self.outQueue = []
-        self.queueLock = CPL.LLock(debug = (argv.get('debug', 0) > 4))
+        self.queueLock = CPL.LLock(debug = (argv.get('debug', 0) > 7))
         self.setInputFile(argv.get('in_f', None))
         self.setOutputFile(argv.get('out_f', None))
 
