@@ -22,11 +22,11 @@ def acceptStdin(in_f, out_f, addr=None):
 
     d = hubDecoders.ASCIICmdDecoder(needCID=True, needMID=True, 
                                     EOL='\n', hackEOL=True, name=name,
-                                    debug=6)
-    e = hubEncoders.ASCIIReplyEncoder(EOL='\n', simple=True, debug=6, CIDfirst=True)
+                                    debug=1)
+    e = hubEncoders.ASCIIReplyEncoder(EOL='\n', simple=True, debug=1, CIDfirst=True)
     c = hubCommanders.StdinNub(g.poller, in_f, out_f,
                  name='%s.v%d' % (name, nubID),
-                 encoder=e, decoder=d, debug=6)
+                 encoder=e, decoder=d, debug=1)
 
     c.taster.addToFilter(('*'), (), ('hub'))
     hub.addCommander(c)

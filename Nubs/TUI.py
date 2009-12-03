@@ -40,8 +40,7 @@ def acceptTUI(in_f, out_f, addr=None):
                      encoder=e, decoder=d, debug=1,
                      type='TUI', needsAuth=True,
                      isUser=True,
-                     otherIP=otherIP, otherFQDN=otherFQDN,
-                     debug=1)
+                     otherIP=otherIP, otherFQDN=otherFQDN)
     c.taster.addToFilter(all, (), all)
     hub.addCommander(c)
     
