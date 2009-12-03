@@ -37,6 +37,7 @@ class hubCommands(InternalCmd.InternalCmd):
                           'getKeys' : self.getKeys,
                           'listen' : self.doListen,
                           'version' : self.version,
+                          'relog' : self.relog,
                           }
 
     def version(self, cmd, finish=True):
@@ -243,9 +244,25 @@ class hubCommands(InternalCmd.InternalCmd):
         # Give the poller a chance to flush out the warning.
         g.poller.callMeIn(hub.restart, 1.0)
 
+    def relog(self, cmd):
+        """ Change where stderr goes to. """
         
-           
+        args = cmd.cmd.split()
+        args = args[1:]
 
+        if len(args) != 1:
+            cmd.fail('cmdError="usage: relog filename"')
+            return
 
+        filename = args[0]
+        import os
 
+        f = file(filename, "a", 1)
+        os.dup2(f.fileno(), 1)
+        os.dup2(f.fileno(), 2)
+        sys.stdout = os.fdopen(1, "w", 1)
+        sys.stderr = os.fdopen(2, "w", 1)
+        f.close()
+
+        cmd.finish('text="Jeebus, you done it now, whatever it was"')
 
