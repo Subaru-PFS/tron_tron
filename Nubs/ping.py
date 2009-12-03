@@ -13,14 +13,14 @@ def start(poller):
 
     stop()
 
-    d = ASCIIReplyDecoder(debug=0)
-    e = ASCIICmdEncoder(debug=0, sendCommander=True)
+    d = ASCIIReplyDecoder(debug=1)
+    e = ASCIICmdEncoder(debug=1, sendCommander=True)
     nub = ShellNub(poller, ['/usr/bin/env',
 #                            'PATH=/usr/local/bin:/usr/bin',
                             'clients/%s/%s.py' % (name, name)],
                    name=name, encoder=e, decoder=d,
                    #logDir=os.path.join(g.logDir, name),
-                   debug=0)
+                   debug=1)
     hub.addActor(nub)
     
 def stop():
