@@ -30,9 +30,9 @@ def start(poller):
     d = ASCIIReplyDecoder(EOL='\r',
                           stripChars='\n',
                           CIDfirst=False,
-                          debug=5
+                          debug=1
                           )
-    e = ASCIICmdEncoder(EOL='\r', debug=5, CIDfirst=False)
+    e = ASCIICmdEncoder(EOL='\r', debug=1, CIDfirst=False)
     tcc = TCCShellNub(poller, ['/usr/bin/ssh', '-1',
                                '-e', 'none', '-a', '-x',
                                '-i', '/home/cloomis/.ssh/tron', 
@@ -41,7 +41,7 @@ def start(poller):
                       needsAuth=True,
                       name=name, encoder=e, decoder=d,
                       logDir=os.path.join(g.logDir, name),
-                      debug=5)
+                      debug=1)
 
     hub.addActor(tcc)
     
