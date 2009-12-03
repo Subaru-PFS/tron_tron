@@ -277,7 +277,7 @@ class IOHandler(CPL.Object):
                 raise RuntimeError("mayOutput queue for %s is empty!" % (self))
 
             wlen = min(len(qtop), self.tryToWrite)
-            if self.debug > 3:
+            if self.debug > 5:
                 CPL.log("IOHandler.mayOutput", "writing len=%d wlen=%d %r" % \
                         (len(qtop), wlen, qtop[:min(wlen, 50)]))
                 
@@ -322,7 +322,7 @@ class IOHandler(CPL.Object):
                 if (self.oneAtATime and wroteFull):
                     break
                 
-                if self.debug > 3:
+                if self.debug > 5:
                     CPL.log("IOHandler.mayOutput", "queue len=%d" % (len(self.outQueue)))
 
                 # Quit if we only write one item or if we have written alot.

@@ -52,7 +52,8 @@ class ASCIIReplyEncoder(ReplyEncoder):
         else:
             id_s = "%s %s" % (mid, cid)
 
-        CPL.log('ASCIIReplyEncoder.encode', 'CIDfirst=%s, cid=%s, mid=%s, id_s=%s' % (self.CIDfirst, cid, mid, id_s))
+        if self.debug > 5:
+            CPL.log('ASCIIReplyEncoder.encode', 'CIDfirst=%s, cid=%s, mid=%s, id_s=%s' % (self.CIDfirst, cid, mid, id_s))
         
         if noKeys:
             keys = ''
