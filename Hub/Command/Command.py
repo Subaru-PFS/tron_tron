@@ -65,7 +65,7 @@ class Command(CPL.Object):
 
         # The identification the the hub gives to the actor.
         self.actorCid = argv.get('actorCid', None)
-        self.actorMid = argv.get('actorMid', None)
+        self.actorMid = argv.get('actorMid', 0)
         
         # Some Commands are essentially permanent.
         self.neverEnd = argv.get('neverEnd', False)
