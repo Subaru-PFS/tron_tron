@@ -12,7 +12,7 @@ name = 'sop'
 def start(poller):
     stop()
 
-    initCmds = ('ping',)
+    initCmds = ('ping','status')
     # safeCmds = r'^\s*info\s*$'
 
     d = ASCIIReplyDecoder(debug=1)
