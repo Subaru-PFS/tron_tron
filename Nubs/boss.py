@@ -12,7 +12,9 @@ name = 'boss'
 def start(poller):
     stop()
 
-    initCmds = ('ping', 'status')
+    initCmds = ('ping',
+                'version',
+                'status')
     # safeCmds = r'^\s*info\s*$'
 
     d = ASCIIReplyDecoder(debug=1)
