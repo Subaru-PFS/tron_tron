@@ -13,6 +13,7 @@ def start(poller):
     stop()
 
     initCmds = ('ping',
+                'version',
                 'status')
 
     # safeCmds = r'^\s*info\s*$'
