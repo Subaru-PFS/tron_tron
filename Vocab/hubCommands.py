@@ -37,6 +37,7 @@ class hubCommands(InternalCmd.InternalCmd):
                           'getKeys' : self.getKeys,
                           'listen' : self.doListen,
                           'version' : self.version,
+                          'ping' : self.status,
                           'relog' : self.relog,
                           }
 
