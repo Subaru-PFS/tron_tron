@@ -13,13 +13,12 @@ def start(poller):
     stop()
 
     initCmds = ('ping',
-                'version',
                 'status')
     # safeCmds = r'^\s*info\s*$'
 
     d = ASCIIReplyDecoder(debug=1)
     e = ASCIICmdEncoder(sendCommander=True, useCID=False, debug=1)
-    nub = SocketActorNub(poller, 'hub25m', 9989,
+    nub = SocketActorNub(poller, 'hub25m-p', 9989,
                          name=name, encoder=e, decoder=d,
                          grabCID=True, # BOSS spontaneously generates a line we can eat.
                          initCmds=initCmds, # safeCmds=safeCmds,

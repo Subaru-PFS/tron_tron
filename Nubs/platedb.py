@@ -19,7 +19,7 @@ def start(poller):
 
     d = ASCIIReplyDecoder(debug=1)
     e = ASCIICmdEncoder(sendCommander=True, useCID=False, debug=1)
-    nub = SocketActorNub(poller, 'hub25m.apo.nmsu.edu', 9992,
+    nub = SocketActorNub(poller, 'hub25m-p.apo.nmsu.edu', 9992,
                          name=name, encoder=e, decoder=d,
                          grabCID=True,
                          # initCmds=initCmds, # safeCmds=safeCmds,
