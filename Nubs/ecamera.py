@@ -19,7 +19,7 @@ def start(poller):
 
     d = ASCIIReplyDecoder(debug=1)
     e = ASCIICmdEncoder(sendCommander=True, useCID=False, debug=1)
-    nub = SocketActorNub(poller, 'hub25m.apo.nmsu.edu', 9987,
+    nub = SocketActorNub(poller, 'hub25m-p.apo.nmsu.edu', 9987,
                          name=name, encoder=e, decoder=d,
                          grabCID=True, # the actor spontaneously generates a line we can eat.
                          initCmds=initCmds, # safeCmds=safeCmds,
