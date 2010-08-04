@@ -17,9 +17,11 @@ class RawCmdDecoder(CommandDecoder.CommandDecoder):
         """ Create ourself.
 
         Args:
-           target   - the name of an Actor.
+           target     - the name of an Actor.
         Optargs:
-           EOL      - the EOL string (default='\n')
+           EOL        - the EOL string (default='\n')
+           cmdWrapper - if set, call this command at the target actor, and pass the incoming
+                        cmd as an argument.
         """
         CommandDecoder.CommandDecoder.__init__(self, **argv)
         
@@ -27,7 +29,11 @@ class RawCmdDecoder(CommandDecoder.CommandDecoder):
         self.EOL = argv.get('EOL', '\n')
         self.CID = argv.get('CID', '0')
         self.stripChars = argv.get('stripChars', '')
+        self.cmdWrapper = argv.get('cmdWrapper', None)
         self.mid = 1
+
+        if self.debug > 1:
+            CPL.log('RawCmdDecoder.init', "target=%s cmdWrapper=%s" % (self.target, self.cmdWrapper))
 
     def decode(self, buf, newData):
         """ Find and extract a single complete command from the given buffer. 
@@ -62,6 +68,9 @@ class RawCmdDecoder(CommandDecoder.CommandDecoder):
 
         for c in self.stripChars:
             cmdString.replace(c, '')
+
+        if self.cmdWrapper:
+            cmdString = "%s raw=%s" % (self.cmdWrapper, cmdString)
             
         # Assign a new MID
         #
