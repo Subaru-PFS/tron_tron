@@ -18,8 +18,6 @@ def start(poller):
 
     # safeCmds = r'^\s*info\s*$'
 
-    g.perms.addPrograms(programs=['apo'], actors=['tcc'])
-
     d = ASCIIReplyDecoder(debug=3)
     e = ASCIICmdEncoder(sendCommander=True, useCID=False, debug=3)
     nub = SocketActorNub(poller, 'hub25m-p.apo.nmsu.edu', 9990,
@@ -29,6 +27,7 @@ def start(poller):
                          needsAuth=False,
                          logDir=os.path.join(g.logDir, name),
                          debug=3)
+    g.perms.addActorsToProgram(name, ['tcc'])
     hub.addActor(nub)
     
 def stop():
