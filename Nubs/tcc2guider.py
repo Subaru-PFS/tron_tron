@@ -21,7 +21,9 @@ host = 'localhost'
 listenPort = 3012
 
 def acceptNewTcc(in_f, out_f, addr=None):
-    d = RawDecoder('guider', cmdWrapper="tccCmd", EOL='\r', debug=7)
+    d = RawDecoder('guider', cmdWrapper="tccCmd", EOL='\r',
+				   stripChars='\n',
+				   debug=7)
     e = RawReplyEncoder(keyName='txtForTcc', EOL='\r', debug=7)
     nub = StdinNub(g.poller, in_f, out_f,
                    name=name, encoder=e, decoder=d,

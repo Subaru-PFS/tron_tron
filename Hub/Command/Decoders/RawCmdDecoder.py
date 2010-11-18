@@ -52,8 +52,8 @@ class RawCmdDecoder(CommandDecoder.CommandDecoder):
         
         eol = buf.find(self.EOL)
         
-        if self.debug > 2:
-            CPL.log('ASCIICmdDecoder.extractCmd', "EOL at %d in buffer %r" % (eol, buf))
+        if self.debug > 3:
+            CPL.log('RawCmdDecoder.extractCmd', "EOL at %d in buffer %r" % (eol, buf))
 
         # No complete command found. Return the original buffer so that the caller
         # can easily determine that no input was consumed.
@@ -67,7 +67,9 @@ class RawCmdDecoder(CommandDecoder.CommandDecoder):
         buf = buf[eol+len(self.EOL):]
 
         for c in self.stripChars:
-            cmdString.replace(c, '')
+            cmdString = cmdString.replace(c, '')
+        if self.debug > 3:
+            CPL.log('RawCmdDecoder.extractCmd', "cmdString=%r" % (cmdString))
 
         if self.cmdWrapper:
             cmdString = "%s raw=%s" % (self.cmdWrapper, cmdString)
