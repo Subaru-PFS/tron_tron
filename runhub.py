@@ -29,8 +29,12 @@ startAllConnections(['client',
                      'boss',
                      'sos'
                      'guider',
-                     'TUI',
+                     'apogeecal',
+                     'apogee',
+                     'apogeeql',
                      'alerts',
+                     'tcc2guider',
+                     'TUI',
                      ])
 
 hub.run()
