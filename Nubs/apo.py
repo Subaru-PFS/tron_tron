@@ -27,8 +27,9 @@ def start(poller):
                          needsAuth=False,
                          logDir=os.path.join(g.logDir, name),
                          debug=3)
-    g.perms.addActorsToProgram(name, ['tcc'])
+    g.perms.addPrograms([name])
     hub.addActor(nub)
+    g.perms.addActorsToProgram(name, ['tcc'])
     
 def stop():
     n = hub.findActor(name)
