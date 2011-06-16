@@ -30,21 +30,21 @@ nubs = ('client',
 
         'TUI')
 
-actors = dict(alerts=    dict(host="hub25m-p.apo.nmsu.edu", port=9995),
-              apo=       dict(host="hub25m-p.apo.nmsu.edu", port=9990),
-              ecamera=   dict(host="hub25m-p.apo.nmsu.edu", port=9987),
-              gcamera=   dict(host="hub25m-p.apo.nmsu.edu", port=9993),
-              guider=    dict(host="hub25m-p.apo.nmsu.edu", port=9994),
-              platedb=   dict(host="hub25m-p.apo.nmsu.edu", port=9992),
-              sop=       dict(host="hub25m-p.apo.nmsu.edu", port=9989),
+actors = dict(alerts=    dict(host="hub25m-p.apo.nmsu.edu", port=9995, actorName='alertsActor'),
+              apo=       dict(host="hub25m-p.apo.nmsu.edu", port=9990, actorName='apoActor'),
+              gcamera=   dict(host="hub25m-p.apo.nmsu.edu", port=9993, actorName='gcameraICC'),
+              ecamera=   dict(host="hub25m-p.apo.nmsu.edu", port=9987, actorName='ecameraICC'),
+              guider=    dict(host="hub25m-p.apo.nmsu.edu", port=9994, actorName='guiderActor'),
+              platedb=   dict(host="hub25m-p.apo.nmsu.edu", port=9992, actorName='platedbActor'),
+              sop=       dict(host="hub25m-p.apo.nmsu.edu", port=9989, actorName='sopActor'),
 
-              apogee=    dict(host="apogee-ics.apo.nmsu.edu", port=33221),
-              apogeecal= dict(host="apogee-ics.apo.nmsu.edu", port=33222),
-              apogeeql=  dict(host="apogee-ql.apo.nmsu.edu", port=18282),
+              apogee=    dict(host="apogee-ics.apo.nmsu.edu", port=33221, actorName='apogeeICC'),
+              apogeecal= dict(host="apogee-ics.apo.nmsu.edu", port=33222, actorName='apogeecalICC'),
+              apogeeql=  dict(host="apogee-ql.apo.nmsu.edu", port=18282, actorName='apogeeqlActor'),
 
-              boss=      dict(host="boss-icc-p.apo.nmsu.edu", port=9998),
+              boss=      dict(host="boss-icc-p.apo.nmsu.edu", port=9998, actorName='bossICC'),
 
-              sos=       dict(host="sos3-p.apo.nmsu.edu", port=9988),
+              sos=       dict(host="sos3-p.apo.nmsu.edu", port=9988, actorName='sosActor'),
               )
 
 httpHost = 'hub25m.apo.nmsu.edu'
