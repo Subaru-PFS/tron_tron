@@ -4,12 +4,14 @@ from Hub.Command.Encoders.ASCIICmdEncoder import ASCIICmdEncoder
 from Hub.Reply.Decoders.ASCIIReplyDecoder import ASCIIReplyDecoder
 from Hub.Nub.SocketActorNub import SocketActorNub
 from Hub.Nub.Listeners import SocketListener
+import CPL.cfg
 import hub
 import g
 
 name = 'sop'
 
 def start(poller):
+    cfg = CPL.cfg.get('hub', 'actors', doFlush=True)[name]
     stop()
 
     initCmds = ('ping',
@@ -18,7 +20,7 @@ def start(poller):
 
     d = ASCIIReplyDecoder(debug=1)
     e = ASCIICmdEncoder(sendCommander=True, useCID=False, debug=1)
-    nub = SocketActorNub(poller, 'hub25m-p', 9989,
+    nub = SocketActorNub(poller, cfg['host'], cfg['port'],
                          name=name, encoder=e, decoder=d,
                          grabCID=True, # BOSS spontaneously generates a line we can eat.
                          initCmds=initCmds, # safeCmds=safeCmds,
