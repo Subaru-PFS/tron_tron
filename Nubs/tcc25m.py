@@ -36,7 +36,7 @@ def start(poller):
     e = ASCIICmdEncoder(EOL='\r', debug=1, CIDfirst=False)
     tcc = TCCShellNub(poller, ['/usr/bin/ssh', '-1',
                                '-e', 'none', '-a', '-x',
-                               '-i', '/home/cloomis/.ssh/tron', 
+                               '-i', os.path.expanduser('~/.ssh/tron'), 
                                '-T', 'tccuser@tcc25m'],
                       initCmds=initCmds, safeCmds=safeCmds,
                       needsAuth=True,
