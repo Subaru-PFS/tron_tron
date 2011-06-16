@@ -10,7 +10,7 @@ from CPL.Exceptions import ICCError
 
 cfgCache = None
 
-def init(path=None):
+def init(path=None, verbose=True):
     """ Initialize the cfg space.
     
     Args:
@@ -28,7 +28,8 @@ def init(path=None):
     cfgPath = path
     flush()
 
-    sys.stderr.write("initialized configuration under %s\n" % (cfgPath))
+    if verbose:
+        sys.stderr.write("initialized configuration under %s\n" % (cfgPath))
     
 def flush():
     """ Clear any existing configuration cache.
@@ -79,7 +80,9 @@ def _loadSpace(space):
         execfile(filename, gdict, ldict)
     except SyntaxError, e:
         raise ICCError("syntax error at or before line %d (%s) of the configuration file %s" % (e.lineno, e.text, filename))
-    
+    except Exception, e:
+        raise ICCError("failed to read the configuration file %s: %s" % (filename, e))
+        
     cfgCache[space] = ldict
     return ldict
 
