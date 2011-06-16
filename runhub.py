@@ -18,23 +18,6 @@ def startAllConnections(names):
                 sys.stderr.write("hubcmd.warn failed\n")
     
 hub.init()
-startAllConnections(['client',
-                     'nclient',
-                     'apo',
-                     'mcp',
-                     'tcc25m',
-                     'sop',
-                     'platedb',
-                     'gcamera',
-                     'boss',
-                     'sos'
-                     'guider',
-                     'apogeecal',
-                     'apogee',
-                     'apogeeql',
-                     'alerts',
-                     'tcc2guider',
-                     'TUI',
-                     ])
+startAllConnections(CPL.cfg.get('hub', 'nubs', doFlush=True))
 
 hub.run()
