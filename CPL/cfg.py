@@ -6,6 +6,8 @@ __all__ = ['init', 'get', 'flush']
 import os
 import sys
 
+from CPL.Exceptions import ICCError
+
 cfgCache = None
 
 def init(path=None):
@@ -37,15 +39,18 @@ def flush():
     cfgCache = {}
 
 __nodef = 'no such variable HERE'
-def get(space, var, default=__nodef):
+def get(space, var, default=__nodef, doFlush=False):
     """ Fetch a configuration value.
     
     Args:
         space     - the namespace to search.
         var       - the name of the variable to get.
         default   ? if set, and var is not in space, return this.
+        doFlush   ? if True, reload the config cache.
     """
 
+    if doFlush:
+        flush()
     if cfgCache == None:
         init()
         
