@@ -23,5 +23,5 @@ class ICCError(exceptions.Exception):
         if details:
             self.args = (error, details)
         else:
-            self.args = error
+            self.args = (error,)
 
