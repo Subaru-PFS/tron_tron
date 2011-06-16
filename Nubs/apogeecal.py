@@ -4,6 +4,7 @@ from Hub.Command.Encoders.ASCIICmdEncoder import ASCIICmdEncoder
 from Hub.Reply.Decoders.ASCIIReplyDecoder import ASCIIReplyDecoder
 from Hub.Nub.SocketActorNub import SocketActorNub
 from Hub.Nub.Listeners import SocketListener
+import CPL.cfg
 import hub
 import g
 
@@ -12,6 +13,7 @@ import g
 name = 'apogeecal'
 
 def start(poller):
+    cfg = CPL.cfg.get('hub', 'actors', doFlush=True)[name]
     stop()
 
     initCmds = ('ping',
@@ -24,7 +26,7 @@ def start(poller):
     #nub = SocketActorNub(poller, 'hub25m-p.apo.nmsu.edu', 18281,
     #nub = SocketActorNub(poller, 'apogee-ql.apo.nmsu.edu', 18281,
     #nub = SocketActorNub(poller, 'matt-1.astro.virginia.edu', 33221,
-    nub = SocketActorNub(poller, 'apogee-ics.apo.nmsu.edu', 33222,
+    nub = SocketActorNub(poller, cfg['host'], cfg['port'],
                          name=name, encoder=e, decoder=d,
                          grabCID=True, # the actor spontaneously generates a line we can eat.
                          initCmds=initCmds, # safeCmds=safeCmds,
