@@ -7,7 +7,7 @@ from Hub.Nub.Listeners import SocketListener
 import hub
 import g
 
-name = 'testboss'
+name = 'benchboss'
 
 def start(poller):
     stop()
