@@ -48,7 +48,7 @@ def kvAsASCII(key, val, escape=None):
         # raise Exception("type(%s) for key(%s) value is not legit: %r" % (type(val), key, val))
 
     # "grammar" misfeature: empty lists show as "key", not as "key="
-    if len(val):
+    if len(val) == 0:
         return key
         
     values = []
