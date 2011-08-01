@@ -491,5 +491,6 @@ class Command(CPL.Object):
         if r.finishesCommand():
             # del g.pendingCommands[self.xid]
             if self.bcastCmdInfo:
-                g.hubcmd.diag("CmdDone=%s" % (self.xid), src="cmds")
+                g.hubcmd.diag("CmdDone=%s,%s" % (self.xid, CPL.qstr(r.flag.lower())),
+                              src="cmds")
             
