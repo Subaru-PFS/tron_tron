@@ -354,7 +354,7 @@ def findAcceptor(id): return findNubInDict(id, g.acceptors)
 def findNub(nub):
     """ Find whether a nub exists in any of the nub dictionaries. """
     
-    for d in (g.actors, g.commanders):
+    for d in (g.actors, g.commanders, g.acceptors):
         if nub in d:
             return d[nub]
     return None
@@ -366,6 +366,8 @@ def dropNub(nub):
         dropActor(nub)
     elif nub.ID in g.commanders:
         dropCommander(nub)
+    elif nub.ID in g.acceptors:
+        dropAcceptor(nub)
     else:
         CPL.log("hub.dropNub",
                 "nub %s (%s) is neither in g.actors (%s) or g.commanders (%s)" % \
@@ -584,7 +586,7 @@ def forceReload(name, all=True):
     return mod
 
 def stopNub(name):
-    n = hub.findActor(name)
+    n = findActor(name)
     if n:
         dropActor(n)
 
