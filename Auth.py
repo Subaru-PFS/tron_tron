@@ -29,8 +29,6 @@ class Auth(CPL.Object):
         self.hackOn = False
         self.gods = ("APO", "TU02")
 
-        #for a in ('grim', 'dis', 'tcc', 'tlamps', 'echelle', 'perms'):
-        #    self.actors[a] = True
         for a in ['perms']:
             self.actors[a] = True
             
@@ -104,6 +102,10 @@ class Auth(CPL.Object):
                 else:
                     return ok
         except KeyError:
+            # For SDSS, if permissions are disabled do not generate annoying warnings.
+            if self.hackOn:
+                return True
+
             # In this case, send a warning to our .defaultCmd as well as to the affected cmd
             cmd.warn("permsTxt=%s" % (CPL.qstr("Authorization table has no entry for program: %s" % (program))))
             if cmd != self.defaultCmd:
