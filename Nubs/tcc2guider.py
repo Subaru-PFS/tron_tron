@@ -42,6 +42,11 @@ def start(poller):
     time.sleep(1)
 
 def stop():
+    l = hub.findCommander(name)
+    if l:
+        hub.dropCommander(l)
+        del l
+
     l = hub.findAcceptor(name)
     if l:
         hub.dropAcceptor(l)
