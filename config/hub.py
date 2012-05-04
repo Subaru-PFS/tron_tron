@@ -37,6 +37,7 @@ actors = dict(alerts=    dict(host="hub25m-p.apo.nmsu.edu", port=9995, actorName
               guider=    dict(host="hub25m-p.apo.nmsu.edu", port=9994, actorName='guiderActor'),
               platedb=   dict(host="hub25m-p.apo.nmsu.edu", port=9992, actorName='platedbActor'),
               sop=       dict(host="hub25m-p.apo.nmsu.edu", port=9989, actorName='sopActor'),
+              toy=       dict(host="hub25m-p.apo.nmsu.edu", port=9000, actorName='toyActor'),
 
               apogee=    dict(host="apogee-ics.apo.nmsu.edu", port=33221, actorName='apogeeICC'),
               apogeecal= dict(host="apogee-ics.apo.nmsu.edu", port=33222, actorName='apogeecalICC'),
