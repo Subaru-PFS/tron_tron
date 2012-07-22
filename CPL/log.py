@@ -22,6 +22,9 @@ def setID(newID):
     global id
     
     id = newID
+
+def setLogdir(dirname):
+    global logdir
     
 def setLogfile(filename, truncate=False):
     global logfile

@@ -1,11 +1,10 @@
 __all__ = ['parseArgs', 'match']
 
+import collections
 import re
 
 import CPL
-from RO.Alg import OrderedDict
 from Exceptions import ParseException
-from dequote import dequote
 
 from keys import *
 
@@ -109,7 +108,7 @@ def parseArgs(s):
              }
     """
     
-    KVs = OrderedDict()
+    KVs = collections.OrderedDict()
     rest = s
 
     while 1:
@@ -145,7 +144,7 @@ def match(argv, opts):
     """
 
     # Convert the request duples to an OrderedDict
-    want = OrderedDict()
+    want = collections.OrderedDict()
     for o in opts:
         try:
             a, b = o
@@ -156,8 +155,8 @@ def match(argv, opts):
 
     # Walk over the parsed options, and categorize them
     #
-    matches = OrderedDict()
-    leftovers = OrderedDict()
+    matches = collections.OrderedDict()
+    leftovers = collections.OrderedDict()
 
     for opt, arg in argv.iteritems():
         # If we are looking for the option, match it and convert the argument.

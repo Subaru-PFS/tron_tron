@@ -1,8 +1,8 @@
 __all__ = ['Reply']
 
 import time
+import collections
 
-from RO.Alg import OrderedDict
 import CPL
 import Parsing
 
@@ -34,7 +34,7 @@ class Reply(CPL.Object):
         self.flag = flag
         self.bcast = bcast
         
-        if isinstance(KVs, OrderedDict):
+        if isinstance(KVs, collections.OrderedDict):
             self.KVs = KVs
         else:
             self.KVs = self.parseKVs(KVs)

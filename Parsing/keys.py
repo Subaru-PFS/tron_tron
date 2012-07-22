@@ -14,11 +14,10 @@ __all__ = ['eatAVee', 'eatAString',
 
 """
 
-import exceptions
+import collections
 import re
 
 import CPL
-from RO.Alg import OrderedDict
 from Exceptions import ParseException
 
 def eatAVee(s):
@@ -197,7 +196,7 @@ def parseKVs(s):
     
     """
     
-    KVs = OrderedDict()
+    KVs = collections.OrderedDict()
     rest = s
 
     while 1:
@@ -260,7 +259,7 @@ def parseASCIIReply(s, cidFirst=False):
         d['flag'] = 'w'
         d['RawText'] = s
 
-        kvs = OrderedDict()
+        kvs = collections.OrderedDict()
         kvs['RawLine'] = [CPL.qstr(s)]
         d['KVs'] = kvs
         return d
@@ -277,7 +276,7 @@ def parseASCIIReply(s, cidFirst=False):
         KVs['UNPARSEDTEXT'] = [CPL.qstr(leftoverText)]
     except Exception, e:
         CPL.log("parseASCIIReply", "unexpected Exception: %s" % (e))
-        KVs = OrderedDict()
+        KVs = collections.OrderedDict()
         KVs['UNPARSEDTEXT'] = [CPL.qstr(d['rest'])]
         
     d['KVs'] = KVs
@@ -299,7 +298,7 @@ def parseRawReply(s, keyName="RawText"):
 
     CPL.log('parseRawReply', 'consumed :%r:' % (s))
     
-    kvs = OrderedDict()
+    kvs = collections.OrderedDict()
     kvs[keyName] = [CPL.qstr(s)]
     d['KVs'] = kvs
     d['RawText'] = s

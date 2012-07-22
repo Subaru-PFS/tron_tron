@@ -1,5 +1,6 @@
 __all__ = ['BinaryReplyDecoder']
 
+import collections
 import os
 import re
 import struct
@@ -8,7 +9,6 @@ import pixel16
 
 import g
 import CPL
-from RO.Alg import OrderedDict
 from Parsing import *
 
 from ReplyDecoder import ReplyDecoder
@@ -188,7 +188,7 @@ class BinaryReplyDecoder(ReplyDecoder):
         if is_file:
             d['flag'] = 'i'
             d['rest'] = ''
-            KVs = OrderedDict()
+            KVs = collections.OrderedDict()
             KVs['xpix'] = xpix
             KVs['ypix'] = ypix
             KVs['bitpix'] = bitpix
@@ -199,7 +199,7 @@ class BinaryReplyDecoder(ReplyDecoder):
             match = self.msg_re.match(msg)
             if match == None:
                 d['flag'] = 'w'
-                KVs = OrderedDict()
+                KVs = collections.OrderedDict()
                 KVs['UNPARSEDTEXT'] = CPL.qstr(msg)
                 d['KVs'] = KVs
 
@@ -217,7 +217,7 @@ class BinaryReplyDecoder(ReplyDecoder):
                 KVs['UNPARSEDTEXT'] = CPL.qstr(e.leftoverText)
             except Exception, e:
                 CPL.log("parseASCIIReply", "unexpected Exception: %s" % (e))
-                KVs = OrderedDict()
+                KVs = collections.OrderedDict()
                 KVs['RawLine'] = CPL.qstr(msg_d['rest'])
         
             d['KVs'] = KVs

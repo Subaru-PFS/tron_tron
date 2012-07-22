@@ -1,6 +1,6 @@
 __all__ = ['FullReply']
 
-from RO.Alg import OrderedDict
+import collections
 
 class FullReply(object):
     """ A single object containing all known information about a single reply. Basically flattens
@@ -42,7 +42,7 @@ class FullReply(object):
         self.flag = r.flag
 
         if noKeys:
-            self.KVs = OrderedDict()
+            self.KVs = collections.OrderedDict()
         else:
             self.KVs = r.KVs
         

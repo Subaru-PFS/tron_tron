@@ -1,10 +1,10 @@
 __all__ = ['KV', 'KVDict',
            'kvAsASCII']
 
+import collections
 import time
 
 import CPL
-from RO.Alg import OrderedDict
 from Misc.cdict import cdict
 
 """ Rethought a bit.
@@ -102,7 +102,7 @@ class KVDict(CPL.Object):
     
     def __init__(self, **argv):
         CPL.Object.__init__(self, **argv)
-        self.sources = cdict(dictType=OrderedDict)
+        self.sources = cdict(dictType=collections.OrderedDict)
 
     def keyNamesForKVs(self, KVs):
         """ Return the key names for a list of raw KVs. """
@@ -120,7 +120,7 @@ class KVDict(CPL.Object):
             CPL.log("KVDict.setKV", "src=%r, key=%r, val=%r" % (src, key, val))
             
         if src not in self.sources:
-            self.sources[src] = cdict(dictType=OrderedDict)
+            self.sources[src] = cdict(dictType=collections.OrderedDict)
             
         self.sources[src][key] = KV(key, val, reply)
         
@@ -162,7 +162,7 @@ class KVDict(CPL.Object):
         if source in self.sources:
             CPL.log("KVDict.addSource", "source %s already exists" % (source))
             return
-        self.sources[source] = cdict(dictType=OrderedDict)
+        self.sources[source] = cdict(dictType=collections.OrderedDict)
 
     def getSources(self):
         """ Return the known sources. """
@@ -204,7 +204,7 @@ class KVDict(CPL.Object):
            - a list of unmatched key names.
         """
         
-        vals = OrderedDict()
+        vals = collections.OrderedDict()
 
         if self.debug > 5:
             CPL.log("KVDict.getValues", "get src=%s keys=%s" % (src, keys))
