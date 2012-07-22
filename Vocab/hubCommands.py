@@ -57,6 +57,7 @@ class hubCommands(InternalCmd.InternalCmd):
 
         matched, unmatched, leftovers = cmd.match([('listen', None),
                                                    ('addActors', None),
+                                                   ('clearActors', None),
                                                    ('delActors', None)])
 
         cmdr = cmd.cmdr()
@@ -77,6 +78,9 @@ class hubCommands(InternalCmd.InternalCmd):
             CPL.log("doListen", "delActors: %s" % (actors))
             #cmd.inform('text="%s"' % (CPL.qstr("removing actors: %s" % (actors))))
             cmdr.taster.removeFromFilter(actors, [], actors)
+            cmd.finish()
+        elif 'clearActors' in matched:
+            cmdr.taster.setFilter([], [], [])
             cmd.finish()
         else:
             cmd.fail('text="unknown listen command"')
