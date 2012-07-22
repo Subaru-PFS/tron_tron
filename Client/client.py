@@ -42,7 +42,7 @@ import Queue
 import time
 
 from Client import HubLink
-from RO.Alg import OrderedDict
+import collections
 import CPL
 
 interpreter = 0
@@ -193,7 +193,7 @@ def call(tgt, cmd, debug=0, cid=0, timeout=None):
         
     res = CmdResponse()
     lines = []
-    KVs = OrderedDict.OrderedDict()
+    KVs = collections.OrderedDict()
     
     while 1:
         # resp is:

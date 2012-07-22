@@ -7,9 +7,10 @@ import sys
 import types
 import traceback
 from threading import *
+import collections 
 
 import CPL
-import RO
+
 
 import Command
 import FilterQueue
@@ -52,12 +53,12 @@ class Actor(Thread):
         self.nullCmd = Command.Command(self.name, 0, 0, self.name, '')
         
         self.mid = 1
-        self.commands = RO.Alg.OrderedDict({'help': self.helpCmd,
-                                            'ping': self.pingCmd,
-                                            'dbg' : self.debugCmd,
-                                            'gc'  : self.gcCmd,
-                                            'wing': self.doWing,
-                                            'refs' : self.memRefsCmd})
+        self.commands = collections.OrderedDict({'help': self.helpCmd,
+                                     'ping': self.pingCmd,
+                                     'dbg' : self.debugCmd,
+                                     'gc'  : self.gcCmd,
+                                     'wing': self.doWing,
+                                     'refs' : self.memRefsCmd})
 
         # Generic help template.
         #
@@ -70,7 +71,6 @@ class Actor(Thread):
             name   - the name of a command expected in .commands
         """
 
-        l = []
         if name not in self.commands:
             return None
 

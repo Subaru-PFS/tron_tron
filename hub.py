@@ -20,20 +20,16 @@
    r = Reply(cmd=cmd
 """
 
-import atexit
 import imp
-import inspect
 import os
-import pprint
 import re
 import signal
 import sys
 import time
-import traceback
+import collections
 
 import svnVersion
 import CPL
-from RO.Alg import OrderedDict
 from Misc.cdict import cdict
 
 import IO
@@ -242,21 +238,21 @@ def run():
         except Exception, e:
             CPL.tback('Hub.run', e)
 
-class NubDict(OrderedDict):
+class NubDict(collections.OrderedDict):
     """ Arrange for access to a dictionary to be annotated. """
     def __init__(self, name):
-        OrderedDict.__init__(self)
+        collections.OrderedDict.__init__(self)
         self.name = name
         self.listSelf()
         
     def __setitem__(self, k, v):
-        OrderedDict.__setitem__(self, k, v)
+        collections.OrderedDict.__setitem__(self, k, v)
 
         self.listSelf()
 
     def __delitem__(self, k):
         # k.shutdown(notifyHub=False)
-        OrderedDict.__delitem__(self, k)
+        collections.OrderedDict.__delitem__(self, k)
 
         self.listSelf()
 
