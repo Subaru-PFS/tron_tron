@@ -59,10 +59,10 @@ do_start() {
 #    sudo /usr/local/bin/www-access reset
     
 
-    now=`now`.log 
-    (cd $LOG_DIR; rm -f current.log; ln -s $now current.log)
+    #now=`now`.log 
+    #(cd $LOG_DIR; rm -f current.log; ln -s $now current.log)
     cd $TRON_DIR
-    python runhub.py >$LOG_DIR/$now 2>&1 &        
+    python runhub.py >>$LOG_DIR/run.log 2>&1 &        
     
     # Check that it really started...
     #

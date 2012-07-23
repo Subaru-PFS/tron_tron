@@ -52,10 +52,10 @@ def init():
     os.environ['CONFIG_DIR'] = configPath
     
     g.logDir = CPL.cfg.get('hub', 'logDir')
-
-    CPL.setLogfile('logs/hub.log', truncate=True)
+    CPL.setLogdir(g.logDir)
     CPL.setID('hub')
-    
+    CPL.log('hub.init', 'logger started...')
+
     #   - a globally unique ID generator for Commands.
     g.xids = CPL.ID()
     g.nubIDs = CPL.ID()
