@@ -3,7 +3,7 @@ import os.path
 from Hub.Command.Encoders.ASCIICmdEncoder import ASCIICmdEncoder
 from Hub.Reply.Decoders.ASCIIReplyDecoder import ASCIIReplyDecoder
 from Hub.Nub.SocketActorNub import SocketActorNub
-from Hub.Nub.Listeners import SocketListener
+
 import CPL.cfg
 import hub
 import g

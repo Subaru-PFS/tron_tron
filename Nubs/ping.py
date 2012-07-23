@@ -19,7 +19,7 @@ def start(poller):
 #                            'PATH=/usr/local/bin:/usr/bin',
                             'clients/%s/%s.py' % (name, name)],
                    name=name, encoder=e, decoder=d,
-                   #logDir=os.path.join(g.logDir, name),
+                   logDir=os.path.join(g.logDir, name),
                    debug=1)
     hub.addActor(nub)
     
