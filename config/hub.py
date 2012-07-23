@@ -12,7 +12,6 @@ vocabulary = ('hub', 'keys', 'msg')
 nubs = ('cmdin',
         'client',
         'nclient',
-        'ping',
 
         'TUI')
 
