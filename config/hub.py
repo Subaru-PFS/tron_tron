@@ -7,26 +7,12 @@ logDir = '/data/logs/tron'
 passwordFile = os.path.join(os.environ['TRON_DIR'], 'passwords')
 
 # Which words to load internally.
-vocabulary = ('perms', 'hub', 'keys', 'msg')
+vocabulary = ('hub', 'keys', 'msg')
+
 nubs = ('client',
         'nclient',
+        'cmdin',
         'ping',
-
-        'mcp',
-        'tcc25m',
-        'apo',
-
-        'sop',
-        'platedb',
-        'gcamera',
-        'boss',
-        'sos'
-        'guider',
-        'apogeecal',
-        'apogee',
-        'apogeeql',
-        'tcc2guider',
-        'alerts',
 
         'TUI')
 
@@ -48,5 +34,5 @@ actors = dict(alerts=    dict(host="hub25m-p.apo.nmsu.edu", port=9995, actorName
               sos=       dict(host="sos3-p.apo.nmsu.edu", port=9988, actorName='sosActor'),
               )
 
-httpHost = 'hub25m.apo.nmsu.edu'
+httpHost = 'localhost'
 httpRoot = '/'
