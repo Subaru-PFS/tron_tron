@@ -105,7 +105,6 @@ def init():
     signal.signal(signal.SIGTERM, handleSIGTERM)
 
     #   - A security manager
-    #   - A logger
 
 def handleSIGHUP(signal, frame):
     restart()
