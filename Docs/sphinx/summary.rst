@@ -1,76 +1,52 @@
-Summary and Examples
-====================
+Summary examples
+================
+
+Usually the communication protocol is hidden behind library routines,
+but some people like to know the details. To make this a little less
+abstract, we'll walk through what happens when a commander sends
+commands to some actors through the hub. When commanders connect to
+the hub they either negotiate or are assigned some commander
+name. Assume a human has connected, and been given the name
+"User.Joe". Joe then sends two commands:
+
+ - ``neon on`` to the ``lamp`` controller
+ - ``expose time=30`` to ``spec2``, the second spectrograph.
 
 Commands
 --------
 
 The command protocol into the tron hub is a line-oriented ASCII
-protocol, with only a little imposed structure. Commands are sent
-from commanders to actors and the actors reply to them. Actors can
-and usually do also spontaneously generate status keywords.
- 
-There are a few variants, but in the normal case the protocol between
-commanders and the hub tells the hub where to send the command string
-and how to identify replies::
+protocol, with only a little imposed structure. The hub passes the
+actual command strings unchanged, and maintains a mapping between each
+connection's unique serial IDs::
 
- commandID targetActor commandString
+ commandSerialNum commanderName targetActor commandString
 
-Two examples, assuming our commander had already sent 11 command via
-the hub::
+For our two examples, Joe's program would send::
 
- 12 telescope slew 90,30
- 13 spec2 expose science time=30.0
+ 1 User.Joe lamps neon on
+ 2 User.Joe spec2 expose science time=30.0
 
-CommandID should be a positive incrementing integer, but is only
-meaningful for the commander. The commander is externally identified
-with some commanderName, which is either negotiated (for human
-connections) or assigned (for program connections) when it first
-connects to the hub.  For the examples on this page, assume the
-commanderName is "Joe".  The hub does not parse or translate the
-commandString.
+When the hub forwards these commands on to the target actors, it removes
+the name of the actor and changes the serial number to the next
+available one for the given actor. So, for example::
 
-The hub slightly translates these incoming commands when sending them
-to the actors. It assigns the outgoing command a positive and
-incrementing actorCommandID, so that it can track completion
-status. Most actors only need to know that ID and the original
-commandtext::
+ 134 User.Joe neon on
 
- actorCommandID commandString
+and::
 
-For the first example, the hub would send the telescope::
+ 967 User.Joe expose science time=30.0
 
- 134 slew 90,30
 
-For the second example above the spec2 actor would be sent::
+Reply flags
+^^^^^^^^^^^
 
- 967 expose science time=30.0
-
-There are a couple of common extensions to this protocol. If an actor
-also sends commands to other actors, it will be configured to also be
-sent commanderName.commandID, which it in turn appends its own
-identity to when sending commands. The idea is to be able to track
-commands back to their origin. So, the spec2 actor could have been
-configured to be sent::
-
- 967 Joe.12 expose science time=30.0
-
-which spec2 commend could generate::
-
- 32 Joe.12.spec2.967 telescope offset focus -10
-
-which would be sent to the telescope as::
-
- 135 offset focus -10
-
-Replies
--------
-
-A actor replies to commands with the actorCommandID the hub sent, and
+A actor replies to commands with the actorSerialNum the hub sent, and
 a single status flag::
 
- actorCommandID flag [keywords]
+ actorSerialNum flag [keywords]
 
-Each command _must_ be finished with exactly one reply with one of
+Each command **must** be finished with exactly one reply with one of
 the following two flags::
 
  :   - successful command completion
@@ -82,13 +58,22 @@ replies::
  i   - "intermediate" reply.
  w   - "intermediate" reply indicating some warning.
 
-For the above example commands::
 
- 134 i text="slewing to 90,30"
- 134 i az=90; alt=30; rot=0
+For the first example, where the lamp controller received::
+
+ 134 User.Joe neon on
+
+if all went well it might reply::
+
+ 134 i text="turning neon lamp on"
+ 134 i neon=on; hgCd=off
  134 :
 
- 135 : focus=1000
+For the second example above, the spec2 actor might reply to::
+
+ 967 User.Joe expose science time=30.0
+
+with::
 
  967 i exposureID=123
  967 i exposureState="Flushing"
@@ -96,28 +81,63 @@ For the above example commands::
  967 i exposureState="Reading"; shutter="closed"
  967 : exposureState="Done"; filename="PFSA000012302.fits"
 
-The command IDs get (un-)translated each time they go through the
-hub, so that the command sender can associate replies with its own
-command IDs. And for slightly fiddly reasons, the source of the reply
-is also added [the hub can reply if no the actor cannot be connected
-to, say]. So for the above commands the original commander would see::
 
- User.Joe 12 telescope i text="slewing to 90,30"
- User.Joe 12 telescope i az=90; alt=30; rot=0
- User.Joe 12 telescope :
+When actors send commands
+^^^^^^^^^^^^^^^^^^^^^^^^^
 
- spec2 32 telescope : focus=1000
+So why does the commanderName get passed in to the hub and down to
+actors? Well, if an actor also sends commands to other actors, it
+is useful to track where the triggering command originally came
+from. So, if the spec2 actor needed to adjust telescope focus, it
+would send something like::
 
- User.Joe 13 spec2 i exposureID=123
- User.Joe 13 spec2 i exposureState="Flushing"
- User.Joe 13 spec2 i exposureState="Integrating"; shutter="open"
- User.Joe 13 spec2 i exposureState="Reading"; shutter="closed"
- User.Joe 13 spec2 : exposureState="Done"; filename="PFSA000012302.fits"
+ 32 User.Joe.spec2 telescope offset focus -10
 
-This may not have been the best choice.
+When actors generate unsolicited status
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+And how do actors update their status outside of commands? They use a
+serial number of 0. For example, the spec2 controller might send::
+
+ 0 w ccdTemp=-75.3
+
+Finally
+^^^^^^^
+
+The serial numbers get (un-)translated each time replies go through
+the hub, so that a command sender can associate replies with its own
+command IDs. To allow for errors and other special cases, the source
+of the reply is also added. So for the above commands the original
+User.Joe commander would see::
+
+ User.Joe 1 lamps i text="slewing to 90,30"
+ User.Joe 1 lamps i neon=on; hgCd=off
+ User.Joe 1 lamps :
+
+ User.Joe.spec2 32 telescope : focus=1000
+
+ User.Joe 2 spec2 i exposureID=123
+ User.Joe 2 spec2 i exposureState="Flushing"
+ User.Joe 2 spec2 i exposureState="Integrating"; shutter="open"
+ User.Joe 2 spec2 i exposureState="Reading"; shutter="closed"
+ User.Joe 2 spec2 : exposureState="Done"; filename="PFSA000012302.fits"
 
 Keywords
 --------
 
-See the reference documentation.
+.. todo:: Get access to APO trac reference docs as HTML
+
+The status keywords are the fundamental output from actors, and the
+complete set of keywords defines the public API. This is declared
+using a typed python dictionary which is loaded by the supplied
+keyword parser. Part of a relatively complex dictionary is
+
+.. literalinclude:: apogee_keys.py
+
+
+
+
+
+
+
 

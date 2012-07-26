@@ -69,3 +69,7 @@ properties, take camera exposures, and command offsets. One natural
 structure is a standalone actor which runs an expose-measure-offset
 loop, handing off the exposures, offsets, and probe management to
 other actors.
+
+I am not sure that it is the right tool, but we do have a fairly
+adaptable python/tk/X11 GUI program which can be used to control
+hub-connected systems, either during development or operations.
