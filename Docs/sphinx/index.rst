@@ -6,15 +6,22 @@
 Overview
 ========
 
-PFS has many parts, which will be developed independantly. 
+Control software for complex and distributed systems is
+challenging. One approach is to couple the individual pieces loosely
+with light-weight protocols, while enforcing public interfaces with
+well-typed contracts. This is especially good for distributed
+development, where you want day-to-day flexibility and need reliable
+integration. 
 
 Tron was developed as a relatively simple distributed communication
 system, designed to encourage independant development by hardware
 component or software module developers, and to minimize hurdles to
-their eventual integration. The only significant requirement on these
-components is that they publish a dictionary fully describing a set of
-keywords which defines the state of the software or hardware module,
-and that in operation they keep those keywords updated.
+their eventual integration.
+
+The only significant requirement on these components is that they
+publish a dictionary fully describing a set of keywords which defines
+the state of the software or hardware module, and that in operation
+they keep those keywords updated.
 
 
 The implementation can be sketched out:
@@ -37,9 +44,10 @@ always have an up-to-date view of all actors.
 
 .. toctree::
 
+ PFS
  summary
  toyMain
- PFS
+
 
 .. Indices and tables
 .. ==================
