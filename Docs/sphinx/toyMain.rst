@@ -1,8 +1,15 @@
 
-Hello, World
-=====================
+Hello, World, or a Toy actor
+==============================
 
-This is a nearly complete example of a working actor -- 
+This is a nearly complete example of a working actor. One main
+boilerplate file, and one file defining and implementing some
+commands. Execute the main file, and you can send commands to this
+actor either directly or via the hub.
+
+.. todo:: Put tron and the toyActor in some PFS-accessible git repo.
+.. todo:: consolidate the three library products into one.
+.. todo:: make a one-click installer 
 
 Toy Main
 --------
@@ -21,7 +28,7 @@ ToyCommands
 ------------
 
 Files in the Commands subdirectory are automatically loaded, and their
-command definitions registered with the parser.
+ocommand definitions registered with the parser.
 
 Note that the actor infrastructure provides a 'reload' command which
 lets you dynamically reload these command files while the actor is
