@@ -10,18 +10,14 @@ from opscore.utility.qstr import qstr
 class ToyCmd(object):
 
     def __init__(self, actor):
-        # This is essential:
+        # This lets us access the rest of the actor.
         self.actor = actor
 
-        # Define some typed command arguments. [Can't say I like these being global to all commands. -- CPL]
-        self.keys = keys.KeysDictionary("toy_toy", (1, 1),
-                                        keys.Key("cartridge", types.Int(), help="A cartridge ID"),
-                                        keys.Key("actor", types.String(), help="Another actor to command"),
-                                        keys.Key("cmd", types.String(), help="A command string"),
-                                        keys.Key("cnt", types.Int(), help="A count of things to do"),
-                                        keys.Key("delay", types.Float(), help="Seconds to delay"))
-        #
-        # Declare commands
+        # Declare the commands we implement. When the actor is started
+        # these are automatically registered with the actor's parser,
+        # which will call the associated methods when matched. The
+        # callbacks will be passed a single argument, the parsed and
+        # typed command.
         #
         self.vocab = [
             ('ping', '', self.ping),
@@ -30,28 +26,25 @@ class ToyCmd(object):
             ('passAlong', '<actor> <cmd>', self.passAlong),
         ]
 
+        # Define typed command arguments for the above commands.
+        self.keys = keys.KeysDictionary("toy_toy", (1, 1),
+                                        keys.Key("actor", types.String(), help="Another actor to command"),
+                                        keys.Key("cmd", types.String(), help="A command string"),
+                                        keys.Key("cnt", types.Int(), help="A count of things to do"))
+                                        keys.Key("delay", types.Float(), help="Seconds to delay"))
+        #
     def ping(self, cmd):
-        '''Query the actor for liveness/happiness.'''
+        """Query the actor for liveness/happiness."""
 
+        # 
         cmd.finish("text='Present and (probably) well'")
 
     def status(self, cmd):
-        '''Report status and version; obtain and send current data'''
+        """Report status and version; obtain and send current data"""
 
         self.actor.sendVersionKey(cmd)
-        self.doStatus(cmd, flushCache=True)
 
-    def doStatus(self, cmd=None, flushCache=False, doFinish=True):
-        '''Report full status'''
-
-        if not cmd:
-            cmd = self.actor.bcast
-
-        keyStrings = ['text="nothing to say, really"']
-        keyMsg = '; '.join(keyStrings)
-
-        cmd.inform(keyMsg)
-        cmd.diag('text="still nothing to say"')
+        cmd.inform('text="still nothing to say"')
         cmd.finish()
 
     def doSomething(self, cmd):
