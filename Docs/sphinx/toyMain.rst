@@ -1,3 +1,4 @@
+.. _toyActor:
 
 Hello, World, or a Toy actor
 ==============================
@@ -6,10 +7,6 @@ This is a nearly complete example of a working actor. One main
 boilerplate file, and one file defining and implementing some
 commands. Execute the main file, and you can send commands to this
 actor either directly or via the hub.
-
-.. todo:: Put tron and the toyActor in some PFS-accessible git repo.
-.. todo:: consolidate the three library products into one.
-.. todo:: make a one-click installer 
 
 Toy Main
 --------
@@ -24,7 +21,7 @@ and would not need to be modified significantly.
    :linenos:
 
 
-ToyCommands
+Toy Commands
 ------------
 
 Files in the Commands subdirectory are automatically loaded, and their
@@ -37,4 +34,8 @@ running. In practice, actors can be developed without being restarted.
 
 .. literalinclude:: ToyCmd.py
    :linenos:
+
+.. todo:: Put tron and the toyActor in some PFS-accessible git repo.
+.. todo:: consolidate the three library products into one.
+.. todo:: make a one-click installer 
 
