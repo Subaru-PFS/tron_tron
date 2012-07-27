@@ -2,6 +2,7 @@ Summary examples
 ================
 
 Usually the communication protocol is hidden behind library routines,
+as seen in the :ref:`Hello, World <toyActor>` example, 
 but some people like to know the details. To make this a little less
 abstract, we'll walk through what happens when a commander sends
 commands to some actors through the hub. When commanders connect to
@@ -11,6 +12,15 @@ name. Assume a human has connected, and been given the name
 
  - ``neon on`` to the ``lamp`` controller
  - ``expose time=30`` to ``spec2``, the second spectrograph.
+
+Using the python library from the example, those would be written as::
+
+ self.actor.cmdr.call(actor='lamp', cmdStr='neon on')
+
+or::
+
+ self.actor.cmdr.call(actor='spec2', cmdStr='expose time=30', timeLim=60)
+ 
 
 Commands
 --------
@@ -69,6 +79,12 @@ if all went well it might reply::
  134 i neon=on; hgCd=off
  134 :
 
+Using the library, a programmer would write those as::
+
+ cmd.inform('text="turning neon lamp on"')
+ cmd.inform('neon=%s; hgCd=%s" % (neon.state, hgcd.state))
+ cmd.finish()
+
 For the second example above, the spec2 actor might reply to::
 
  967 User.Joe expose science time=30.0
@@ -121,22 +137,6 @@ User.Joe commander would see::
  User.Joe 2 spec2 i exposureState="Integrating"; shutter="open"
  User.Joe 2 spec2 i exposureState="Reading"; shutter="closed"
  User.Joe 2 spec2 : exposureState="Done"; filename="PFSA000012302.fits"
-
-Keywords
---------
-
-.. todo:: Get access to APO trac reference docs as HTML
-
-The status keywords are the fundamental output from actors, and the
-complete set of keywords defines the public API. This is declared
-using a typed python dictionary which is loaded by the supplied
-keyword parser. Part of a relatively complex dictionary is
-
-.. literalinclude:: apogee_keys.py
-
-
-
-
 
 
 

@@ -30,7 +30,7 @@ class ToyCmd(object):
         self.keys = keys.KeysDictionary("toy_toy", (1, 1),
                                         keys.Key("actor", types.String(), help="Another actor to command"),
                                         keys.Key("cmd", types.String(), help="A command string"),
-                                        keys.Key("cnt", types.Int(), help="A count of things to do"))
+                                        keys.Key("cnt", types.Int(), help="A count of things to do"),
                                         keys.Key("delay", types.Float(), help="Seconds to delay"))
         #
     def ping(self, cmd):

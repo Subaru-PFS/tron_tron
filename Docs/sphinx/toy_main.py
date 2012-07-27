@@ -13,7 +13,7 @@ class Toy(actorcore.Actor.Actor):
         # Explicitly declare which actors we need to know about, so we can access their keywords.
         #
         self.models = {}
-        for actor in ["guider", "fiberControl", "platedb", "telescope"]:
+        for actor in ["guider", "fiberControl", "observingDB", "telescope"]:
             self.models[actor] = opscore.actor.model.Model(actor)
 
 #
