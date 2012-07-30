@@ -1,0 +1,129 @@
+
+ The tron system serves as a centralized communication system, with the
+ following basic features:
+
+  - "commanders" send commands to "actors", via the hub. Actors can also be commanders.
+  - actors reply to commands and generate status keywords. Also via the hub.
+  - command and replies are sent using line-oriented ASCII protocols
+  - actors are expected to completely describe their state by generating keyword variables when state changes.
+  - the complete set of an actor's keywords is published. 
+  - finally, all actor traffic is (optionally) visible to all commanders.
+
+========== Commands
+
+The command protocol into the tron hub is a line-oriented ASCII
+protocol, with only a little imposed structure. Commands are sent
+from "commanders" to "actors", and the actors reply to them, or
+spontaneously generate status keywords.
+ 
+There are a few variants, but in the normal case, the protocol
+between commanders and the hub 
+
+ commandID targetActor commandString
+
+Two examples, assuming out commander had already sent 11 command via
+the hub:
+
+ 12 telescope slew 90,30
+ 13 spec2 expose science time=30.0
+
+CommandID should be a positive incrementing integer, but is only
+meaningful for the commander. The commander is externally identified
+with some commanderName, which is either negotiated (for human
+connections) or assigned (for program connections) when it first
+connects to the hub.  For this example, assume the commanderName is
+"Joe".  The hub does not parse or translate the commandString.
+
+The hub slightly translates these incoming commands when sending them
+to the actors. It assigns the outgoing command a positive and
+incrementing actorCommandID, so that it can track completion
+status. Most actors only need to know that ID and the original
+commandtext:
+
+ actorCommandID commandString
+
+For the first example, the hub would be sent the telescope:
+
+ 134 slew 90,30
+
+For the second example above the spec2 actor would be sent:
+
+ 967 expose science time=30.0
+
+There are a couple of common extensions to this protocol. If an actor
+also sends commands to other actors, it will be configured to also be
+sent commanderName.commandID, which it in turn appends its own
+identity to when sending commands. The idea is to be able to track
+commands back to their origin. So, the spec2 actor could have been
+configured to be sent:
+
+ 967 Joe.12 expose science time=30.0
+
+which spec2 commend could generate:
+
+ 32 Joe.12.spec2.967 telescope offset focus -10
+
+which would be sent to the telescope as:
+
+ 135 offset focus -10
+
+========== Replies
+
+ A actor replies to commands with the actorCommandID the hub sent, and
+ a single status flag:
+
+actorCommandID flag [keywords]
+
+  Each command _must_ be finished with exactly one reply with one of
+  the following two flags:
+
+  :   - successful command completion
+  f   - command failure
+
+  Optionally, each command can send along other, non-terminating,
+  replies:
+
+  i   - "intermediate" reply.
+  w   - "intermediate" reply indicating some warning.
+
+134 i text="slewing to 90,30"
+134 i az=90; alt=30; rot=0
+134 :
+
+135 : focus=1000
+
+967 i exposureID=123
+967 i exposureState="Flushing"
+967 i exposureState="Integrating"; shutter="open"
+967 i exposureState="Reading"; shutter="closed"
+967 : exposureState="Done"; filename="PFSA000012302.fits"
+
+ The command IDs get (un-)translated each time they go through the
+ hub, so that the command sender can associate replies with its own
+ command IDs. And for slightly fiddly reasons, the source of the reply
+ is also added [the hub can reply if no the actor cannot be connected
+ to, say]. So for the above commands the original commander would see:
+
+User.Joe 12 telescope i text="slewing to 90,30"
+User.Joe 12 telescope i az=90; alt=30; rot=0
+User.Joe 12 telescope :
+
+spec2 32 telescope : focus=1000
+
+User.Joe 13 spec2 i exposureID=123
+User.Joe 13 spec2 i exposureState="Flushing"
+User.Joe 13 spec2 i exposureState="Integrating"; shutter="open"
+User.Joe 13 spec2 i exposureState="Reading"; shutter="closed"
+User.Joe 13 spec2 : exposureState="Done"; filename="PFSA000012302.fits"
+
+ This may not have been the best choice.
+
+========== Keywords
+
+ See the reference documentation.
+  
+========== Changes needed/desired/to be considered.
+
+ - change how commanderName.commanderID.actorName.actorCommandID get
+   fleshed out.
+ - extend keyword protocol with dictionaries?
