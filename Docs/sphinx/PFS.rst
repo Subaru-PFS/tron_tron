@@ -13,6 +13,10 @@ PFS includes at least the following independant devices:
 I suspect that most of these can be treated as fairly simple
 independant actors, with a few interesting issues.
 
+All physical communication does go through a central hub, but logical
+command flow is directly between actors. For a sketch of one PFS
+architecture, see `PFS Architecture <PFS_architecture.pdf>`.
+
 Simple Devices
 --------------
 
