@@ -12,7 +12,7 @@ vocabulary = ('hub', 'keys', 'msg')
 nubs = ('cmdin',
         'client',
         'nclient',
-
+        'toy',
         'TUI')
 
 actors = dict(alerts=    dict(host="hub25m-p.apo.nmsu.edu", port=9995, actorName='alertsActor'),
