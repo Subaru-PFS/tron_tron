@@ -25,7 +25,8 @@ Toy Commands
 ------------
 
 Files in the Commands subdirectory are automatically loaded, and their
-ocommand definitions registered with the parser.
+command definitions registered with the parser: for each of the items
+in `self.vocab`, 
 
 Note that the actor infrastructure provides a 'reload' command which
 lets you dynamically reload these command files while the actor is
@@ -36,6 +37,6 @@ running. In practice, actors can be developed without being restarted.
    :linenos:
 
 .. todo:: Put tron and the toyActor in some PFS-accessible git repo.
-.. todo:: consolidate the three library products into one.
+.. todo:: consolidate the three underlying library products into one.
 .. todo:: make a one-click installer 
 

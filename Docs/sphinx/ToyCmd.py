@@ -20,7 +20,6 @@ class ToyCmd(object):
         # typed command.
         #
         self.vocab = [
-            ('ping', '', self.ping),
             ('status', '', self.status),
             ('doSomething', '<cnt> [delay]', self.doSomething),
             ('passAlong', '<actor> <cmd>', self.passAlong),
@@ -32,19 +31,12 @@ class ToyCmd(object):
                                         keys.Key("cmd", types.String(), help="A command string"),
                                         keys.Key("cnt", types.Int(), help="A count of things to do"),
                                         keys.Key("delay", types.Float(), help="Seconds to delay"))
-        #
-    def ping(self, cmd):
-        """Query the actor for liveness/happiness."""
-
-        # 
-        cmd.finish("text='Present and (probably) well'")
-
     def status(self, cmd):
         """Report status and version; obtain and send current data"""
 
         self.actor.sendVersionKey(cmd)
 
-        cmd.inform('text="still nothing to say"')
+        cmd.inform('text="we are alive"')
         cmd.finish()
 
     def doSomething(self, cmd):

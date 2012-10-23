@@ -1,4 +1,4 @@
-Summary examples
+Protocol examples
 ================
 
 Usually the communication protocol is hidden behind library routines,
@@ -69,17 +69,18 @@ replies::
  w   - "intermediate" reply indicating some warning.
 
 
-For the first example, where the lamp controller received::
+For the first example, when the lamp controller received::
 
  134 User.Joe neon on
 
-if all went well it might reply::
+the library would parse that into a `cmd` object which would be passed
+into a callback function. If all went well the replies might be::
 
  134 i text="turning neon lamp on"
  134 i neon=on; hgCd=off
  134 :
 
-Using the library, a programmer would write those as::
+Using the python library, a programmer would write those as::
 
  cmd.inform('text="turning neon lamp on"')
  cmd.inform('neon=%s; hgCd=%s" % (neon.state, hgcd.state))
