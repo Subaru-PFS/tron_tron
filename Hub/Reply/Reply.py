@@ -61,7 +61,7 @@ class Reply(CPL.Object):
         if type(kvl) == str:
             return Parsing.parseKVs(kvl)
 
-        od = OrderedDict()
+        od = collections.OrderedDict()
         if kvl != None:
             for i in kvl:
                 if type(i) == str:
