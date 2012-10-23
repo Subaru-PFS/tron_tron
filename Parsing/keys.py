@@ -46,8 +46,8 @@ def eatAVee(s):
         return eatAString(s)
 
     vEnd = len(s)
-    for i in range(len(s)):
-        if s[i] in ';, \t\r\n\x0b\x0c':
+    for i,c in enumerate(s):
+        if c in ';, \t\r\n\x0b\x0c':
             vEnd = i
             break
 
@@ -82,15 +82,14 @@ def eatAString(s):
     if startQuote != "\"" and startQuote != "\'":
         raise ParseException("string does not start with a quote", leftoverText=s)
 
-    c = startQuote
     escaping = False
-    for i in range(1, len(s)):
+    for i, c in enumerate(s):
+        if i == 0:
+            continue
         if escaping:
             escaping = False
             continue
 
-        c = s[i]
-        
         if c == startQuote:
             return s[:i+1], s[i+1:]
         if c == "\\":
