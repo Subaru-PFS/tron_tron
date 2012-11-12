@@ -21,6 +21,8 @@ actors = dict(alerts=    dict(host="hub25m-p.apo.nmsu.edu", port=9995, actorName
               mcs=       dict(host="localhost", port=9002, actorName='mcsActor'),
               shutter=   dict(host="localhost", port=9003, actorName='shutterActor'),
               lamps=     dict(host="localhost", port=9004, actorName='lampsActor'),
+              pfics=     dict(host="localhost", port=9005, actorName='pficsActor'),
+              archiver=  dict(host="localhost", port=9006, actorName='archiverActor'),
               )
 
 httpHost = 'localhost'
