@@ -24,7 +24,7 @@ def acceptStdin(in_f, out_f, addr=None):
                  name='%s.v%d' % (name, nubID),
                  encoder=e, decoder=d, debug=1)
 
-    c.taster.addToFilter(('*'), (), ('hub'))
+    c.taster.addToFilter((), (), ('hub'))
     hub.addCommander(c)
 
     time.sleep(1)
