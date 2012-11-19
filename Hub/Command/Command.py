@@ -91,16 +91,24 @@ class Command(CPL.Object):
         self.bcastCmdInfo = argv.get('bcastCmdInfo', True)
         
         if g.hubcmd != None and self.bcastCmdInfo:
+            if self.cmd == None:
+                dcmd = None
+            else:
+                dcmd = self.cmd if len(self.cmd) < 100 else self.cmd[:100] + "...."
             g.hubcmd.diag("CmdIn=%s,%s,%s" %
                           (CPL.qstr(self.cmdrCid), 
                            CPL.qstr(self.actorName),
-                           CPL.qstr(self.cmd)),
+                           CPL.qstr(dcmd)),
                           src='cmds')
             
     def __str__(self):
+        if self.cmd == None:
+            dcmd = None
+        else:
+            dcmd = self.cmd if len(self.cmd) < 100 else self.cmd[:100] + "...."
         return "Command(xid=%s, cmdr=%s, cmdrCid=%s, cmdrMid=%s, actor=%s, cmd=%s)" % \
                (self.xid, self.cmdrName, self.cmdrCid, self.cmdrMid, self.actorName,
-                CPL.qstr(self.cmd))
+                CPL.qstr(dcmd))
 
 
     def _names(self):
@@ -120,11 +128,13 @@ class Command(CPL.Object):
 
     def reportQueued(self):
         if g.hubcmd != None and self.bcastCmdInfo:
+
+            dcmd = self.cmd if len(self.cmd) < 100 else self.cmd[:100] + "...."
             g.hubcmd.diag(("CmdQueued=%d,%0.2f,%s,%s,%s,%s,%s" %
                            (self.xid, self.ctime,
                             CPL.qstr(self.cmdrCid), self.cmdrMid,
                             CPL.qstr(self.actorName), self.actorMid,
-                            CPL.qstr(self.cmd))),
+                            CPL.qstr(dcmd))),
                           src='cmds')
 
     def connectToActor(self, cid, mid):
