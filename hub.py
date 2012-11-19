@@ -440,7 +440,7 @@ def addCommand(cmd):
 
           - Provide some throttling to avoid idiocy when, say, the tcc password is changed.
     """
-    
+
     CPL.log("hub.addCommand", "new cmd=%s" % (cmd))
     
     if cmd.actorName == 'dbg':
