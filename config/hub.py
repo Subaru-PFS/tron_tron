@@ -15,8 +15,7 @@ nubs = ('cmdin',
         'toy',
         'TUI')
 
-actors = dict(alerts=    dict(host="hub25m-p.apo.nmsu.edu", port=9995, actorName='alertsActor'),
-              toy=       dict(host="localhost", port=9000, actorName='toyActor'),
+actors = dict(toy=       dict(host="localhost", port=9000, actorName='toyActor'),
               mps=       dict(host="localhost", port=9001, actorName='mpsActor'),
               mcs=       dict(host="localhost", port=9002, actorName='mcsActor'),
               shutter=   dict(host="localhost", port=9003, actorName='shutterActor'),
