@@ -9,6 +9,7 @@ import sys
 from CPL.Exceptions import ICCError
 
 cfgCache = None
+cfgPath = '/not/yet/defined'
 
 def init(path=None, verbose=True):
     """ Initialize the cfg space.
