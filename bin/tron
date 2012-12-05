@@ -54,13 +54,7 @@ do_start() {
     
     echo "Starting new tron...\c"
 
-    # reset WWW access.
-    # sudoers: tron hub35m = NOPASSWD: /usr/local/bin/www-access, /bin/kill
-#    sudo /usr/local/bin/www-access reset
-    
-
-    #now=`now`.log 
-    #(cd $LOG_DIR; rm -f current.log; ln -s $now current.log)
+    # This log will only get startup bomb messages.
     cd $TRON_DIR
     python runhub.py >>$LOG_DIR/run.log 2>&1 &        
     
