@@ -21,14 +21,13 @@ def acceptStdin(in_f, out_f, addr=None):
                                     debug=1)
     e = hubEncoders.ASCIIReplyEncoder(EOL='\n', simple=True, debug=1, CIDfirst=True)
     c = hubCommanders.StdinNub(g.poller, in_f, out_f,
-                 name='%s.v%d' % (name, nubID),
-                 encoder=e, decoder=d, debug=1)
+                               name='%s.v%d' % (name, nubID),
+                               encoder=e, decoder=d, debug=1)
 
-    c.taster.addToFilter((), (), ('hub', 'cmds'))
+    # By default, listen to nothing but replies to our commands.
+    c.taster.addToFilter((), (), ())
     hub.addCommander(c)
 
-    time.sleep(1)
-    
 def start(poller):
     stop()
     
