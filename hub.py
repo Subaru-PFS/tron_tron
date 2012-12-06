@@ -38,7 +38,7 @@ import Hub.Command.Command
 import Auth
 import g
 
-def init():
+def init(configName=''):
     g.home = sys.path[0]
     if g.home == None or g.home == '':
         g.home = os.getcwd()
@@ -47,7 +47,7 @@ def init():
 
     # Bootstrap the whole configuration system
     configPath = os.environ.get('CONFIG_DIR',
-                                os.path.join(os.environ['TRON_DIR'], 'config'))
+                                os.path.join(os.environ['TRON_DIR'], 'config', configName))
     CPL.cfg.init(path=configPath)
     os.environ['CONFIG_DIR'] = configPath
     
@@ -267,10 +267,12 @@ class NubDict(collections.OrderedDict):
 
 class CmdrDict(NubDict):
     """ Like NubDict, but generate a 'users' keyword, depending on
-    the state of the nub's isUser attribute.
+        the state of the nub's isUser attribute.
+
+        Also, list the taster attributes
     """
     
-    def listSelf(self, cmd=None):
+    def listSelf(self, cmd=None, verbose=False):
         if not cmd:
             cmd = g.hubcmd
         names = []
@@ -282,7 +284,8 @@ class CmdrDict(NubDict):
             CPL.log('listCommanders', 'n=%s has info=%s' % (n, n.userInfo))
             if n.userInfo:
                 cmd.inform(n.userInfo)
-
+            if verbose:
+                n.taster.genKeys(cmd, n.name)
         cmd.inform("%s=%s" % (self.name, ','.join(names)))
         cmd.inform("users=%s" % (','.join(userNames)))
 
