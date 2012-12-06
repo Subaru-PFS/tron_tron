@@ -15,13 +15,23 @@ class ReplyTaster(CPL.Object):
         self.sources = {}
         
     def __str__(self):
-        return "ReplyTaster(actors=%s; cmdrs=%s; sources=%s)" % (self.actors.keys(),
-                                                                 self.cmdrs.keys(),
-                                                                 self.sources.keys())
-                                                                 
+        return ("ReplyTaster(actors=%s; cmdrs=%s; sources=%s)" % (self.actors.keys(),
+                                                                  self.cmdrs.keys(),
+                                                                  self.sources.keys())
+                                                                  )
     def listeningTo(self):
         return self.actors.keys(), self.cmdrs.keys(), self.sources.keys()
     
+    def genKeys(self, cmd, ourName):
+        """ generate the keys describing ourselves. """
+
+        cmd.inform("tasterActors=%s,%s" %  (CPL.qstr(ourName),
+                                            CPL.qstr(self.actors.keys())))
+        cmd.inform("tasterCmdrs=%s,%s" %   (CPL.qstr(ourName),
+                                            CPL.qstr(self.cmdrs.keys())))
+        cmd.inform("tasterSources=%s,%s" % (CPL.qstr(ourName),
+                                            CPL.qstr(self.sources.keys())))
+        
     def removeFromFilter(self, actors, cmdrs, sources):
         """ Remove a list of actors and commanders to accept Replys from. """
         

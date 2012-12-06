@@ -87,26 +87,29 @@ class hubCommands(InternalCmd.InternalCmd):
             
         CPL.log("doListen", "finish: %s" % (cmdr.taster))
 
-    def actors(self, cmd, finish=True):
+    def actors(self, cmd, finish=True, verbose=False):
         """ Return a list of the currently connected actors. """
 
         g.actors.listSelf(cmd=cmd)
         if finish:
             cmd.finish('')
         
-    def commanders(self, cmd, finish=True):
+    def commanders(self, cmd, finish=True, verbose=False):
         """ Return a list of the currently connected commanders. """
 
-        g.commanders.listSelf(cmd=cmd)
+        g.commanders.listSelf(cmd=cmd, verbose=False)
         if finish:
             cmd.finish('')
         
     def status(self, cmd, finish=True):
         CPL.cfg.flush()
 
+        matched, unmatched, leftovers = cmd.match([('all', False)])
+        verbose = 'all' in matched
+        
         self.version(cmd, finish=False)
-        self.actors(cmd, finish=False)
-        self.commanders(cmd, finish=False)
+        self.actors(cmd, finish=False, verbose=verbose)
+        self.commanders(cmd, finish=False, verbose=verbose)
 
         if finish:
             cmd.finish('')
