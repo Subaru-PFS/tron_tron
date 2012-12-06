@@ -33,6 +33,7 @@ class PollAccept(IOHandler.IOHandler):
         if depth == 0:
             depth = 1
             
+        CPL.log("IOAccept.init", "listening on (%s,%s)" % (host, port))
         self.listenFd = None
         try:
             self.listenFd = socket.socket(socket.AF_INET, socket.SOCK_STREAM)

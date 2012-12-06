@@ -9,12 +9,13 @@ passwordFile = os.path.join(os.environ['TRON_DIR'], 'passwords')
 # Which words to load internally.
 vocabulary = ('hub', 'keys', 'msg')
 
-nubs = ('cmdin',
-        'client',
-        'nclient',
-        'toy',
-        'TUI')
+# This lists the incoming Nub/ connections we listen on. 
+listeners = ('cmdin',
+             'client',
+             'nclient',
+             'TUI')
 
+# This lists the outgoing actor connections we know how to make.
 actors = dict(toy=       dict(host="localhost", port=9000, actorName='toyActor'),
               mps=       dict(host="localhost", port=9001, actorName='mpsActor'),
               mcs=       dict(host="localhost", port=9002, actorName='mcsActor'),
