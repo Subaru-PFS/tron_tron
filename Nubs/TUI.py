@@ -20,9 +20,8 @@ def acceptTUI(in_f, out_f, addr=None):
     #
     nubID = g.nubIDs.gimme()
     fullname = '%s_%d' % (name, nubID)
-    
-    #all = ('tcc','mcp',
-    #       'hub','msg')
+
+    # The actors whose replies we forward.
     all = ('*',)
     
     otherIP, otherPort = in_f.getpeername()
