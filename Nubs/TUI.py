@@ -8,7 +8,6 @@ from Hub.Nub.Listeners import SocketListener
 
 import g
 import hub
-import os
 
 name = 'TUI'
 listenPort = 9877
