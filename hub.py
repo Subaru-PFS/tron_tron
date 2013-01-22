@@ -28,7 +28,6 @@ import sys
 import time
 import collections
 
-import svnVersion
 import CPL
 from Misc.cdict import cdict
 
@@ -115,7 +114,7 @@ def handleSIGTERM(signal, frame):
 def getSetHubVersion():
     """ Put the uncached svn version info into the hub.version keyword. """
 
-    version = CPL.qstr(svnVersion.svnTagOrRevision())
+    version = "need_to_read_git_version"
     g.KVs.setKV('hub', 'version', version, None)
 
 def loadKeys():
