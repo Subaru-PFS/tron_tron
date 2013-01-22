@@ -1,4 +1,3 @@
-setupOptional("RO")
 pathPrepend(PATH, ${UPS_PROD_DIR}/bin)
 pathPrepend(PYTHONPATH, ${UPS_PROD_DIR})
 
