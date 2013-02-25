@@ -6,7 +6,7 @@ import CPL.cfg
 def getActors(actorName=None, hostName=None):
     # Bootstrap the whole configuration system
     configPath = os.environ.get('CONFIG_DIR',
-                                os.path.join(os.environ['TRON_DIR'], 'config'))
+                                os.path.join(os.environ['ICS_MHS_TRON_DIR'], 'config'))
     CPL.cfg.init(path=configPath, verbose=False)
     
     actors = CPL.cfg.get('hub', 'actors')
