@@ -46,7 +46,7 @@ def setLoggingFor(system, level):
     else:
         systems[system] = DISABLED
     
-def isoTS(t=None, format="%Y-%m-%d %H:%M:%S", zone="Z"):
+def isoTS(t=None, format="%Y-%m-%d %H:%M:%S", zone="Z", ISO=False):
     """ Return a proper ISO timestamp for t, or now if t==None. """
 
     if t == None:
@@ -54,7 +54,9 @@ def isoTS(t=None, format="%Y-%m-%d %H:%M:%S", zone="Z"):
 
     if zone == None:
         zone = ''
-        
+
+    if ISO:
+        format = "%Y-%m-%dT%H:%M:%S"
     return strftime(format, gmtime(t)) \
            + ".%03d%s" % (1000 * modf(t)[0], zone)
 

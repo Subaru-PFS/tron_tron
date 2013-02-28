@@ -22,6 +22,7 @@ actors = dict(toy=       dict(host="localhost", port=9000, actorName='toyActor')
               fil=       dict(host="localhost", port=9004, actorName='filActor'),
               pfics=     dict(host="localhost", port=9005, actorName='pficsActor'),
               archiver=  dict(host="localhost", port=9006, actorName='archiverActor'),
+              alarms=    dict(host="localhost", port=9007, actorName='alertsActor'),
               )
 
 httpHost = 'localhost'
