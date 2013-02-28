@@ -80,6 +80,9 @@ def _loadSpace(space):
     try:
         execfile(filename, gdict, ldict)
     except SyntaxError, e:
+        # ICCError handling should be improved to handle multi-line errors,
+        # so we could use the SyntaxError's .text and .offset, and spit out a proper
+        # backtrace.
         raise ICCError("syntax error at or before line %d (%s) of the configuration file %s" % (e.lineno, e.text, filename))
     except Exception, e:
         raise ICCError("failed to read the configuration file %s: %s" % (filename, e))
