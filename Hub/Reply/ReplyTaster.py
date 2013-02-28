@@ -8,8 +8,9 @@ class ReplyTaster(CPL.Object):
     """
   
     def __init__(self, **argv):
-        CPL.Object.__init__(self, **argv)
+        CPL.Object.__init__(self, cmdr, **argv)
 
+        self.cmdr = cmdr
         self.actors = {}
         self.cmdrs = {}
         self.sources = {}
@@ -22,14 +23,14 @@ class ReplyTaster(CPL.Object):
     def listeningTo(self):
         return self.actors.keys(), self.cmdrs.keys(), self.sources.keys()
     
-    def genKeys(self, cmd, ourName):
+    def genKeys(self, cmd):
         """ generate the keys describing ourselves. """
 
-        cmd.inform("tasterActors=%s,%s" %  (CPL.qstr(ourName),
+        cmd.inform("tasterActors=%s,%s" %  (CPL.qstr(self.cmdr.name),
                                             CPL.qstr(self.actors.keys())))
-        cmd.inform("tasterCmdrs=%s,%s" %   (CPL.qstr(ourName),
+        cmd.inform("tasterCmdrs=%s,%s" %   (CPL.qstr(self.cmdr.name),
                                             CPL.qstr(self.cmdrs.keys())))
-        cmd.inform("tasterSources=%s,%s" % (CPL.qstr(ourName),
+        cmd.inform("tasterSources=%s,%s" % (CPL.qstr(self.cmdr.name),
                                             CPL.qstr(self.sources.keys())))
         
     def removeFromFilter(self, actors, cmdrs, sources):
@@ -63,6 +64,12 @@ class ReplyTaster(CPL.Object):
         self.sources = {}
         
         self.addToFilter(actors, cmdrs, sources)
+        
+    def setActors(self, actors):
+        """ Set the list of actors and commanders to accept Replys from. """
+
+        self.actors = {}
+        self.addToFilter(actors, [], [])
         
     def taste(self, reply):
         """ Do we accept the given Reply? """

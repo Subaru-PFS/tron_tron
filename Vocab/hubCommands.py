@@ -1,8 +1,6 @@
 __all__ = ['hubCommands']
 
 import sys
-import time
-import os
 
 import CPL
 from Hub.KV.KVDict import *
@@ -57,6 +55,7 @@ class hubCommands(InternalCmd.InternalCmd):
 
         matched, unmatched, leftovers = cmd.match([('listen', None),
                                                    ('addActors', None),
+                                                   ('setActors', None),
                                                    ('clearActors', None),
                                                    ('delActors', None)])
 
@@ -72,15 +71,25 @@ class hubCommands(InternalCmd.InternalCmd):
             CPL.log("doListen", "addActors: %s" % (actors))
             #cmd.inform('text="%s"' % (CPL.qstr("adding actors: %s" % (actors))))
             cmdr.taster.addToFilter(actors, [], actors)
+            cmdr.taster.genKeys(cmd)
+            cmd.finish()
+        elif 'setActors' in matched:
+            actors = leftovers.keys()
+            CPL.log("doListen", "setActors: %s" % (actors))
+            #cmd.inform('text="%s"' % (CPL.qstr("adding actors: %s" % (actors))))
+            cmdr.taster.setFilter(actors, [], actors)
+            cmdr.taster.genKeys(cmd)
             cmd.finish()
         elif 'delActors' in matched:
             actors = leftovers.keys()
             CPL.log("doListen", "delActors: %s" % (actors))
             #cmd.inform('text="%s"' % (CPL.qstr("removing actors: %s" % (actors))))
             cmdr.taster.removeFromFilter(actors, [], actors)
+            cmdr.taster.genKeys(cmd)
             cmd.finish()
         elif 'clearActors' in matched:
-            cmdr.taster.setFilter([], [], [])
+            cmdr.taster.setFilter([], cmdr.taster.cmdrs, [])
+            cmdr.taster.genKeys(cmd)
             cmd.finish()
         else:
             cmd.fail('text="unknown listen command"')
@@ -124,9 +133,21 @@ class hubCommands(InternalCmd.InternalCmd):
             cmd.fail('cmdError="usage: setUsername newname"')
             return
 
-        username = args[0]
         cmdr = cmd.cmdr()
-        cmdr.setName(username)
+
+        fullname = args[0]
+        parts = fullname.split('.')
+        if len(parts) == 2:
+            name1 = parts[0]
+            name2 = parts[1]
+        elif len(parts) == 1:
+            name1 = cmdr.name.split('.')[0]
+            name2 = parts[1]
+            
+        hub.dropCommander(cmdr, doShutdown=False)
+        cmdr.setNames(name1, name2)
+        hub.addCommander(cmdr)
+        cmdr.taster.genKeys(cmd, cmdr.name)
         cmd.finish('')
 
     def stopNubs(self, cmd):
