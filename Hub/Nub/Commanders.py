@@ -46,6 +46,8 @@ class CommanderNub(CoreNub.CoreNub):
         CPL.log('CommandeNub.setNames', 'setting name for %s to %s.%s' % (self, programName, username))
         
         newName = hub.validateCommanderNames(self, programName, username)
+        self.taster.removeFromFilter([], [self.name], [self.name])
+        self.taster.addToFilter([], [newName], [newName])
         self.setName(newName)
 
     def setName(self, newName):
