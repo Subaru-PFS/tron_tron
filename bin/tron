@@ -60,13 +60,15 @@ do_start() {
     
     # Check that it really started...
     #
-    sleep 1
+    sleep 2
     get_pid
 
     if test "$PID"; then
         echo " done."
     else
         echo " FAILED!"
+        cat $LOG_DIR/run.log >&2
+        exit 1
     fi
 }
 
