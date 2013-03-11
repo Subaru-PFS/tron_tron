@@ -7,8 +7,8 @@ class ReplyTaster(CPL.Object):
         of actors and commanders.
     """
   
-    def __init__(self, **argv):
-        CPL.Object.__init__(self, cmdr, **argv)
+    def __init__(self, cmdr, **argv):
+        CPL.Object.__init__(self, **argv)
 
         self.cmdr = cmdr
         self.actors = {}

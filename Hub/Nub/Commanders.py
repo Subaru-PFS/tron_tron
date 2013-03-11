@@ -27,7 +27,7 @@ class CommanderNub(CoreNub.CoreNub):
         # Note which Replies we want to accept. The default
         # is to accept only responses to our own commands.
         #
-        self.taster = ReplyTaster()
+        self.taster = ReplyTaster(self)
         self.taster.setFilter((), (self.name,), (self.name,))
 
         self.isUser = argv.get('isUser', False)
