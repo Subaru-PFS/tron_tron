@@ -147,7 +147,7 @@ class hubCommands(InternalCmd.InternalCmd):
         hub.dropCommander(cmdr, doShutdown=False)
         cmdr.setNames(name1, name2)
         hub.addCommander(cmdr)
-        cmdr.taster.genKeys(cmd, cmdr.name)
+        cmdr.taster.genKeys(cmd)
         cmd.finish('')
 
     def stopNubs(self, cmd):
