@@ -11,12 +11,13 @@ Contents
 .. toctree::
 
  overview
+ INSTALL
  PFS
  toyMain
  keywords
  summary
 
-TODO
+TODO (for this document)
 ----
 
 .. todolist::

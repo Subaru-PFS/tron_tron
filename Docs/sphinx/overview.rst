@@ -25,15 +25,17 @@ The implementation can be sketched out:
 
  - "commanders" send commands to "actors", via a central hub. 
  - actors reply to commands and generate status keywords, also via the hub.
- - actors can also be commanders.
- - by default the hub broadcasts all actor traffic to all commanders.
+ - by default the hub broadcasts all actor traffic to all commanders,
+   but commanders 
 
- - actors are required to generate status keyword whenever their state changes.
- - command and replies are sent using line-oriented ASCII protocols.
- - there is no particular language requirement on commanders or
-   actor, except that the keyword dictionary must be published as a
-   python declaration. Also, we only have sample implementations in python.
- - many actors and commanders can be run one one host, or they can be
+ - actors are *required* to generate status keyword whenever their state changes.
+ - commands and replies are sent using line-oriented ASCII protocols. 
+ - there is no particular programming language requirement on commanders or
+   actors, except that the keyword dictionary must be published as a
+   python declaration. We do have an actor library available in python --
+   if there are no hard realtime requirements that is probably the
+   easiest thing to start from.
+ - many actors and commanders can be run on one host, or they can be
    distributed on a network.
 
 The net result is that all commanders connected to the hub passively
