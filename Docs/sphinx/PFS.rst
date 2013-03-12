@@ -34,22 +34,21 @@ The Spectrographs
 -----------------
 
 The interesting problem is how to write files and in particular the
-headers. We have found it useful to exploit the fact that all external
-actor state is always available: the FITS headers can safely be
-constructed while the data are still in memory, so that no further
-dangerous and slow file operations are required. The headers can be
-built using the latest information, but without the need for any risky
-external status queries during integration/readout/IO.
+headers. All external actor state is always available: the FITS
+headers can be constructed by the spectrograph controllere while the
+data are still in memory, so that no further file operations are
+required. 
 
 The Subaru Gen2 Interface
 -------------------------
 
-I have only glanced at the requirements here, but I would be strongly
-tempted to write a translator which generates keywords describing the
-telescope status and environment. Other actors could then use those
-native keywords to, say, populate FITS headers. Obviously commands
-from Gen2 would also need to be run. I do not know how much work this
-is, but I am pretty confident that python would be a good tool.
+The Subaru Gen2 system provides all the telescope and environmental
+information required for instrument FITS headers, and passes commands
+down to the instrument. From the observatory's point of view, the
+instrument appears as a single program. The natural aarchitecture is
+to implement a single translator which generates keywords describing the
+telescope status and environment and which converts Gen2 commands to
+ICS actor commands.
 
 The Fiber Actuator Controller
 -----------------------------
