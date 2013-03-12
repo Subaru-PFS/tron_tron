@@ -3,7 +3,7 @@
 #+LaTeX_CLASS_OPTIONS: [10pt, t]
 ###+LATEX_HEADER: \usepackage{Talks}
 #+BEAMER_FRAME_LEVEL: 2
-#+TITLE: APO Instrument Control Software for PFS
+#+TITLE: Instrument Control Software for PFS
 #+AUTHOR: Craig Loomis
 #+DATE: \begin{minipage}[t]{1cm}\vspace*{-2.8mm}\includegraphics[height=3.2mm]{Tokyo}\end{minipage} 2012-07-24
 #+COLUMNS: %45ITEM %10BEAMER_env(Env) %8BEAMER_envargs(Env Args) %4BEAMER_col(Col) %8BEAMER_extra(Extra)
