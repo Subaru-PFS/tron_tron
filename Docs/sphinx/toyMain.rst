@@ -1,6 +1,6 @@
 .. _toyActor:
 
-Hello, World, or a Toy actor
+Hello, Camera: a simple actor
 ==============================
 
 This is a nearly complete example of a working actor. One main
@@ -36,7 +36,5 @@ running. In practice, actors can be developed without being restarted.
 .. literalinclude:: ToyCmd.py
    :linenos:
 
-.. todo:: Put tron and the toyActor in some PFS-accessible git repo.
-.. todo:: consolidate the three underlying library products into one.
 .. todo:: make a one-click installer 
 
