@@ -24,8 +24,8 @@ def acceptStdin(in_f, out_f, addr=None):
                                name='%s.v%d' % (name, nubID),
                                encoder=e, decoder=d, debug=1)
 
-    # By default, listen to nothing but replies to our commands.
-    c.taster.addToFilter((), (), ())
+    # By default, listen to nothing but replies to our commands and messages from the hub.
+    c.taster.addToFilter(('hub',), (), ('hub',))
     hub.addCommander(c)
 
 def start(poller):
