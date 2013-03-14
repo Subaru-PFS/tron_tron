@@ -19,7 +19,7 @@ them to be installed on the machines.
 The system uses a package versioning system named 'eups'. In the
 introductory installation below, none of the interesting features of
 eups are used, but it becomes very useful once you need to maintain
-multiple versions of packages, and packages with dependenies.
+multiple versions of packages, and packages with dependencies.
 
 Fetching the pieces
 -------------------
@@ -29,13 +29,14 @@ versions into a single directory tree, with all programs running on
 that same host. And to expose the degree of hidden magic involved all
 the steps are written out. 
 
-Choose some root directory, and under that::
+Make some root directory for all the MHS development and output
+files. For this introduction, I'll assume that the root directory is
+`~/mhs` and that development tree for the git clones is
+`~mhs/devel`. Ill show how to customize this below)::
 
-    export ICS_ROOT=$PWD/ics # or for csh folks: setenv ICS_ROOT $PWD/ics
-    mkdir -p $ICS_ROOT/devel 
-    mkdir -p $ICS_ROOT/data/mcs
-    mkdir -p $ICS_ROOT/data/logs
-    cd $ICS_ROOT/devel
+    cd
+    mkdir -p mhs/devel 
+    cd mhs/devel
 
 If you do not yet have a eups tree, fetch and install that first::
 
@@ -64,6 +65,8 @@ version of each::
 Running the ICS MHS hub
 -----------------------
 
+The tron hub is a long-running process. Given the eups configuration
+above, start it with `tron start`.
 
 
 
