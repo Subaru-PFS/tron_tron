@@ -1,7 +1,7 @@
 import os
 
-# Where to save the logs
-logDir = '/data/logs/tron'
+# Where to save the logs -- let the ics_mhs_root product define it.
+logDir = os.path.join(os.environ['ICS_MHS_LOGS_ROOT'], 'tron')
 
 # What file has the passwords.
 passwordFile = os.path.join(os.environ['ICS_MHS_TRON_DIR'], 'passwords')
@@ -15,7 +15,7 @@ listeners = ('cmdin',
              'nclient',
              'TUI')
 
-# This lists the outgoing actor connections we know how to make.
+# This lists all the outgoing actor connections we know how to make.
 actors = dict(toy=       dict(host="localhost", port=9000, actorName='toyActor'),
               mps=       dict(host="localhost", port=9001, actorName='mpsActor'),
               mcs=       dict(host="localhost", port=9002, actorName='mcsActor'),
@@ -23,6 +23,10 @@ actors = dict(toy=       dict(host="localhost", port=9000, actorName='toyActor')
               pfics=     dict(host="localhost", port=9005, actorName='pficsActor'),
               archiver=  dict(host="localhost", port=9006, actorName='archiverActor'),
               alarms=    dict(host="localhost", port=9007, actorName='alertsActor'),
+              sps1=      dict(host="localhost", port=9011, actorName='spsActor'),
+              sps2=      dict(host="localhost", port=9012, actorName='spsActor'),
+              sps3=      dict(host="localhost", port=9013, actorName='spsActor'),
+              sps4=      dict(host="localhost", port=9014, actorName='spsActor'),
               )
 
 httpHost = 'localhost'
