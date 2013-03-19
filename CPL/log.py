@@ -33,7 +33,7 @@ def setLogdir(dirname):
     global logfileDir
 
     logfileDir = dirname
-    if not os.isdir(logfileDir):
+    if not os.path.isdir(logfileDir):
         os.makedirs(logfileDir, 0755)
     
 def enableLoggingFor(system):
