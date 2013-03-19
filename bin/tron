@@ -4,7 +4,7 @@ if test -z "$ICS_MHS_TRON_DIR"; then
     echo "ICS_MHS_TRON_DIR is not set, and needs to be setup" >&1
     exit 1
 fi
-export LOG_DIR=/data/logs/tron/tron
+export LOG_DIR=$ICS_MHS_LOGS_ROOT
 
 #if test -z "$PYGUIDE_DIR"; then
 #    echo "PYGUIDE_DIR is not set, and needs to be setup" >&1
