@@ -9,14 +9,14 @@ class SocketListener(object):
     """ Wait for connections on a given TCP port.
     """
     
-    def __init__(self, poller, port, name, callback):
+    def __init__(self, poller, port, name, callback, host=''):
 
         self.name = name
         self.port = port
         self.poller = poller
         self.ID = self.name
         self.callback = callback
-        self.listener = IO.PollAccept(poller, '', port, callback=self.acceptOne)    
+        self.listener = IO.PollAccept(poller, host, port, callback=self.acceptOne)    
 
     def __del__(self):
         self.listener = None
