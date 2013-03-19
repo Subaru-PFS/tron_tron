@@ -56,7 +56,7 @@ do_start() {
 
     # This log will only get startup bomb messages. Don't bother saving them.
     cd $ICS_MHS_TRON_DIR
-    mv $LOG_DIR/run.log $LOG_DIR/run.log-last
+    mv $LOG_DIR/run.log $LOG_DIR/run.log-last 2>/dev/null
     python runhub.py >$LOG_DIR/run.log 2>&1 &        
     
     # Check that it really started...
