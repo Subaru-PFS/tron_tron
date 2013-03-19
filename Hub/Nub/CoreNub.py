@@ -44,7 +44,7 @@ class CoreNub(IO.IOHandler):
 
         logDir = argv.get("logDir", None)
         if logDir:
-            self.log = CPL.Logfile(logDir, EOL='', doEncode=True)
+            self.log = CPL.Logfile(logDir, EOL='\n', doEncode=True)
         else:
             self.log = None
             
