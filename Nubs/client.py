@@ -10,6 +10,7 @@ import hub
 
 name = 'client'
 listenPort = 6093
+listenHost = 'localhost'
 
 def acceptStdin(in_f, out_f, addr=None):
     """ Create a command source with the given fds as input and output. """
@@ -31,7 +32,7 @@ def acceptStdin(in_f, out_f, addr=None):
 def start(poller):
     stop()
     
-    l = SocketListener(poller, listenPort, name, acceptStdin)
+    l = SocketListener(poller, listenPort, name, acceptStdin, host=listenHost)
     hub.addAcceptor(l)
     
     time.sleep(1)

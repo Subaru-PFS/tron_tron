@@ -11,11 +11,12 @@ import hub
 
 name = 'nclient'
 listenPort = 6095
+listenHost = 'localhost'
 
 def acceptStdin(in_f, out_f, addr=None):
     """ Create a command source with the given fds as input and output. """
     
-    all = ('*',)
+    allInputs = ('*',)
 
     nubID = g.nubIDs.gimme()
     fullname = '%s_%d' % (name, nubID)
@@ -29,7 +30,7 @@ def acceptStdin(in_f, out_f, addr=None):
                  logDir=os.path.join(g.logDir, fullname),
                  encoder=e, decoder=d, debug=2)
 
-    c.taster.addToFilter(all, (), all)
+    c.taster.addToFilter(allInputs, (), allInputs)
     hub.addCommander(c)
     time.sleep(1)
 
@@ -37,7 +38,8 @@ def acceptStdin(in_f, out_f, addr=None):
 def start(poller):
     stop()
     
-    l = SocketListener(poller, listenPort, name, acceptStdin)
+    l = SocketListener(poller, listenPort, name, acceptStdin,
+                       host=listenHost)
     hub.addAcceptor(l)
     
     time.sleep(1)
