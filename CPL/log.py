@@ -74,10 +74,11 @@ def rollover(t):
         # Set next rollover time.
         rolloverTime = t - t%rolloverChunk + rolloverChunk + rolloverOffset
         logfileName = "%s.log" % (strftime("%Y-%m-%dT%H:%M:%S", gmtime(t)))
-        if not os.path.isdir(logfileDir):
-            os.makedirs(logfileDir, 0755)
-        logfile = open(os.path.join(logfileDir, logID, logfileName), "w", 1)
-        currentName = os.path.join(logfileDir, logID, "current.log")
+        fullLogDir = os.path.join(logfileDir, logID)
+        if not os.path.isdir(fullLogDir):
+            os.makedirs(fullLogDir, 0755)
+        logfile = open(os.path.join(fullLogDir, logfileName), "w", 1)
+        currentName = os.path.join(fullLogDir, "current.log")
         try:
             os.unlink(currentName)
         except:
