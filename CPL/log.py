@@ -21,7 +21,7 @@ logfileName = None
 logID = "log"
 logfile = None
 rolloverOffset = 0
-rolloverChunk = 600
+rolloverChunk = 24*3600
 rolloverTime = 0
 
 def setID(newID):
@@ -72,6 +72,7 @@ def rollover(t):
         # Set next rollover time.
         rolloverTime = t - t%rolloverChunk + rolloverChunk + rolloverOffset
         logfileName = "%s.log" % (strftime("%Y-%m-%dT%H:%M:%S", gmtime(t)))
+        os.makedirs(logfileDir, 0755)
         logfile = open(os.path.join(logfileDir, logID, logfileName), "w", 1)
         currentName = os.path.join(logfileDir, logID, "current.log")
         try:

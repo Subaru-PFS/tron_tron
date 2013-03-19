@@ -2,7 +2,6 @@ __all__ = ['Logfile']
 
 import os
 import os.path
-import sys
 
 from time import time, gmtime, strftime, sleep
 from math import modf
@@ -12,25 +11,28 @@ class Logfile(object):
     against whch logging requests are compared.
     """
     
-    def __init__(self, dir, level=1, EOL='\n', doEncode=False):
+    def __init__(self, logDir, level=1, EOL='\n', doEncode=False):
         """
         Args:
-           dir       - a directory name inside which we create our logfiles. Must already exist.
+           logDir       - a directory name inside which we create our logfiles.
            level     - a threshold. Logging requests with a level at or below this are logged.
            EOL       - a string to terminate log lines with. Set to '' to not add newlines.
            doEncode  - If True, use %r rather than %s to encode the log text.
         """
         
-        self.dir = dir
+        self.logDir = logDir
         self.level = level
         self.EOL = EOL
         self.doEncode = doEncode
+        
+        self.rolloverTime = 0
+        self.rolloverChunk = 24*3600
+        self.rolloverOffset = 0
 
-        if not os.path.isdir(self.dir):
-            os.mkdir(self.dir)
+        if not os.path.isdir(self.logDir):
+            os.makedirs(self.logDir, 0o755)
+        self.log('logger', 'log started', level=0)
             
-        self.newLogfile()
-
     def setLevel(self, level):
         lastLevel = self.level
         self.level = level
@@ -45,11 +47,26 @@ class Logfile(object):
         We use the current time to name the file. 
         """
 
-        name = strftime("%Y-%m-%dT%H:%M:%S.log", gmtime())
-        newFile = file(os.path.join(self.dir, name), "a+", 1) # The 1 specifies line-buffering
-
-        self.logfile = newFile
+        self.rolloverTime = 0
+        try:
+            self.logfile.close()
+        except:
+            pass
         
+    def rollover(self, t):
+        if t <= self.rolloverTime:
+            return
+        
+        self.rolloverTime = t - t%self.rolloverChunk + self.rolloverChunk + self.rolloverOffset
+        logfileName = "%s.log" % (strftime("%Y-%m-%dT%H:%M:%S", gmtime(t)))
+        self.logfile = open(os.path.join(self.logDir, logfileName), "w", 1)
+        currentName = os.path.join(self.logDir, "current.log")
+        try:
+            os.unlink(currentName)
+        except:
+            pass
+        os.symlink(logfileName, currentName)
+
     def getTS(self, t=None, format="%Y-%m-%d %H:%M:%S", zone="Z"):
         """ Return a proper ISO timestamp for t, or now if t==None. """
 
@@ -72,10 +89,12 @@ class Logfile(object):
         if level > self.level:
             return
         
-        ts = self.getTS()
+        now = time()
+        self.rollover(now)
+        ts = self.getTS(t=now)
 
         if self.doEncode:
-            self.logfile.write("%s %s %r\n" % (ts, note, txt))
+            self.logfile.write("%s %s %r%s" % (ts, note, txt, self.EOL))
         else:
             self.logfile.write("%s %s %s%s" % (ts, note, txt, self.EOL))
         
