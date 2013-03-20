@@ -136,13 +136,13 @@ class hubCommands(InternalCmd.InternalCmd):
         cmdr = cmd.cmdr()
 
         fullname = args[0]
-        parts = fullname.split('.')
+        parts = fullname.split('.',1)
         if len(parts) == 2:
             name1 = parts[0]
             name2 = parts[1]
         elif len(parts) == 1:
             name1 = cmdr.name.split('.')[0]
-            name2 = parts[1]
+            name2 = parts[0]
             
         hub.dropCommander(cmdr, doShutdown=False)
         cmdr.setNames(name1, name2)
