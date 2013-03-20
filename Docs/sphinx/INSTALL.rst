@@ -50,25 +50,32 @@ It then installs the current MHS hub and actor repositories from::
 
 There will be a `source` command shown at the bottom of all that
 output. If you are not already using `eups`, you will want to add that
-to your login scripts, and you will need to run it now::
+to your login scripts, and you will need to run it now. Something
+like::
 
-    source $ICS_ROOT/products/eups/bin/setups.sh
+    source $ICS_ROOT/products/eups/bin/setups.{sh,csh,zsh}
 
 Running the ICS MHS hub
 -----------------------
 
 The `ics_mhs_root` product is (currently) just a convenience, to allow
-setting up all the MHS parts at once. If `eups` is correctly configured,
-`setup ics_mhs_root` will do that, and return silently. 
+setting up all the MHS parts at once. If `eups` is correctly
+configured::
 
-The tron hub itself is a long-running process. Start it with `tron
-start`, which should be boring.
+  setup ics_mhs_root 
+
+will do that, and return silently. The tron hub itself is a
+long-running process. Start it with::
+
+  tron start
+
+which should have no output.
 
 Running the ICS MHS actors
 --------------------------
 
 There are currently three configured actors, one of which should be a
-pretty good good template. The three implement the bones of a `guide loop`
+pretty good template. The three implement the bones of a `guide loop`
 controlling the fiber actuators. MCS (`mcsActor`) stands in for the
 Metrology Camera, MPS stands in for the positioner system, and PFICS
 stands in for the fiber control system. I realize that the PFICS and
@@ -142,7 +149,7 @@ One thing I will point out now. The `mcsActor` is probably a decent
 template to start from. I will defer getting into the details of
 proper git and eups etiquette; in the meanwhile you can modify the
 code in $ICS_MHS_MCSACTOR_DIR. In particular, you can modify the
-python/mcsActor/McsCmd.py file while the actor is running and
+python/mcsActor/Commands/McsCmd.py file while the actor is running and
 dynamically reload it with `mcs reload`. If you do not add any
 non-restartable persistent state to the McsCmd.py file, you can edit
 and test at will, including modifying the command vocabulary.
