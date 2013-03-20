@@ -369,7 +369,15 @@ def dropNub(nub):
         CPL.log("hub.dropNub",
                 "nub %s (%s) is neither in g.actors (%s) or g.commanders (%s)" % \
                 (nub.ID, nub, g.actors, g.commanders))
+        CPL.log("hub.dropNub", "trying emergency unregistering of %s(%s) from the IO layer!" % \
+                (nub.ID, nub))
+        try:
+            nub.ioshutdown()
+        except Exception, e:
+            CPL.log("hub.dropNub", "emergency unregistering of %s(%s) failed: %s" % \
+                    (nub.ID, nub, e))
 
+        
 def listActors(match):
     """ """
 
