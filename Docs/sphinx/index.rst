@@ -12,10 +12,10 @@ Contents
 
  overview
  INSTALL
- PFS
- toyMain
+ sampleActor
  keywords
  summary
+ PFS
 
 TODO (for this document)
 ----
