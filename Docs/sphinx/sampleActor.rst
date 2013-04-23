@@ -6,14 +6,15 @@
 Hello, Camera: a simple actor
 ==============================
 
-This is a nearly complete example of a working actor. 
+This is a nearly complete example of a working actor. We are using a
+snapshot of the MCS camera controller.
 
 Main actor instance and routine
 --------
 
-The main actor program must define a subclass of the
-`actorcore.Actor.Actor` class, create an instance of it, and call its
-`.run()` method.
+The main actor program must be a runnable python program file. The
+main routine must define a subclass of the `actorcore.Actor.Actor`
+class, create an instance of it, and call its `.run()` method.
 
 The instance creation reads a config file, sets up connections to the
 hub, arranges for the actor's command definitions to be loaded and
@@ -28,7 +29,7 @@ Note that this file is mostly boilerplate and would not need to be
 modified significantly. That said, the instance is a very good place
 to hold links to long-running state (e.g. objects encapsulating hardware)
 
-.. literalinclude:: mcs_main.py
+.. literalinclude:: mcsActor_main.py
    :linenos:
 
 
