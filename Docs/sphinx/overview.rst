@@ -15,11 +15,12 @@ device. Modularization can also help with testing and maintenance, by
 making hardware more directly accessible.
 
 Tron was developed as a relatively simple distributed communication
-system, designed to encourage the use of independent hardware
-components and software modules. The only significant requirement is
-that each component or program must come with a published dictionary
-describing status keywords which fully define the state of the module,
-and that in operation those keywords are kept updated.
+system, designed to encourage independant development of hardware and
+software subsystems, and their eventual integration. The only
+significant requirement is that each component or program must come
+with a published dictionary describing status keywords which fully
+define the state of the module, and that in operation those keywords
+are kept updated.
 
 The implementation can be sketched out:
 

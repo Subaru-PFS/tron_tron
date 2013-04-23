@@ -1,5 +1,5 @@
 Keyword dictionary example
---------
+--------------------------
 
 An actor's keywords define the externally visible state of the
 actor. Anytime the external state of instrument changes, the actor *must*
@@ -15,6 +15,7 @@ example actor is
 .. literalinclude:: mcs_keys.py
 
 and the reference documentation is at 
+
 
 .. todo:: Get access to APO trac reference docs as HTML. Summarize here.
 
