@@ -1,0 +1,217 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+  
+  
+
+  
+
+
+  
+
+  <head>
+    <title>
+      Ops/Config – SDSS-III
+    </title>
+        <link rel="search" href="/search" />
+        <link rel="help" href="/wiki/TracGuide" />
+        <link rel="alternate" href="/wiki/Ops/Config?format=txt" type="text/x-trac-wiki" title="Plain Text" />
+        <link rel="up" href="/wiki/Ops" title="View parent page" />
+        <link rel="start" href="/wiki" />
+        <link rel="stylesheet" href="/chrome/common/css/trac.css" type="text/css" /><link rel="stylesheet" href="/chrome/common/css/wiki.css" type="text/css" />
+        <link rel="shortcut icon" href="/chrome/site/sdss3.ico" type="image/x-icon" />
+        <link rel="icon" href="/chrome/site/sdss3.ico" type="image/x-icon" />
+      <link type="application/opensearchdescription+xml" rel="search" href="/search/opensearch" title="Search SDSS-III" />
+    <script type="text/javascript" src="/chrome/common/js/jquery.js"></script><script type="text/javascript" src="/chrome/common/js/trac.js"></script><script type="text/javascript" src="/chrome/common/js/search.js"></script>
+    <!--[if lt IE 7]>
+    <script type="text/javascript" src="/chrome/common/js/ie_pre7_hacks.js"></script>
+    <![endif]-->
+    <script type="text/javascript">
+      jQuery(document).ready(function($) {
+        $("#content").find("h1,h2,h3,h4,h5,h6").addAnchor("Link to this section");
+      });
+    </script>
+<link rel="stylesheet" type="text/css" href="/chrome/site/sdss3.css" />
+</head>
+  <body>
+    <div id="banner">
+      <div id="header">
+        <a id="logo" href="http://www.sdss3.org/"><img src="/chrome/site/sdss3shrunk.png" alt="SDSS-III Logo" /></a>
+      </div>
+      <form id="search" action="/search" method="get">
+        <div>
+          <label for="proj-search">Search:</label>
+          <input type="text" id="proj-search" name="q" size="18" value="" />
+          <input type="submit" value="Search" />
+        </div>
+      </form>
+      <div id="metanav" class="nav">
+    <ul>
+      <li class="first">logged in as cloomis</li><li><a href="/logout">Logout</a></li><li><a href="/wiki/TracGuide">Help/Guide</a></li><li><a href="/about">About Trac</a></li><li class="last"><a href="/prefs">Preferences</a></li>
+    </ul>
+  </div>
+    </div>
+    <div id="mainnav" class="nav">
+    <ul>
+      <li class="first active"><a href="/wiki">Wiki</a></li><li><a href="/timeline">Timeline</a></li><li><a href="/roadmap">Roadmap</a></li><li><a href="/browser">Browse Source</a></li><li><a href="/report">View Tickets</a></li><li><a href="/newticket">New Ticket</a></li><li><a href="/search">Search</a></li><li><a href="/admin" title="Administration">Admin</a></li><li class="last"><a href="/tracmailman">Mailing Lists</a></li>
+    </ul>
+  </div>
+    <div id="main">
+      <div id="ctxtnav" class="nav">
+        <h2>Context Navigation</h2>
+          <ul>
+            <li class="first "><a href="/wiki/Ops">Up</a></li><li><a href="/wiki/WikiStart">Start Page</a></li><li><a href="/wiki/TitleIndex">Index</a></li><li><a href="/wiki/Ops/Config?action=history">History</a></li><li><a href="/wiki/Ops/Config?action=diff&amp;version=5">Last Change</a></li><li class="last"><a href="/admin/general/wikirename?redirect=1&amp;src_page=Ops%2FConfig">Rename page</a></li>
+          </ul>
+        <hr />
+      </div>
+    <div id="content" class="wiki">
+      <p class="path">
+        <a class="pathentry" title="View Ops" href="/wiki/Ops">Ops</a><span class="pathentry sep">/</span><a class="pathentry" title="View Ops/Config" href="/wiki/Ops/Config">Config</a>
+        <br style="clear: both" />
+      </p>
+      <div class="wikipage searchable">
+        
+          <p>
+From [<a class="wiki" href="/wiki/OperationsSoftware">OperationsSoftware</a>]
+</p>
+<h1 id="RuntimeConfigurationUtility">Runtime Configuration Utility</h1>
+<p>
+This page documents a general runtime configuration utility provided in the <a class="source" href="/browser/repo/ops/opscore/trunk/python/opscore/utility/config.py">opscore.utility.config</a> python module. The basic design is to extend the standard python <a class="ext-link" href="http://docs.python.org/library/optparse.html"><span class="icon">command-line options parser</span></a> with a transparent back end that reads default option values from a configuration file. The result is that run-time options are specified in files and can be overridden on the command line. One extra feature is support for secret options such as passwords.
+</p>
+<h2 id="ConfigurationFiles">Configuration Files</h2>
+<p>
+Configuration files follow the loose <a class="ext-link" href="http://en.wikipedia.org/wiki/INI_file"><span class="icon">INI standard</span></a>, as implemented in the standard python <a class="ext-link" href="http://docs.python.org/library/configparser.html"><span class="icon">ConfigParser module</span></a>. Files are organized into named sections of parameter-value assignments. For example, this file contains three sections, named <tt>DEFAULT</tt>, <tt>server</tt> and <tt>client</tt>:
+</p>
+<pre class="wiki"># This is a comment
+
+[DEFAULT]
+
+tcp-port: 1966
+
+[server]
+
+log-dir: /tmp/archiver-PID
+interactive: no
+db-password: fd6092344341fa78ed6af926cc8ab4d6
+
+[client]
+
+timeout: 1000 # in milliseconds
+</pre><p>
+An INI file is queried by specifying a section name and an option name. In case the option is not in the named section, a value in an optional DEFAULT section will be used.
+</p>
+<p>
+The runtime configuration utility will search for INI files in two locations (which might be the same): first, in the current working directory and, second, in the installed product's etc/ subdirectory. In case both files are present, the first one containing a value for a given option name will be used. To establish how option values will be retrieved from INI files, your program creates a ConfigOptionParser at run time:
+</p>
+<pre class="wiki">if __name__ == '__main__':
+    from opscore.utility import config
+    cli = config.ConfigOptionParser(product_name='archiver',config_file='archiver.ini',config_section='server')
+    ...
+</pre><p>
+The <tt>config_file</tt> parameter specifies the INI file name to search for in the two directories. The <tt>config_section</tt> parameter specifies which section of the INI file(s) to read option values from. The defaults for these parameters are <tt>config.ini</tt> and <tt>DEFAULT</tt>, respectively. The optional <tt>product_name</tt> is used to locate the etc/ subdirectory of an installed product via an environment variable $PRODUCTNAME_DIR that will normally have been established using the setup tool. If no <tt>product_name</tt> is provided, only the current working directory will be searched for a config file. ConfigOptionParser is a subclass of the <a class="ext-link" href="http://docs.python.org/library/optparse.html"><span class="icon">standard python OptionParser</span></a> and the two options above can be combined with the standard options.
+</p>
+<h2 id="CommandLineParser">Command Line Parser</h2>
+<p>
+Configure your program to process command line options using a ConfigOptionParser just as if it were a <a class="ext-link" href="http://docs.python.org/library/optparse.html"><span class="icon">standard OptionParser object</span></a>. The only special handling occurs for the <tt>add_option</tt> and <tt>parse_args</tt> methods, as described below. Here is a simple example, following on from the code above:
+</p>
+<pre class="wiki">    cli.add_option('-l','--log-dir',dest='logDir',help='Directory that log files will be stored in (PID replaced by actual value)')
+    cli.add_option('-p','--tcp-port',dest='tcpPort',type='int',default=0,help='TCP port that server will listen to')
+    cli.add_option('-i','--interactive',action='store_true',help='Is program running interactively?')
+    cli.add_option('--db-password',dest='dbPassword',type='secret',help='Database password to use')
+    ...
+    (options,args) = cli.parse_args()
+    ...
+    # can now use options.logDir, options.tcpPort, etc
+</pre><p>
+The <tt>add_option</tt> method accepts an optional <tt>default</tt> keyword. The ConfigOptionParser extends the OptionParser by always providing this keyword when a suitable value is available from an INI file, using the long-form of the option name (without the double-dash prefix) as the parameter name to lookup. In case a <tt>default</tt> keyword is already provided, as for <tt>log-dir</tt> in the example above, an INI value will replace it. There is no requirement that every command line option have a corresponding INI value.
+</p>
+<h2 id="SecretOptions">Secret Options</h2>
+<p>
+This module adds a new <tt>secret</tt> option type to the built-in OptionParser, to contain encrypted strings such as passwords. The values for such options are stored in INI files (or provided on the command line) as a hex string representing the encrypted value, for example:
+</p>
+<pre class="wiki">db-password: fd6092344341fa78ed6af926cc8ab4d6
+</pre><p>
+Decrypting requires a pass phrase that the user is prompted for when the <tt>parse_args</tt> method is called. Use an optional keyword to control the prompt:
+</p>
+<pre class="wiki">    (options,args) = cli.parse_args(prompt='How big is the Universe?')
+    ...
+    # options.dbPassword now contains the decrypted value if the correct response is received
+</pre><p>
+Use the <a class="source" href="/browser/repo/ops/opscore/trunk/example/secret.py">secret.py program</a> to generate encrypted values suitable for storing in INI files (or entering on the command line). Users are only prompted for a single pass phrase, so all secret data used by a program should be encrypted using the same phrase.
+</p>
+<p>
+Since python does not provide a built-in cryptography library, using any secret options requires that you have the <a class="ext-link" href="http://www.amk.ca/python/code/crypto.html"><span class="icon">pycrypto module</span></a> installed. However, this is a runtime dependency and does not apply to programs with no secret options.
+</p>
+<h2 id="Documentation">Documentation</h2>
+<p>
+There are potentially two places that a run-time configuration option can be documented: in the <tt>help</tt> metadata provided to the ConfigOptionParser <tt>add_option</tt> method, and in comments embedded in the INI file. The recommended convention is that the <tt>help</tt> metadata should be used as the primary description of an option since this will appear directly in the top-level program and can be conveniently formatted using the built-in <tt>--help</tt> command-line option. There is also no guarantee that a given option is contained in an INI file, or it could appear multiple times. With this convention, comments in INI files should be reserved for explaining the specific values being assigned, as appropriate.
+</p>
+<p>
+The ConfigOptionModule supplements the built-in <tt>print_help()</tt> function to append information about run-time configuration, for example:
+</p>
+<pre class="wiki">% ./server.py --help
+Usage: server.py [options]
+
+Options:
+  -h, --help            show this help message and exit
+  --log-dir=LOGDIR      temporary path for server log and buffer files
+  --tcp-port=TCPPORT    TCP port number to listen to or zero for none
+  --interactive         running interactively?
+  --db-password=DBPASSWORD  database engine to use
+  ...
+
+Runtime configuration defaults provided by the following files:
+
+  /.../.../archiver.ini
+
+Default values are:
+
+            log-dir: /tmp/archiver-PID
+           tcp-port: 1966
+        interactive: False
+        db-password: fd6092344341fa78ed6af926cc8ab4d6
+</pre>
+        
+        
+      </div>
+          <div class="buttons">
+              <form method="get" action="/wiki/Ops/Config" id="modifypage">
+                <div>
+                  <input type="hidden" name="action" value="edit" />
+                      <input type="submit" value="Edit this page" />
+                </div>
+              </form>
+    <form method="get" action="/attachment/wiki/Ops/Config/" id="attachfile">
+      <div>
+        <input type="hidden" name="action" value="new" />
+        <input type="submit" name="attachfilebutton" value="Attach file" />
+      </div>
+    </form>
+              <form method="get" action="/wiki/Ops/Config">
+                <div id="delete">
+                  <input type="hidden" name="action" value="delete" />
+                  <input type="hidden" name="version" value="5" />
+                    <input type="submit" name="delete_version" value="Delete this version" />
+                  <input type="submit" value="Delete page" />
+                </div>
+              </form>
+          </div>
+    </div>
+    <div id="altlinks">
+      <h3>Download in other formats:</h3>
+      <ul>
+        <li class="last first">
+          <a rel="nofollow" href="/wiki/Ops/Config?format=txt">Plain Text</a>
+        </li>
+      </ul>
+    </div>
+    </div>
+    <div id="footer" lang="en" xml:lang="en"><hr />
+      <a id="tracpowered" href="http://trac.edgewall.org/"><img src="/chrome/common/trac_logo_mini.png" height="30" width="107" alt="Trac Powered" /></a>
+      <p class="left">
+        Powered by <a href="/about"><strong>Trac 0.11.2.1</strong></a><br />
+        By <a href="http://www.edgewall.org/">Edgewall Software</a>.
+      </p>
+      <p class="right">Visit the Trac open source project at<br /><a href="http://trac.edgewall.org/">http://trac.edgewall.org/</a></p>
+    </div>
+</body>
+</html>

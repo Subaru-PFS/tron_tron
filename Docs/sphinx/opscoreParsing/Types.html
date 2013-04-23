@@ -1,0 +1,373 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+  
+  
+
+  
+
+
+  
+
+  <head>
+    <title>
+      Ops/Types – SDSS-III
+    </title>
+        <link rel="search" href="/search" />
+        <link rel="help" href="/wiki/TracGuide" />
+        <link rel="alternate" href="/wiki/Ops/Types?format=txt" type="text/x-trac-wiki" title="Plain Text" />
+        <link rel="up" href="/wiki/Ops" title="View parent page" />
+        <link rel="start" href="/wiki" />
+        <link rel="stylesheet" href="/chrome/common/css/trac.css" type="text/css" /><link rel="stylesheet" href="/chrome/common/css/wiki.css" type="text/css" />
+        <link rel="shortcut icon" href="/chrome/site/sdss3.ico" type="image/x-icon" />
+        <link rel="icon" href="/chrome/site/sdss3.ico" type="image/x-icon" />
+      <link type="application/opensearchdescription+xml" rel="search" href="/search/opensearch" title="Search SDSS-III" />
+    <script type="text/javascript" src="/chrome/common/js/jquery.js"></script><script type="text/javascript" src="/chrome/common/js/trac.js"></script><script type="text/javascript" src="/chrome/common/js/search.js"></script>
+    <!--[if lt IE 7]>
+    <script type="text/javascript" src="/chrome/common/js/ie_pre7_hacks.js"></script>
+    <![endif]-->
+    <script type="text/javascript">
+      jQuery(document).ready(function($) {
+        $("#content").find("h1,h2,h3,h4,h5,h6").addAnchor("Link to this section");
+      });
+    </script>
+<link rel="stylesheet" type="text/css" href="/chrome/site/sdss3.css" />
+</head>
+  <body>
+    <div id="banner">
+      <div id="header">
+        <a id="logo" href="http://www.sdss3.org/"><img src="/chrome/site/sdss3shrunk.png" alt="SDSS-III Logo" /></a>
+      </div>
+      <form id="search" action="/search" method="get">
+        <div>
+          <label for="proj-search">Search:</label>
+          <input type="text" id="proj-search" name="q" size="18" value="" />
+          <input type="submit" value="Search" />
+        </div>
+      </form>
+      <div id="metanav" class="nav">
+    <ul>
+      <li class="first">logged in as cloomis</li><li><a href="/logout">Logout</a></li><li><a href="/wiki/TracGuide">Help/Guide</a></li><li><a href="/about">About Trac</a></li><li class="last"><a href="/prefs">Preferences</a></li>
+    </ul>
+  </div>
+    </div>
+    <div id="mainnav" class="nav">
+    <ul>
+      <li class="first active"><a href="/wiki">Wiki</a></li><li><a href="/timeline">Timeline</a></li><li><a href="/roadmap">Roadmap</a></li><li><a href="/browser">Browse Source</a></li><li><a href="/report">View Tickets</a></li><li><a href="/newticket">New Ticket</a></li><li><a href="/search">Search</a></li><li><a href="/admin" title="Administration">Admin</a></li><li class="last"><a href="/tracmailman">Mailing Lists</a></li>
+    </ul>
+  </div>
+    <div id="main">
+      <div id="ctxtnav" class="nav">
+        <h2>Context Navigation</h2>
+          <ul>
+            <li class="first "><a href="/wiki/Ops">Up</a></li><li><a href="/wiki/WikiStart">Start Page</a></li><li><a href="/wiki/TitleIndex">Index</a></li><li><a href="/wiki/Ops/Types?action=history">History</a></li><li><a href="/wiki/Ops/Types?action=diff&amp;version=28">Last Change</a></li><li class="last"><a href="/admin/general/wikirename?redirect=1&amp;src_page=Ops%2FTypes">Rename page</a></li>
+          </ul>
+        <hr />
+      </div>
+    <div id="content" class="wiki">
+      <p class="path">
+        <a class="pathentry" title="View Ops" href="/wiki/Ops">Ops</a><span class="pathentry sep">/</span><a class="pathentry" title="View Ops/Types" href="/wiki/Ops/Types">Types</a>
+        <br style="clear: both" />
+      </p>
+      <div class="wikipage searchable">
+        
+          <p>
+</p><div class="wiki-toc"><ol><li><a href="#KeywordValueTypes">Keyword Value Types</a><ol><li><ol><li><a href="#BooleanValueType">Boolean Value Type</a></li><li>
+<a href="#EnumeratedValueType">Enumerated Value Type</a></li><li>
+<a href="#BitfieldValueType">Bitfield Value Type</a></li></ol></li><li>
+<a href="#RepeatedValueType">Repeated Value Type</a></li><li>
+<a href="#CompoundValueType">Compound Value Type</a></li><li>
+<a href="#StringConversion">String Conversion</a></li><li>
+<a href="#AutomatedDocumentation">Automated Documentation</a></li></ol></li></ol></div><p>
+</p>
+<p>
+From <a class="wiki" href="/wiki/OperationsSoftware">Ops</a>/<a class="wiki" href="/wiki/Ops/Core">Core</a>
+</p>
+<h1 id="KeywordValueTypes">Keyword Value Types</h1>
+<p>
+This page documents the python module <a class="source" href="/browser/repo/ops/opscore/trunk/python/opscore/protocols/types.py">opscore.protocols.types</a>.
+</p>
+<p>
+The optional values associated with <a class="wiki" href="/wiki/Ops/Protocols">message keywords</a> are, by default, treated as opaque strings. A value type declaration associates a value with the metadata necessary to to support services such as:
+</p>
+<ul><li><a class="wiki" href="/wiki/Ops/DataDictionary">data dictionary generation</a>
+</li><li><a class="wiki" href="/wiki/Ops/Validation">message validation</a>
+</li><li>conversions to and from strings
+</li><li>keyword archiving
+</li><li>documentation generation
+</li><li>efficient binary packing
+</li></ul><p>
+The following types are currently supported:
+</p>
+<table class="wiki">
+<tr><td> String </td><td> A string value 
+</td></tr><tr><td> Float </td><td> An IEEE single-precision floating point number 
+</td></tr><tr><td> Double </td><td> An IEEE double-precision floating point number 
+</td></tr><tr><td> Int </td><td> A signed 32-bit decimal integer 
+</td></tr><tr><td> UInt </td><td> An unsigned 32-bit decimal integer 
+</td></tr><tr><td> Long </td><td> A signed 64-bit decimal integer 
+</td></tr><tr><td> Hex </td><td> An unsigned 32-bit hexadecimal integer 
+</td></tr><tr><td> <a class="wiki" href="/wiki/Ops/Types#BooleanValueType">Bool</a> </td><td> A boolean value 
+</td></tr><tr><td> <a class="wiki" href="/wiki/Ops/Types#EnumeratedValueType">Enum</a> </td><td> An enumerated value 
+</td></tr><tr><td> <a class="wiki" href="/wiki/Ops/Types#BitfieldValueType">Bits</a> </td><td> An unsigned 32-bit integer interpreted as packed bit fields 
+</td></tr></table>
+<p>
+The following string metadata can be associated with any type (adapted from the <a class="wiki" href="/wiki/Ops/DataDictionary">data dictionary</a> keyValInfo):
+</p>
+<table class="wiki">
+<tr><td> name </td><td> An optional name identifying this value. Should be a valid python identifier. Used by the archiver when building expressions and creating tables. 
+</td></tr><tr><td> help </td><td> Descriptive help text for a value. 
+</td></tr><tr><td> units </td><td> The display units of a value. E.g., "arcsec" 
+</td></tr><tr><td> reprFmt </td><td> A printf-style format for the internal representation of a value. For numeric values, this should display the full precision available. E.g., "%.6f" 
+</td></tr><tr><td> strFmt </td><td> A printf-style format for the default display string of a value (omitting its units). E.g., "%.1f" 
+</td></tr><tr><td> invalid </td><td> A character literal that represents a case-insensitive invalid value. E.g., "???" 
+</td></tr></table>
+<p>
+Note that a <tt>reprFmt</tt> or <tt>strFmt</tt> that contains either <tt>%r</tt> or <tt>%s</tt> is potentially recursive and will raise <tt>types.ValueTypeError</tt>.
+</p>
+<p>
+Value types are implemented as bona fide python types which share a common ValueType metaclass and generalize the built-in python types. For example:
+</p>
+<pre class="wiki">&gt;&gt;&gt; DewarTemp = Float(strFmt='%.1f',units='C',help='Dewar temperature')
+&gt;&gt;&gt; t1 = DewarTemp(-12.345)
+&gt;&gt;&gt; t2 = DewarTemp(0.2)
+&gt;&gt;&gt; isinstance(DewarTemp,type)
+True
+&gt;&gt;&gt; isinstance(t1,float)
+True
+</pre><p>
+Metadata is used to assign type methods and attributes:
+</p>
+<pre class="wiki">&gt;&gt;&gt; repr(t1),str(t1)
+('Float(-12.345)', '-12.3')
+&gt;&gt;&gt; t2.help
+'dewar temperature'
+&gt;&gt; t2.units
+'C'
+</pre><p>
+Since the underlying python built-in types are immutable, the same is also true of value types. First, consider what happens when we assign float literals:
+</p>
+<pre class="wiki">pi = 3.1    # assigns a reference to a newly-created float(3.1) to the symbol 'pi'
+pi = 3.141  # assigns a reference to a newly-created float(3.141) to the symbol 'pi', so that id(pi) has changed
+</pre><p>
+As a result, assigning a float literal to a value type instance does not do what you might expect:
+</p>
+<pre class="wiki">temp = DewarTemp(-12.345)  # assigns a reference to a newly-created DewarTemp(-12.345) to the symbol 'temp'
+temp = -9.99               # assigns a reference to a newly-created float(-9.99) to the symbol 'temp', so that id(temp) has changed
+</pre><p>
+To avoid the unintentional use of an implicit type, use instead:
+</p>
+<pre class="wiki">temp = DewarTemp(-12.345)
+temp = DewarTemp(-9.99)
+</pre><p>
+Simple value types are declared as &lt;Type&gt;(&lt;metadata&gt;) where &lt;Type&gt; is String, Float, Int, ... and &lt;metadata&gt; is a sequence of field=value pairs. No metadata is required. Each declaration creates a distinct python type, even when two declarations share the same metadata. Value types with special declaration syntax and string formatting are described below.
+</p>
+<h3 id="BooleanValueType">Boolean Value Type</h3>
+<p>
+A boolean type declaration must start with two values that identify the False and True states, in that order, followed by optional field=value metadata:
+</p>
+<pre class="wiki">&gt;&gt;&gt; Tripped = Bool('OK','FAULT',help='Interlock trip status')
+&gt;&gt;&gt; Tripped('FAULT')
+Bool(1)
+&gt;&gt;&gt; print Tripped('OK')
+OK
+</pre><p>
+The Boolean type provides custom str() formatting and ignores any strFmt metadata with a warning.
+</p>
+<h3 id="EnumeratedValueType">Enumerated Value Type</h3>
+<p>
+An enumerated type declaration must start with one or more labels identifying the allowed states followed by optional field=value metadata:
+</p>
+<pre class="wiki">&gt;&gt;&gt; ReadoutState = Enum('Idle','Busy','Fault',help='Instrument readout state')
+&gt;&gt;&gt; ReadoutState('Fault')
+Enum('Fault')
+&gt;&gt;&gt; print ReadoutState('Busy')
+Busy
+</pre><p>
+The Enum type provides custom str() formatting and silently ignores any strFmt metadata.
+</p>
+<p>
+Enumeration objects are interchangeable with python built-in strings. Comparisons between enumeration objects and strings are case insensitive:
+</p>
+<pre class="wiki">&gt;&gt;&gt; ReadoutState('Fault') == 'fault'
+True
+</pre><p>
+The capitalization specified in the constructor defines the canonical form of each label that will be used in generating documentation, for example. Enum objects are internally canonicalized so the following constructors are all equivalent and you should never need to add explicit .lower() or .upper() calls in your code:
+</p>
+<pre class="wiki">ReadoutState('Fault')
+ReadoutState('fault')
+ReadoutState('FAULT')
+</pre><p>
+The Enum type supports optional <tt>labelHelp</tt> metadata that documents each label individually. When defining new enumerations, it is preferable to make the labels self describing, however this is not always possible when interfacing to legacy systems. The labelHelp should be a list of strings:
+</p>
+<pre class="wiki">MsgCode = types.Enum('&gt;','I','W',':','F','!',labelHelp=['Queued','Information','Warning','Finished','Error','Fatal'])
+</pre><h3 id="BitfieldValueType">Bitfield Value Type</h3>
+<p>
+A bitfield type declaration must start with one or more bitfield specifications followed by optional field=value metadata. A bitfield specification has one of the following forms:
+</p>
+<ul><li>&lt;NAME&gt; declares a one-bit field with the specified name
+</li><li>&lt;NAME&gt;:&lt;WIDTH&gt; declares a field of &lt;WIDTH&gt; bits with the specified name
+</li><li>:&lt;WIDTH&gt; declares &lt;WIDTH&gt; bits of padding
+</li></ul><p>
+Bitfield names are restricted to the characters A-Z, a-z, 0-9 and underscore (_). Bitfields are mapped to an unsigned 32-bit integer starting from the least-significant bit, in the order they are declared.
+</p>
+<pre class="wiki">&gt;&gt;&gt; Register = Bits('addr:8','data:8',':2','rw','as',help='FPGA control register')
+&gt;&gt;&gt; Register(0x04beef)
+Bits(311023L)
+&gt;&gt;&gt; print Register(0x04beef)
+(addr=11101111,data=10111110,rw=1,as=0)
+</pre><p>
+The Bits type provides custom str() formatting and ignores any strFmt metadata with a warning.
+</p>
+<h2 id="RepeatedValueType">Repeated Value Type</h2>
+<p>
+Any value type can be repeated exactly <tt>n</tt> times using the shorthand
+</p>
+<pre class="wiki">Float(...)*n
+</pre><p>
+An allowed range, <tt>n</tt> to <tt>m</tt>, in the number of repetitions is indicated with
+</p>
+<pre class="wiki">Float(...)*(n,m)
+</pre><p>
+Finally, a range with no maximum is indicated with
+</p>
+<pre class="wiki">Float(...)*(n,)
+</pre><h2 id="CompoundValueType">Compound Value Type</h2>
+<p>
+A sequence of predefined types that always appear together can be represented as a compound type, for example:
+</p>
+<pre class="wiki">CompoundValueType(
+  Enum('INFO','WARN','ERROR','FAIL',name='severity',help='Message severity'),
+  String(name='text',help='Message text'),
+  help="A logging message"
+)
+</pre><h2 id="StringConversion">String Conversion</h2>
+<p>
+All value types can be initialized from a string value, for example:
+</p>
+<pre class="wiki">Float()('3.141')
+Enum('RED','GREEN','BLUE')('GREEN')
+Bool('no','yes')('no')
+</pre><p>
+This is the mechanism used to <a class="wiki" href="/wiki/Ops/Validation">assign typed values to keywords</a>. Assuming that the constructor argument is a string, then there are two ways in which an initialization can fail. First, the string might be a case-insensitive match to value of the <tt>invalid</tt> metadata field:
+</p>
+<pre class="wiki">Float(invalid='???')('???')
+</pre><p>
+This will raise a special InvalidValue exception defined in the types module. Otherwise, the string value might not be interpretable as the specified type:
+</p>
+<pre class="wiki">Float()('abc')
+Int()('1.2')
+UInt()('-12')
+</pre><p>
+This will raise a standard ValueError exception, similar to the behavior of the built-in types:
+</p>
+<pre class="wiki">float('abc')
+int('1.2')
+</pre><p>
+Note that the predefined <a class="ext-link" href="http://en.wikipedia.org/wiki/IEEE_754-1985"><span class="icon">IEEE-754</span></a> special floating point values 'nan' and 'inf' will not, by default, raise any exceptions for a Float or Double type and will be correctly mapped to the database's special float values:
+</p>
+<pre class="wiki">Float()('nan')
+Double()('-inf')
+</pre><p>
+However, a string such as 'nan' can be specified as the <tt>invalid</tt> value and this will take precedence over the IEEE-754 special value handling. Therefore, the following will raise <tt>opscore.protocols.types.InvalidValueError</tt> (note that the invalid value test is not case sensitive):
+</p>
+<pre class="wiki">Float(invalid='NaN')('nan')
+</pre><h2 id="AutomatedDocumentation">Automated Documentation</h2>
+<p>
+Any value type (or repeated value type) can describe itself in either plain text format:
+</p>
+<pre class="wiki">print vtype.describe()
+</pre><p>
+or else in html format:
+</p>
+<pre class="wiki">print &gt;&gt; htmlfile, vtype.describeAsHTML()
+</pre><p>
+In both cases, the return value is a printable string. Some example type declarations and their plain text descriptions follow:
+</p>
+<pre class="wiki">Float(units='C',strFmt='%.2f',help='Air Temperature',invalid='?')
+</pre><pre class="wiki"> Description: Air Temperature
+        Type: Float (float)
+       Units: C
+     Invalid: ?
+</pre><pre class="wiki">Enum('RED','GREEN','BLUE',help='Colors',invalid='PINK')*(2,)
+</pre><pre class="wiki">    Repeated: at least 2 times
+ Description: Colors
+        Type: Enum (int)
+      Values: RED,GREEN,BLUE
+     Invalid: PINK
+</pre><pre class="wiki">Enum('&gt;','I','W',':','F','!',labelHelp=['Queued','Information','Warning','Finished','Error','Fatal'],help='Reply header status code')
+</pre><pre class="wiki"> Description: Reply header status code
+        Type: Enum (str,int2)
+     Value-0: &gt; (Queued)
+     Value-1: I (Information)
+     Value-2: W (Warning)
+     Value-3: : (Finished)
+     Value-4: F (Error)
+     Value-5: ! (Fatal)
+</pre><pre class="wiki">Bool('no','yes',help='The answer',invalid='unknown')
+</pre><pre class="wiki"> Description: The answer
+        Type: Bool (int)
+       False: no
+        True: yes
+     Invalid: unknown
+</pre><pre class="wiki">Bits('addr:8','data:8',':2','rw','as',help='FPGA control register')
+</pre><pre class="wiki"> Description: FPGA control register
+        Type: Bits (long)
+     Field-0: 00000000000011111111 addr
+     Field-1: 00001111111100000000 data
+     Field-2: 01000000000000000000 rw
+     Field-3: 10000000000000000000 as
+</pre><p>
+Descriptions formatted for HTML contain the same (label,value) descriptor elements but wrapped in DIV and SPAN elements tagged with CSS class names for user-defined styling. For example:
+</p>
+<pre class="wiki">&lt;div class="vtype"&gt;
+  &lt;div class="descriptor"&gt;&lt;span class="label"&gt;Description&lt;/span&gt;&lt;span class="value"&gt;Air Temperature&lt;/span&gt;&lt;/div&gt;
+  &lt;div class="descriptor"&gt;&lt;span class="label"&gt;Type&lt;/span&gt;&lt;span class="value"&gt;Float (float)&lt;/span&gt;&lt;/div&gt;
+  &lt;div class="descriptor"&gt;&lt;span class="label"&gt;Units&lt;/span&gt;&lt;span class="value"&gt;C&lt;/span&gt;&lt;/div&gt;
+  &lt;div class="descriptor"&gt;&lt;span class="label"&gt;Invalid&lt;/span&gt;&lt;span class="value"&gt;?&lt;/span&gt;&lt;/div&gt;
+&lt;/div&gt;
+</pre>
+        
+        
+      </div>
+          <div class="buttons">
+              <form method="get" action="/wiki/Ops/Types" id="modifypage">
+                <div>
+                  <input type="hidden" name="action" value="edit" />
+                      <input type="submit" value="Edit this page" />
+                </div>
+              </form>
+    <form method="get" action="/attachment/wiki/Ops/Types/" id="attachfile">
+      <div>
+        <input type="hidden" name="action" value="new" />
+        <input type="submit" name="attachfilebutton" value="Attach file" />
+      </div>
+    </form>
+              <form method="get" action="/wiki/Ops/Types">
+                <div id="delete">
+                  <input type="hidden" name="action" value="delete" />
+                  <input type="hidden" name="version" value="28" />
+                    <input type="submit" name="delete_version" value="Delete this version" />
+                  <input type="submit" value="Delete page" />
+                </div>
+              </form>
+          </div>
+    </div>
+    <div id="altlinks">
+      <h3>Download in other formats:</h3>
+      <ul>
+        <li class="last first">
+          <a rel="nofollow" href="/wiki/Ops/Types?format=txt">Plain Text</a>
+        </li>
+      </ul>
+    </div>
+    </div>
+    <div id="footer" lang="en" xml:lang="en"><hr />
+      <a id="tracpowered" href="http://trac.edgewall.org/"><img src="/chrome/common/trac_logo_mini.png" height="30" width="107" alt="Trac Powered" /></a>
+      <p class="left">
+        Powered by <a href="/about"><strong>Trac 0.11.2.1</strong></a><br />
+        By <a href="http://www.edgewall.org/">Edgewall Software</a>.
+      </p>
+      <p class="right">Visit the Trac open source project at<br /><a href="http://trac.edgewall.org/">http://trac.edgewall.org/</a></p>
+    </div>
+</body>
+</html>
