@@ -2,7 +2,7 @@ Protocol examples
 ================
 
 Usually the communication protocol is hidden behind library routines,
-as seen in the :ref:`Hello, World <toyActor>` example, 
+as seen in the :ref:`Hello, World <sampleActor>` example, 
 but some people like to know the details. To make this a little less
 abstract, we'll walk through what happens when a commander sends
 commands to some actors through the hub. When commanders connect to
