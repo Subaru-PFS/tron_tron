@@ -1,6 +1,10 @@
 Installing the MHS and actors
 =============================
 
+..todo:: This documents a test, or sample instalation, but **NOT**
+what a real developer would use, nor a propoer operational
+installation. Split things up, or refactor installation...
+
 The MHS system is maintained as a collection of git repositories in
 the gitolite collection at pfs.ipmu.jp. The central parts are:
 
@@ -8,18 +12,24 @@ the gitolite collection at pfs.ipmu.jp. The central parts are:
  - an 'actorcore' infrastructure library repo.
  - several repositories for individual "actors", each of which
    encapsulates a subsystem or provides some control logic.
- - an 'actorkeys' repo, which contains the published keyword APIs for
-   all the individual actors.
+ - an 'actorkeys' repo, which contains the published keyword
+   dictionaries for all the individual actors.
 
 All of these require a recent python. 2.6 is probably OK, 2.7
 certainly is. The actors also require twisted, numpy, and
 pyfits. These are common enough packages that we can probably expect
 them to be installed on the machines. 
 
-The system uses a package versioning system named 'eups'. In the
+..todo:: Find or write intro document on eups: why use it and how?
+Check recent ``modules`` at sourceforge.
+
+The system uses a package management system named 'eups'. In the
 introductory installation below, none of the interesting features of
 eups are used, but it becomes very useful once you need to maintain
 multiple versions of packages, and packages with dependencies.
+
+Note that the http://modules.sourceforge.net/ system is similar. We
+have not recently evaluated whether it would be sufficient.
 
 Fetching the pieces
 -------------------
@@ -37,7 +47,8 @@ installing the latest version from::
 
     git clone -b 1.2.33 git@github.com:RobertLuptonTheGood/eups 
 
-It then installs the current MHS hub and actor repositories from::
+It then installs all the current MHS hub and actor
+repositories. Currently these are::
 
     git clone gitolite@pfs.ipmu.jp:ics_mhs_config
     git clone gitolite@pfs.ipmu.jp:ics_mhs_actorcore
