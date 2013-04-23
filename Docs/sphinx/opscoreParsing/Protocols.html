@@ -1,0 +1,205 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+  
+  
+
+  
+
+
+  
+
+  <head>
+    <title>
+      Ops/Protocols – SDSS-III
+    </title>
+</p><div class="wiki-toc"><ol><li><a href="#OperationsSoftwareMessageProtocols">Operations Software Message Protocols</a><ol><li><a href="#Keywords">Keywords</a></li><li>
+<a href="#Replies">Replies</a></li><li>
+<a href="#ReplyHeader">Reply Header</a></li><li>
+<a href="#Commands">Commands</a></li></ol></li></ol></div><p>
+</p>
+<p>
+From <a class="wiki" href="/wiki/OperationsSoftware">Ops</a>/<a class="wiki" href="/wiki/Ops/Core.html">Core</a>
+</p>
+<h1 id="OperationsSoftwareMessageProtocols">Operations Software Message Protocols</h1>
+<p>
+Refer to the <a class="wiki" href="/wiki/Ops/Glossary">glossary</a> for definitions of the terms used below. The primary message protocol consists of <span class="underline">commands</span> (from <span class="underline">commanders</span> to <span class="underline">actors</span>) and <span class="underline">replies</span> (from <span class="underline">actors</span>, but might not have been solicited). Both types of message include <span class="underline">keywords</span>.
+</p>
+<p>
+Information about parsing message strings is <a class="wiki" href="/wiki/Ops/Parsing.html">collected here</a>.
+</p>
+<h2 id="Keywords">Keywords</h2>
+<p>
+Keywords consist of a name optionally followed by a list of comma-separated values, for example:
+</p>
+<pre class="wiki">start
+constants = 2.71828,3.14159
+</pre><p>
+White space (space and tab characters) surrounding the equals sign or commas is not significant. A keyword name must begin with a letter A-Z or a-z and can only contain letters, numbers (0-9) and the punctuation dot (.) and underscore (_). Note that the keyword <a class="wiki" href="/wiki/Ops/Validation.html">validation framework</a> considers keyword names to be case insensitive, although capitalization is encouraged to improve readability. Also, the keyword namespace provided by a <a class="wiki" href="/wiki/Ops/KeysDictionary">Keys dictionary</a> is case insensitive.
+</p>
+<p>
+Values are treated as strings so invalid number formats are still considered valid keyword values. A value must be quoted if it it is empty "" or else contains any of the following characters:
+</p>
+<ul><li>space
+</li><li>tab
+</li><li>semicolon
+</li><li>comma
+</li><li>equals
+</li></ul><p>
+For commands only, the value "raw" (and all of its upper/lower case variations) must also be quoted. Values can be quoted with either 'single' or "double" quotes and the quotes are not considered part of the value. A value may contain quote characters as long as they are 'escape\'d' or else do not match the enclosing 'quote"s'. Values that do not require quoting can still be enclosed in quotes.
+</p>
+<p>
+A formal grammar for parsing keywords is given below. NAME_OR_VALUE is a token that is both a valid keyword name and keyword value. VALUE is an unquoted value that, because of the characters it contains, could not be a valid keyword name.
+</p>
+<pre class="wiki">keyword : NAME_OR_VALUE
+        | NAME_OR_VALUE values
+
+values : '=' value
+       | values ',' value
+
+value : NAME_OR_VALUE
+      | VALUE
+      | QUOTED
+</pre><p>
+The keyword name "raw" (and all of its case variations) has a special interpretation in commands (see below) and may not be used in replies.
+</p>
+<h2 id="Replies">Replies</h2>
+<p>
+A reply string consists of keywords separated by semicolons, for example:
+</p>
+<pre class="wiki">drink=coffee ; blend = 20:80, Kenyan,Bolivian
+</pre><p>
+White space surrounding the semicolons or appearing at the start or end of a reply is not significant. No semicolon is required if there is only one keyword present in the reply. The order of keywords is generally not meaningful but will be preserved by parsing. The grouping of keywords into a reply implies that their corresponding values are valid simultaneously and, by default, should be assigned a common time stamp when being archived. A keyword name will not normally be repeated within a reply although this is not considered an error. The keyword name "raw" (and all of its case variations) is reserved and may not be used in replies.
+</p>
+<p>
+A formal grammar for replies is given below.
+</p>
+<pre class="wiki">reply : reply_keywords
+
+reply_keywords : keyword
+               | reply_keywords SEMICOLON keyword
+</pre><h2 id="ReplyHeader">Reply Header</h2>
+<p>
+A reply string is normally preceded by a text header, for example:
+</p>
+<pre class="wiki">tui.tcc 123 hub ! drink=coffee;...
+</pre><p>
+where <tt>drink=coffee;...</tt> is the reply string described above. The header consists of the following four white-space separated fields:
+</p>
+<ul><li>commander name
+</li><li>command ID number
+</li><li>actor name
+</li><li>reply code
+</li></ul><p>
+The commander name is further subdivided into the following subfields separated by the dot character (.):
+</p>
+<ul><li>program name
+</li><li>user name
+</li><li>actor stack
+</li></ul><p>
+The program name is optional and can be left blank, for example when a human is typing commands interactively. The actor stack is also optional and, if present, encodes the history of actors involved in generating this reply and will contain dots. The following are all valid commander names:
+</p>
+<pre class="wiki">.user
+program.user
+program.user.actor1
+program.user.actor1.actor2.actor3
+.user.actor1.actor2
+</pre><p>
+The program name and user name must be valid python identifiers.
+</p>
+<p>
+The <a class="wiki" href="/wiki/Ops/Parsing#ReplyHeaders">message parsing documentation</a> has details about the reply header fields.
+</p>
+<h2 id="Commands">Commands</h2>
+<p>
+A command string consists of a verb optionally followed by sequence of keywords, for example:
+</p>
+<pre class="wiki">make_coffee type=decaf blend = 20:80, Kenyan,Bolivian
+drink
+</pre><p>
+White space surrounding the verb and keywords or appearing at the start or end a command is not significant. The order of keywords supplied to a command is generally meaningful and a keyword name may be repeated within a command. Valid verb names are valid keyword names but with two additional restrictions: "raw" (and all of its case variations) is not permitted and verb names may not contain the dot (.) character.
+</p>
+<p>
+If the keyword "raw" appears in a command, it must be followed by an equals sign. The "raw" keyword has a single value consisting of all remaining characters in the command, including any white space, immediately following the equals sign. No further parsing of the command line is performed and any characters can safely be used without quoting or escaping. For example, the following command has two keywords: "lang" and "raw", and the value of "raw" is " : *+   *  +  ;"
+</p>
+<pre class="wiki">passthru lang = forth raw = : *+   *  +  ;
+</pre><p>
+A verb may be followed by one or more values that are associated with the verb itself and not with any keyword. For example,
+</p>
+<pre class="wiki">drink coffee,tea type=decaf
+</pre><p>
+A command such as:
+</p>
+<pre class="wiki">drink coffee
+</pre><p>
+is potentially ambiguous since "coffee" could be a value associated with the verb "drink" or else the name of a keyword with no associated values. The formal grammar adopted here resolves this ambiguity in favor of the keyword interpretation. Note that there is no ambiguity when the second word is not a valid keyword name or is quoted, so the following would specify "coffee" as a value associated with "drink":
+</p>
+<pre class="wiki">drink "coffee"
+</pre><p>
+<strong>Note:</strong> one of our <strong>requirements</strong> is that actors avoid such ambiguities. The simplest solution is to never allow strings or keywords for the value list following the verb, but instead use an associated keyword for all string and keyword values, e.g. <tt>drink type=coffee</tt>, which will be automatically be parsed the same way as <tt>drink type="coffee"</tt>. If you insist on allowing strings or keywords for the value list after the verb, then you are responsible for resolving the ambiguity yourself, e.g. your actor must treat <tt>drink coffee</tt> and <tt>drink "cofee"</tt> identically even though the parser has parsed them differently.
+</p>
+<p>
+A formal grammar for commands is given below. The last clause augments the keyword definition to include the special "raw" form. The <tt>cmd_keywords</tt> clause differs from <tt>reply_keywords</tt> in two ways: an empty set is permitted and keywords are white-space delimeted.
+</p>
+<pre class="wiki">command : NAME_OR_VALUE
+        | NAME_OR_VALUE NAME_OR_VALUE cmd_keywords
+        | NAME_OR_VALUE RAW LINE
+        | NAME_OR_VALUE NAME_OR_VALUE values cmd_keywords
+        | verb_with_values cmd_keywords
+
+verb_with_values : NAME_OR_VALUE VALUE
+                 | NAME_OR_VALUE QUOTED
+                 | NAME_OR_VALUE NAME_OR_VALUE ',' NAME_OR_VALUE
+                 | verb_with_values ',' value
+
+cmd_keywords : (empty)
+         | cmd_keywords keyword
+
+keyword : NAME_OR_VALUE
+        | NAME_OR_VALUE values
+        | RAW LINE
+</pre>
+        
+        
+      </div>
+          <div class="buttons">
+              <form method="get" action="/wiki/Ops/Protocols" id="modifypage">
+                <div>
+                  <input type="hidden" name="action" value="edit" />
+                      <input type="submit" value="Edit this page" />
+                </div>
+              </form>
+    <form method="get" action="/attachment/wiki/Ops/Protocols/" id="attachfile">
+      <div>
+        <input type="hidden" name="action" value="new" />
+        <input type="submit" name="attachfilebutton" value="Attach file" />
+      </div>
+    </form>
+              <form method="get" action="/wiki/Ops/Protocols">
+                <div id="delete">
+                  <input type="hidden" name="action" value="delete" />
+                  <input type="hidden" name="version" value="16" />
+                    <input type="submit" name="delete_version" value="Delete this version" />
+                  <input type="submit" value="Delete page" />
+                </div>
+              </form>
+          </div>
+    </div>
+    <div id="altlinks">
+      <h3>Download in other formats:</h3>
+      <ul>
+        <li class="last first">
+          <a rel="nofollow" href="/wiki/Ops/Protocols?format=txt">Plain Text</a>
+        </li>
+      </ul>
+    </div>
+    </div>
+    <div id="footer" lang="en" xml:lang="en"><hr />
+      <a id="tracpowered" href="http://trac.edgewall.org/"><img src="/chrome/common/trac_logo_mini.png" height="30" width="107" alt="Trac Powered" /></a>
+      <p class="left">
+        Powered by <a href="/about"><strong>Trac 0.11.2.1</strong></a><br />
+        By <a href="http://www.edgewall.org/">Edgewall Software</a>.
+      </p>
+      <p class="right">Visit the Trac open source project at<br /><a href="http://trac.edgewall.org/">http://trac.edgewall.org/</a></p>
+    </div>
+</body>
+</html>

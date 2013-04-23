@@ -1,0 +1,534 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+  
+  
+
+  
+
+
+  
+
+  <head>
+    <title>
+      Ops/Validation – SDSS-III
+    </title>
+        <link rel="search" href="/search" />
+        <link rel="help" href="/wiki/TracGuide" />
+        <link rel="alternate" href="/wiki/Ops/Validation?format=txt" type="text/x-trac-wiki" title="Plain Text" />
+        <link rel="up" href="/wiki/Ops" title="View parent page" />
+        <link rel="start" href="/wiki" />
+        <link rel="stylesheet" href="/chrome/common/css/trac.css" type="text/css" /><link rel="stylesheet" href="/chrome/common/css/wiki.css" type="text/css" />
+        <link rel="shortcut icon" href="/chrome/site/sdss3.ico" type="image/x-icon" />
+        <link rel="icon" href="/chrome/site/sdss3.ico" type="image/x-icon" />
+      <link type="application/opensearchdescription+xml" rel="search" href="/search/opensearch" title="Search SDSS-III" />
+    <script type="text/javascript" src="/chrome/common/js/jquery.js"></script><script type="text/javascript" src="/chrome/common/js/trac.js"></script><script type="text/javascript" src="/chrome/common/js/search.js"></script>
+    <!--[if lt IE 7]>
+    <script type="text/javascript" src="/chrome/common/js/ie_pre7_hacks.js"></script>
+    <![endif]-->
+    <script type="text/javascript">
+      jQuery(document).ready(function($) {
+        $("#content").find("h1,h2,h3,h4,h5,h6").addAnchor("Link to this section");
+      });
+    </script>
+<link rel="stylesheet" type="text/css" href="/chrome/site/sdss3.css" />
+</head>
+  <body>
+    <div id="banner">
+      <div id="header">
+        <a id="logo" href="http://www.sdss3.org/"><img src="/chrome/site/sdss3shrunk.png" alt="SDSS-III Logo" /></a>
+      </div>
+      <form id="search" action="/search" method="get">
+        <div>
+          <label for="proj-search">Search:</label>
+          <input type="text" id="proj-search" name="q" size="18" value="" />
+          <input type="submit" value="Search" />
+        </div>
+      </form>
+      <div id="metanav" class="nav">
+    <ul>
+      <li class="first">logged in as cloomis</li><li><a href="/logout">Logout</a></li><li><a href="/wiki/TracGuide">Help/Guide</a></li><li><a href="/about">About Trac</a></li><li class="last"><a href="/prefs">Preferences</a></li>
+    </ul>
+  </div>
+    </div>
+    <div id="mainnav" class="nav">
+    <ul>
+      <li class="first active"><a href="/wiki">Wiki</a></li><li><a href="/timeline">Timeline</a></li><li><a href="/roadmap">Roadmap</a></li><li><a href="/browser">Browse Source</a></li><li><a href="/report">View Tickets</a></li><li><a href="/newticket">New Ticket</a></li><li><a href="/search">Search</a></li><li><a href="/admin" title="Administration">Admin</a></li><li class="last"><a href="/tracmailman">Mailing Lists</a></li>
+    </ul>
+  </div>
+    <div id="main">
+      <div id="ctxtnav" class="nav">
+        <h2>Context Navigation</h2>
+          <ul>
+            <li class="first "><a href="/wiki/Ops">Up</a></li><li><a href="/wiki/WikiStart">Start Page</a></li><li><a href="/wiki/TitleIndex">Index</a></li><li><a href="/wiki/Ops/Validation?action=history">History</a></li><li><a href="/wiki/Ops/Validation?action=diff&amp;version=35">Last Change</a></li><li class="last"><a href="/admin/general/wikirename?redirect=1&amp;src_page=Ops%2FValidation">Rename page</a></li>
+          </ul>
+        <hr />
+      </div>
+    <div id="content" class="wiki">
+      <p class="path">
+        <a class="pathentry" title="View Ops" href="/wiki/Ops">Ops</a><span class="pathentry sep">/</span><a class="pathentry" title="View Ops/Validation" href="/wiki/Ops/Validation">Validation</a>
+        <br style="clear: both" />
+      </p>
+      <div class="wikipage searchable">
+        
+          <p>
+</p><div class="wiki-toc"><ol><li><a href="#MessageValidationandCallbackFramework">Message Validation and Callback Framework</a><ol><li><a href="#Keywords">Keywords</a><ol><li><a href="#KeywordCreation">Keyword Creation</a></li><li>
+<a href="#KeywordValidation">Keyword Validation</a></li><li>
+<a href="#KeywordDocumentation">Keyword Documentation</a></li></ol></li><li>
+<a href="#Commands">Commands</a><ol><li><a href="#KeysFormatString">Keys Format String</a></li><li>
+<a href="#CommandCreation">Command Creation</a></li><li>
+<a href="#CommandValidation">Command Validation</a></li><li>
+<a href="#CommandDocumentation">Command Documentation</a></li><li>
+<a href="#CommandCallbacks">Command Callbacks</a></li></ol></li><li>
+<a href="#Replies">Replies</a></li></ol></li></ol></div><p>
+</p>
+<p>
+From <a class="wiki" href="/wiki/OperationsSoftware">Ops</a>/<a class="wiki" href="/wiki/Ops/Core">Core</a>
+</p>
+<h1 id="MessageValidationandCallbackFramework">Message Validation and Callback Framework</h1>
+<p>
+The formal grammars that define <a class="wiki" href="/wiki/Ops/Protocols">valid command and reply strings</a> enable a <a class="wiki" href="/wiki/Ops/Parsing">parser</a> to perform a first level of validation, but additional validation is generally required to ensure that keyword values can be interpreted according to their <a class="wiki" href="/wiki/Ops/Types">expected types</a> (the grammar considers all keyword values to be strings) and, for commands, to test for valid keyword sequences.
+</p>
+<p>
+This page describes a python framework for declaring valid keywords and commands, and associating them with user-defined callbacks. The framework is implemented in the python modules <a class="source" href="/browser/repo/ops/opscore/trunk/python/opscore/protocols/validation.py">opscore.protocols.validation</a>, <a class="source" href="/browser/repo/ops/opscore/trunk/python/opscore/protocols/keysformat.py">opscore.protocols.keysformat</a> and <a class="source" href="/browser/repo/ops/opscore/trunk/python/opscore/protocols/keys.py">opscore.protocols.keys</a>.
+</p>
+<h2 id="Keywords">Keywords</h2>
+<p>
+A keyword validator associates a keyword name with a list of expected value types, for example:
+</p>
+<pre class="wiki">Key('Position',
+    Float(units='deg',strFmt='%.3f')*2,
+    Enum('AltAz','RADec',help='Coordinate system'),    
+    help='Object position.')
+</pre><p>
+The resulting Key object serves as a template for valid Keyword objects. The general format is
+</p>
+<pre class="wiki">Key(&lt;name&gt;,&lt;type-1&gt;,&lt;type-2&gt;,...&lt;type-n&gt;,help=...)
+</pre><p>
+where the <tt>help</tt> value is optional and type declarations are <a class="wiki" href="/wiki/Ops/Types">documented elsewhere</a>.
+</p>
+<p>
+Note that the Key object stores the name with whatever capitalization is provided, for improved readability of the code and any automatically generated documentation. However, for the purposes of validation, keyword name matches are case insensitive and names must be unique within the namespace of a <a class="wiki" href="/wiki/Ops/KeysDictionary">Keys dictionary</a>, which usually groups together all reply or command keywords of a single actor.
+</p>
+<h3 id="KeywordCreation">Keyword Creation</h3>
+<p>
+A Key object serves as a template for creating new Keyword instances from a list of values. Values can be either strings to be interpreted or else already typed, but must be compatible with the types declared for the Key object. Values can either be provided in a list:
+</p>
+<pre class="wiki">key.create(['-1.2',0xdead,'beef'])
+key.create([-1.2,'dead',0xbeef])
+</pre><p>
+or else as individual arguments:
+</p>
+<pre class="wiki">key.create('-1.2',0xdead,'beef')
+key.create(-1.2,'dead',0xbeef)
+</pre><p>
+In case the wrong number of values is provided or the provided values have the wrong types, the <tt>create</tt> method raises a <tt>KeysError</tt> exception. The generated Keyword will used the stored capitalization of the keyword name, rather than a canonical lower/upper case form, for improved readability.
+</p>
+<h3 id="KeywordValidation">Keyword Validation</h3>
+<p>
+Although you will not normally use a Key to directly validate a Keyword, this is how it works:
+</p>
+<pre class="wiki">from opscore.protocols import types,keys,messages
+
+key = keys.Key('keyname',types.Float(),types.Hex()*2)
+keyword = messages.Keyword('keyname',['-1.23','dead','beef'])
+if key.consume(keyword):
+    x,j,k = keyword.values
+</pre><p>
+The <tt>consume</tt> method returns <tt>True</tt> if its argument is a matching keyword and also replaces the string keyword values with their typed equivalents in the keyword object. No keyword values will be replaced unless they all can be successfully converted to the appropriate types, so the typing operation is guaranteed to be atomic. This ensures that the keyword values always represent the best available knowledge without requiring users to keep track of the processing history of a keyword. In case you care about whether values have been successfully converted to types, you can test the keyword's <tt>matched</tt> attribute.
+</p>
+<p>
+If you want to understand how the consume action works in detail, you can enable its debug output using:
+</p>
+<pre class="wiki">keys.Consumer.debug = True
+</pre><p>
+Any subsequent consume commands will now generate output like this:
+</p>
+<pre class="wiki">Key(keyname) &lt;&lt; KEY(keyname)=['-1.23', 'dead', 'beef']
+ Types[Float*1, Hex*2] &lt;&lt; ['-1.23', 'dead', 'beef']
+ PASS &gt;&gt; [Float(-1.23), Hex(0xdead), Hex(0xbeef)]
+PASS &gt;&gt; {KEY(keyname)=[Float(-1.23), Hex(0xdead), Hex(0xbeef)]}
+</pre><p>
+Each pair of lines at the same indentation level shows the input stack fed to a consumer (&lt;&lt;) and the resulting output (&gt;&gt;). Nested indentation shows the consumer calling chain.
+</p>
+<h3 id="KeywordDocumentation">Keyword Documentation</h3>
+<p>
+A keyword validator can describe the keywords it matches in either plain text:
+</p>
+<pre class="wiki">key = Key('AltLim',
+    types.Float(units='deg',strFormat='%.2f',help='min/max position limits')*2,
+    types.Float(units='deg/s',strFormat='%.1f',help='max velocity'),
+    types.Float(units='deg/s^2',strFormat='%.1f',help='max acceleration'),
+    types.Float(units='deg/s^3',strFormat='%.1f',help='max jerk'),
+    help='TCC altitude motion limits (not the limits used by the axis controller itself).'
+)
+print key.describe()
+</pre><pre class="wiki">     Keyword: AltLim
+ Description: TCC altitude motion limits (not the limits used by the axis controller itself).
+      Values: 5
+
+        Repeated: 2 times
+     Description: min/max position limits
+            Type: Float (float)
+           Units: deg
+
+        Repeated: once
+     Description: max velocity
+            Type: Float (float)
+           Units: deg/s
+
+        Repeated: once
+     Description: max acceleration
+            Type: Float (float)
+           Units: deg/s^2
+
+        Repeated: once
+     Description: max jerk
+            Type: Float (float)
+           Units: deg/s^3
+</pre><p>
+or else in HTML format:
+</p>
+<pre class="wiki">print &gt;&gt; htmlfile, key.describeAsHTML()
+</pre><pre class="wiki">&lt;div class="key"&gt;
+  &lt;div class="descriptor"&gt;&lt;span class="label"&gt;Keyword&lt;/span&gt;&lt;span class="value"&gt;AltLim&lt;/span&gt;&lt;/div&gt;
+  &lt;div class="descriptor"&gt;&lt;span class="label"&gt;Description&lt;/span&gt;&lt;span class="value"&gt;TCC altitude motion limits (not the limits used by the axis controller itself).&lt;/span&gt;&lt;/div&gt;
+  &lt;div class="vtypes"&gt;
+    &lt;div class="descriptor"&gt;&lt;span class="label"&gt;Values&lt;/span&gt;&lt;span class="value"&gt;5&lt;/span&gt;&lt;/div&gt;
+    &lt;div class="vtype"&gt;
+      &lt;div class="descriptor"&gt;&lt;span class="label"&gt;Repeated&lt;/span&gt;&lt;span class="value"&gt;2 times&lt;/span&gt;&lt;/div&gt;
+      &lt;div class="descriptor"&gt;&lt;span class="label"&gt;Description&lt;/span&gt;&lt;span class="value"&gt;min/max position limits&lt;/span&gt;&lt;/div&gt;
+      &lt;div class="descriptor"&gt;&lt;span class="label"&gt;Type&lt;/span&gt;&lt;span class="value"&gt;Float (float)&lt;/span&gt;&lt;/div&gt;
+      &lt;div class="descriptor"&gt;&lt;span class="label"&gt;Units&lt;/span&gt;&lt;span class="value"&gt;deg&lt;/span&gt;&lt;/div&gt;
+    &lt;/div&gt;
+
+    ...
+
+    &lt;div class="vtype"&gt;
+      &lt;div class="descriptor"&gt;&lt;span class="label"&gt;Repeated&lt;/span&gt;&lt;span class="value"&gt;once&lt;/span&gt;&lt;/div&gt;
+      &lt;div class="descriptor"&gt;&lt;span class="label"&gt;Description&lt;/span&gt;&lt;span class="value"&gt;max jerk&lt;/span&gt;&lt;/div&gt;
+      &lt;div class="descriptor"&gt;&lt;span class="label"&gt;Type&lt;/span&gt;&lt;span class="value"&gt;Float (float)&lt;/span&gt;&lt;/div&gt;
+      &lt;div class="descriptor"&gt;&lt;span class="label"&gt;Units&lt;/span&gt;&lt;span class="value"&gt;deg/s^3&lt;/span&gt;&lt;/div&gt;
+    &lt;/div&gt;
+  &lt;/div&gt;
+&lt;/div&gt;
+</pre><p>
+In either case, the optional <tt>help</tt> metadata is included as the keyword description. The HTML output is tagged with CSS class names to allow user-defined styling.
+</p>
+<p>
+Multi-line keyword descriptions will be wrapped for a total output width of 80 columns using the python <a class="ext-link" href="http://www.python.org/doc/2.5.2/lib/module-textwrap.html"><span class="icon">textwrap module</span></a>. Leading white space in triple-quoted strings will also be removed.
+</p>
+<h2 id="Commands">Commands</h2>
+<p>
+A command has three components to be validated:
+</p>
+<ul><li>verb name (required)
+</li><li>command values not associated with any keyword (optional)
+</li><li>keywords (optional)
+</li></ul><p>
+The general form of a command validator is:
+</p>
+<pre class="wiki">Cmd(&lt;verb&gt;,&lt;type-1&gt;,&lt;type-2&gt;,...,&lt;type-n&gt;,&lt;keys-format&gt;,help="...")
+</pre><p>
+where only the initial verb is required. Command values are specified in exactly the same way as keyword values and the help argument should be used to provide a general description of a command. The new ingredient required to specify a valid command is a keywords format string, described in detail in the following section. Some examples of command validators are:
+</p>
+<pre class="wiki">Cmd('expose','@(object|flat|dark|sky|calib) &lt;time&gt;',
+    help='Starts an exposure and does not save the resuting image.')
+Cmd('expose','@(object|flat|dark|sky|calib) &lt;time&gt; &lt;filename&gt; [&lt;window&gt;] [&lt;bin&gt;]',
+    help='Starts an exposure and saves the result image to a file.')
+Cmd('expose','abort',
+    help='Aborts any current exposure.')
+</pre><h3 id="KeysFormatString">Keys Format String</h3>
+<p>
+There are three ways to match a single keyword in a format string:
+</p>
+<ul><li>A bare keyword name matches a keyword that does not have any associated values
+</li><li>A keyword name enclosed in angle &lt;brackets&gt; looks up a corresponding Key definition which will generally specify values and metadata
+</li><li>A logical OR of the previous two forms, written using '|' without any whitespace between keywords
+</li></ul><p>
+The second form looks up Key definitions by name in a <a class="wiki" href="/wiki/Ops/KeysDictionary">keys dictionary</a> that has been assigned using:
+</p>
+<pre class="wiki">CmdKey.setKeys(keysdict)
+</pre><p>
+Multiple keys dictionaries can be searched using:
+</p>
+<pre class="wiki">CmdKey.addKeys(keysdict1)
+CmdKey.addKeys(keysdict2)
+...
+</pre><p>
+Here are some examples of valid single-key format strings:
+</p>
+<pre class="wiki">key
+&lt;key&gt;
+key1|key2
+&lt;key1&gt;|&lt;key2&gt;
+key1|&lt;key2&gt;
+</pre><p>
+Single keys are combined into a key group by listing them with intervening space, for example:
+</p>
+<pre class="wiki">key1 key2 key3
+&lt;key1&gt; key2 &lt;key3a|key3b&gt;
+</pre><p>
+By default, all keywords listed in a group must be present in the command but not necessarily in the order they are listed in the format string. Single keys in a group can be decorated in two ways to change their default matching behavior:
+</p>
+<ul><li>@key indicates that a matching keyword must appear at the beginning of a group, changing the default behavior that keyword order does not matter. If more than one key of a group is decorated in this way, they must appear in the order they are listed. All positioned keys must be listed before any non-positioned keys in a key group.
+</li><li>[key] indicates that a keyword is optional, changing the default behavior that all keys of a group must match a corresponding keyword. Optional keys can appear at any position in a key group. A positioned and optional key, written as @[key], indicates that a matching keyword, if present, must appear at the beginning of a command.
+</li></ul><p>
+Here are all the valid two-key groups with positioned keys:
+</p>
+<pre class="wiki">@key1 key2
+@key2 key1
+@key1 @key2
+@key2 @key1
+</pre><p>
+and here are the valid distinct two-key groups with optional keys (with no positioned keys, order does not matter and permutations are not distinct):
+</p>
+<pre class="wiki">[key1] key2
+key1 [key2]
+[key1] [key2]
+</pre><p>
+Finally, a format string supports a limited notion of hierarchical keywords via subgroups that must match as a unit:
+</p>
+<pre class="wiki">key1 (@key2 [key2a] [key2b]) key3
+</pre><p>
+The subgroup is treated as a single-key unit of its parent group and so can be positioned @(...) or made optional [(...)] in its parent context. [...] can be written in place of [(...)]. Positioning within a subgroup is relative to the first keyword where the subgroup match is attempted, so that the following command keywords would be valid matches for the example above:
+</p>
+<pre class="wiki">key1 key2 key3
+key2 key2a key3 key1
+key3 key1 key2 key2b key2a
+</pre><p>
+while the following would not match:
+</p>
+<pre class="wiki">key1 key2a key2 key3
+key2 key1 key2b key3
+key3 key2 key1 key2b key2a
+</pre><p>
+The parsing code for keys format strings is in the <a class="source" href="/browser/repo/ops/trunk/ops/core/protocols/keysformat.py">ops.core.protocols.keysformat</a> module.
+</p>
+<h3 id="CommandCreation">Command Creation</h3>
+<p>
+A Cmd object serves as a template for creating new Command instances from either a list of keywords or a sequence of keyword parameters:
+</p>
+<pre class="wiki">command = Cmd.create([&lt;key-1&gt;,&lt;key-2&gt;,...])
+command = Cmd.create(&lt;key-1&gt;,&lt;key-2&gt;,...)
+</pre><p>
+Keywords that have no associated values can be specified simply as strings:
+</p>
+<pre class="wiki">command = Cmd.create("key1","key2",...)
+</pre><p>
+All other keywords should already have a corresponding Key object that has been registered with <tt>CmdKey.setKeys(...)</tt> or <tt>CmdKey.addKeys(...)</tt>, and are specified with a tuple:
+</p>
+<pre class="wiki">command = Cmd.create(("key1",&lt;value-1&gt;,&lt;value-2&gt;,...),...)
+</pre><p>
+or, equivalently,
+</p>
+<pre class="wiki">command = Cmd.create(("key1",[&lt;value-1&gt;,&lt;value-2&gt;,...]),...)
+</pre><p>
+In case the wrong number of values is provided or the provided values have the wrong types, the create method raises a <tt>KeysError</tt> exception. Other errors, such as an incorrect sequence of valid keywords, will raise a <tt>ValidationError</tt> exception.
+</p>
+<p>
+If a command takes values that are not associated with any keyword, these should be appended as a named list:
+</p>
+<pre class="wiki">command = Cmd.create(...,values=[1.23,'0xbeef'])
+</pre><p>
+As always, each value can either be provided as a string or already typed. Invalid command values will raise a <tt>ValidationError</tt>.
+</p>
+<h3 id="CommandValidation">Command Validation</h3>
+<p>
+Although you will not normally use a Cmd to directly validate a Command, this is how it works (help metadata has been omitted for clarity). First, register the <a class="wiki" href="/wiki/Ops/KeysDictionary">keys dictionary</a> that defines any keywords referenced in the command's format string:
+</p>
+<pre class="wiki">CmdKey.setKeys(keysdict)
+</pre><p>
+Next, define the command validator to use:
+</p>
+<pre class="wiki">cmd = Cmd('expose','@(object|flat|dark|sky|calib) &lt;time&gt; &lt;filename&gt; [&lt;window&gt;] [&lt;offset&gt;] [&lt;size&gt;] [&lt;bin&gt;]')
+</pre><p>
+A validation target can either be built using the validator as a template, for example:
+</p>
+<pre class="wiki">command = cmd.create("calib",("filename","sky.fits"),("bin",16,16),("time",12.345),("offset",0,0))
+</pre><p>
+or else by parsing a valid command string:
+</p>
+<pre class="wiki">from ops.core.protocols.parser import CommandParser
+
+parser = CommandParser()
+command = parser.parse("expose calib filename='sky.fits' bin=16,16 time=12.345 offset=0,0")
+</pre><p>
+Finally, test the target command for a valid match using:
+</p>
+<pre class="wiki">if cmd.consume(command):
+    exposureType = command.keywords[0]
+    filename = command.keywords['filename'].values[0]
+    if 'window' in command.keywords:
+        llx,urx,lly,ury = command.keywords['window'].values
+</pre><p>
+Note that after a successful validation, all keyword values will have been overwritten with their typed equivalents (but no values will be overwritten for a partial match).
+</p>
+<p>
+All keywords present in a command must be matched against the keys format string and no unmatched keywords are allowed for a valid match. Keywords with the same name may be repeated in a command, with either the same or different value types (although actor designers are discouraged from using this feature without good reason).
+</p>
+<h3 id="CommandDocumentation">Command Documentation</h3>
+<p>
+A command validator can describe the commands it matches in either plain text:
+</p>
+<pre class="wiki">print cmd.describe()
+</pre><p>
+or else in HTML format:
+</p>
+<pre class="wiki">print &gt;&gt; htmlfile, cmd.describeAsHTML()
+</pre><p>
+Refer to the description of keyword documentation for details. Here is an example of a plain text command description:
+</p>
+<pre class="wiki">     Command: expose
+ Description: Take an exposure and save the results in a FITS file
+      Values: none
+    Keywords: @(object|flat|dark|sky|calib) &lt;time&gt; &lt;filename&gt; [&lt;window&gt;] [&lt;offset&gt;] [&lt;size&gt;] [&lt;bin&gt;]
+</pre><p>
+Note that the keywords are not described here since they would normally be described once for a group of command sharing a keys dictionary.
+</p>
+<h3 id="CommandCallbacks">Command Callbacks</h3>
+<p>
+A <tt>CommandHandler</tt> consumes commands as strings, attempts to parse them and, if the parse is successful, tests them against a list of command validators. Each validator can be associated with a callback chain using '&gt;&gt;' operator notation (borrowed from C++ iostreams):
+</p>
+<pre class="wiki">handler = CommandHandler(
+    Cmd('expose','@(object|flat|dark|sky|calib) &lt;time&gt;') &gt;&gt; exposeNoFile,
+    Cmd('expose','@(object|flat|dark|sky|calib) &lt;time&gt; &lt;filename&gt; [&lt;window&gt;] [&lt;offset&gt;] [&lt;size&gt;] [&lt;bin&gt;]') &gt;&gt; exposeWithFile,
+    Cmd('expose','@abort') &gt;&gt; exposeAbort
+)
+</pre><p>
+Feed a command handler using:
+</p>
+<pre class="wiki">handler.consume("""
+expose object time=12.345
+expose flat filename='flat.fits' time=12.345
+expose dark filename='dark.fits' time=12.345 window=0,0,100,100
+expose sky time=12.345 filename='sky.fits' bin=16,16
+expose calib filename='sky.fits' bin=16,16 time=12.345 offset=0,0
+expose abort
+""")
+</pre><p>
+Callbacks are invoked with a single argument: a validated and parsed Command object with typed command and keyword values. Implementations of the callbacks used above might look like this:
+</p>
+<pre class="wiki">def exposeNoFile(cmd):
+    exposureType = cmd.keywords[0]
+
+def exposeWithFile(cmd):
+    exposureType = cmd.keywords[0]
+    filename = cmd.keywords['filename'].values[0]
+    if 'window' in cmd.keywords:
+        llx,urx,lly,ury = cmd.keywords['window'].values
+
+def exposeAbort(cmd):
+    print 'aborting...'
+</pre><p>
+Callbacks can be any callable python object (in particular you can pass in a functor;  this allows you to pass your own data to the callback). The validation module defines a callable Trace class that prints out any command it receives, prefixed by an optional tag provided to the constructor:
+</p>
+<pre class="wiki">Cmd(...) &gt;&gt; Trace()
+Cmd(...) &gt;&gt; Trace('Got expose command')
+</pre><p>
+Any exception raised by a callback will be passed on by the handler's <tt>consume</tt> method. Any callback return value is ignored.
+</p>
+<p>
+Mutiple callbacks can be chained together on a single validator:
+</p>
+<pre class="wiki">Cmd(...) &gt;&gt; callback1 &gt;&gt; callback2 &gt;&gt; callback3
+</pre><p>
+They will all be called (unless one raises an exception) in the order listed. Any changes to the attributes of the command object passed to one callback will be visible to subsequent callbacks in the same chain.
+</p>
+<p>
+An alternative way to use callbacks is via the <tt>match</tt> method, which takes a single command and returns the parsed command and a list of callbacks:
+</p>
+<pre class="wiki">cmd, funcList = handler.match("expose flat filename='flat.fits' time=12.345")
+
+for func in funcList:
+    func(cmd, 666)
+</pre><p>
+<a class="wiki" href="/wiki/Ops/CommandParsingExample">Here's</a> an example of your various command parsing options.
+</p>
+<h2 id="Replies">Replies</h2>
+<p>
+The following describes a simple reply callback mechanism that is suitable for testing and simple applications. TUI uses a more sophisticated dispatch mechanism.
+</p>
+<p>
+Reply messages are handled using a combination of the ingredients describe above. Valid reply keywords are collected in a <a class="wiki" href="/wiki/Ops/KeysDictionary">keys dictionary</a> and registered using:
+</p>
+<pre class="wiki">ReplyKey.setKeys(keysdict)
+</pre><p>
+or, with key validators spread across multiple dictionaries,
+</p>
+<pre class="wiki">ReplyKey.addKeys(keysdict1)
+ReplyKey.addKeys(keysdict2)
+...
+</pre><p>
+A <tt>ReplyHandler</tt> consumes replies as strings, attempts to parse them and, if the parse is successful, tests them against a list of reply keyword validators. Each validator can be associated with a callback chain using '&gt;&gt;' operator notation:
+</p>
+<pre class="wiki">handler = ReplyHandler(
+    ReplyKey('dspload') &gt;&gt; Trace('REPLY') &gt;&gt; dspload,
+    ReplyKey('arrayPower') &gt;&gt; Trace('REPLY'),
+    ReplyKey('exposureState') &gt;&gt; Trace('REPLY') &gt;&gt; exposureState,
+    ReplyKey('exposureMode') &gt;&gt; Trace('REPLY')
+)
+</pre><p>
+Feed a reply handler using:
+</p>
+<pre class="wiki">handler.consume("""
+dspload='myfile.dat'
+arrayPower = off ; exposureState = processing , 12.34 , 0.123
+exposureMode='fowler',12;arrayPower='?'
+""")
+</pre><p>
+Reply keyword callbacks are invoked with a validated and parsed Keyword object with typed values. Implementations of the callbacks used above might look like this:
+</p>
+<pre class="wiki">def dspload(key):
+    filename = key.values[0]
+
+def exposureState(key):
+    state,completionTime,remainingTime = key.values
+</pre><p>
+Reply keyword callbacks can be chained and modify their argument, as described above for command callbacks.
+</p>
+
+        
+        
+      </div>
+          <div class="buttons">
+              <form method="get" action="/wiki/Ops/Validation" id="modifypage">
+                <div>
+                  <input type="hidden" name="action" value="edit" />
+                      <input type="submit" value="Edit this page" />
+                </div>
+              </form>
+    <form method="get" action="/attachment/wiki/Ops/Validation/" id="attachfile">
+      <div>
+        <input type="hidden" name="action" value="new" />
+        <input type="submit" name="attachfilebutton" value="Attach file" />
+      </div>
+    </form>
+              <form method="get" action="/wiki/Ops/Validation">
+                <div id="delete">
+                  <input type="hidden" name="action" value="delete" />
+                  <input type="hidden" name="version" value="35" />
+                    <input type="submit" name="delete_version" value="Delete this version" />
+                  <input type="submit" value="Delete page" />
+                </div>
+              </form>
+          </div>
+    </div>
+    <div id="altlinks">
+      <h3>Download in other formats:</h3>
+      <ul>
+        <li class="last first">
+          <a rel="nofollow" href="/wiki/Ops/Validation?format=txt">Plain Text</a>
+        </li>
+      </ul>
+    </div>
+    </div>
+    <div id="footer" lang="en" xml:lang="en"><hr />
+      <a id="tracpowered" href="http://trac.edgewall.org/"><img src="/chrome/common/trac_logo_mini.png" height="30" width="107" alt="Trac Powered" /></a>
+      <p class="left">
+        Powered by <a href="/about"><strong>Trac 0.11.2.1</strong></a><br />
+        By <a href="http://www.edgewall.org/">Edgewall Software</a>.
+      </p>
+      <p class="right">Visit the Trac open source project at<br /><a href="http://trac.edgewall.org/">http://trac.edgewall.org/</a></p>
+    </div>
+</body>
+</html>

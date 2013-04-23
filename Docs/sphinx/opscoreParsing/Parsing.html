@@ -1,0 +1,306 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+  
+  
+
+  
+
+
+  
+
+  <head>
+    <title>
+      Ops/Parsing – SDSS-III
+    </title>
+        <link rel="search" href="/search" />
+        <link rel="help" href="/wiki/TracGuide" />
+        <link rel="alternate" href="/wiki/Ops/Parsing?format=txt" type="text/x-trac-wiki" title="Plain Text" />
+        <link rel="up" href="/wiki/Ops" title="View parent page" />
+        <link rel="start" href="/wiki" />
+        <link rel="stylesheet" href="/chrome/common/css/trac.css" type="text/css" /><link rel="stylesheet" href="/chrome/common/css/wiki.css" type="text/css" />
+        <link rel="shortcut icon" href="/chrome/site/sdss3.ico" type="image/x-icon" />
+        <link rel="icon" href="/chrome/site/sdss3.ico" type="image/x-icon" />
+      <link type="application/opensearchdescription+xml" rel="search" href="/search/opensearch" title="Search SDSS-III" />
+    <script type="text/javascript" src="/chrome/common/js/jquery.js"></script><script type="text/javascript" src="/chrome/common/js/trac.js"></script><script type="text/javascript" src="/chrome/common/js/search.js"></script>
+    <!--[if lt IE 7]>
+    <script type="text/javascript" src="/chrome/common/js/ie_pre7_hacks.js"></script>
+    <![endif]-->
+    <script type="text/javascript">
+      jQuery(document).ready(function($) {
+        $("#content").find("h1,h2,h3,h4,h5,h6").addAnchor("Link to this section");
+      });
+    </script>
+<link rel="stylesheet" type="text/css" href="/chrome/site/sdss3.css" />
+</head>
+  <body>
+    <div id="banner">
+      <div id="header">
+        <a id="logo" href="http://www.sdss3.org/"><img src="/chrome/site/sdss3shrunk.png" alt="SDSS-III Logo" /></a>
+      </div>
+      <form id="search" action="/search" method="get">
+        <div>
+          <label for="proj-search">Search:</label>
+          <input type="text" id="proj-search" name="q" size="18" value="" />
+          <input type="submit" value="Search" />
+        </div>
+      </form>
+      <div id="metanav" class="nav">
+    <ul>
+      <li class="first">logged in as cloomis</li><li><a href="/logout">Logout</a></li><li><a href="/wiki/TracGuide">Help/Guide</a></li><li><a href="/about">About Trac</a></li><li class="last"><a href="/prefs">Preferences</a></li>
+    </ul>
+  </div>
+    </div>
+    <div id="mainnav" class="nav">
+    <ul>
+      <li class="first active"><a href="/wiki">Wiki</a></li><li><a href="/timeline">Timeline</a></li><li><a href="/roadmap">Roadmap</a></li><li><a href="/browser">Browse Source</a></li><li><a href="/report">View Tickets</a></li><li><a href="/newticket">New Ticket</a></li><li><a href="/search">Search</a></li><li><a href="/admin" title="Administration">Admin</a></li><li class="last"><a href="/tracmailman">Mailing Lists</a></li>
+    </ul>
+  </div>
+    <div id="main">
+      <div id="ctxtnav" class="nav">
+        <h2>Context Navigation</h2>
+          <ul>
+            <li class="first "><a href="/wiki/Ops">Up</a></li><li><a href="/wiki/WikiStart">Start Page</a></li><li><a href="/wiki/TitleIndex">Index</a></li><li><a href="/wiki/Ops/Parsing?action=history">History</a></li><li><a href="/wiki/Ops/Parsing?action=diff&amp;version=16">Last Change</a></li><li class="last"><a href="/admin/general/wikirename?redirect=1&amp;src_page=Ops%2FParsing">Rename page</a></li>
+          </ul>
+        <hr />
+      </div>
+    <div id="content" class="wiki">
+      <p class="path">
+        <a class="pathentry" title="View Ops" href="/wiki/Ops">Ops</a><span class="pathentry sep">/</span><a class="pathentry" title="View Ops/Parsing" href="/wiki/Ops/Parsing">Parsing</a>
+        <br style="clear: both" />
+      </p>
+      <div class="wikipage searchable">
+        
+          <p>
+</p><div class="wiki-toc"><ol><li><a href="#ParsingSupportforOperationsSoftwareMessages">Parsing Support for Operations Software Messages</a><ol><li><a href="#Interface">Interface</a><ol><li><a href="#ReplyHeaders">Reply Headers</a></li><li>
+<a href="#OrderedKeywordDictionaries">Ordered Keyword Dictionaries</a></li><li>
+<a href="#KeywordObjects">Keyword Objects</a></li><li>
+<a href="#StringRepresentations">String Representations</a></li></ol></li><li>
+<a href="#Implementation">Implementation</a></li></ol></li></ol></div><p>
+</p>
+<p>
+From <a class="wiki" href="/wiki/OperationsSoftware">Ops</a>/<a class="wiki" href="/wiki/Ops/Core">Core</a>
+</p>
+<h1 id="ParsingSupportforOperationsSoftwareMessages">Parsing Support for Operations Software Messages</h1>
+<p>
+This page describes the interface and implementation of parsers for the standard operations software messages. The underlying protocols being parsed are described <a class="wiki" href="/wiki/Ops/Protocols">here</a>.
+</p>
+<h2 id="Interface">Interface</h2>
+<p>
+The command and reply string parsers return Command and Reply objects (defined in <a class="source" href="/browser/repo/ops/opscore/trunk/python/opscore/protocols/messages.py">opscore.protocols.messages</a>) that each contain an ordered dictionary of Keyword objects. For example, a list of reply keywords can be processed in order using:
+</p>
+<pre class="wiki">from opscore.protocols.parser import ReplyParser,ParseError
+
+rParser = ReplyParser()
+try:
+    reply = rParser.parse("tui.operator 911 BossICC : type=decaf;blend = 20:80, Kenyan,Bolivian ; now")
+    for keyword in reply.keywords:
+        print ' ',keyword.name,keyword.values
+except ParseError:
+    ...
+</pre><p>
+A Command provides two additional attributes:
+</p>
+<ul><li>name: the verb associated with this command
+</li><li>values: any values associated with the verb
+</li></ul><p>
+and can be parsed in a similar way:
+</p>
+<pre class="wiki">from opscore.protocols.parser import CommandParser,ParseError
+
+cParser = CommandParser()
+try:
+    cmd = cParser.parse("drink 'coffee' type=decaf blend = 20:80, Kenyan,Bolivian now")
+    print cmd.name,cmd.values
+    for keyword in cmd.keywords:
+        print ' ',keyword.name,keyword.values
+except ParseError:
+    ...
+</pre><p>
+Both the Command and Reply classes include a <tt>string</tt> attribute that stores the original input text before parsing.
+</p>
+<p>
+The message classes (Command, Reply, Keywords, Keyword, Values) are designed to be instantiated by the parser and so only perform minimal protocol validation and do not test assertions that are already guaranteed by the grammar. A message validation framework, built on top of the parser, is <a class="wiki" href="/wiki/Ops/Validation">documented here</a>.
+</p>
+<h3 id="ReplyHeaders">Reply Headers</h3>
+<p>
+A parsed reply has a header attribute that stores the fields <a class="wiki" href="/wiki/Ops/Protocols#ReplyHeader">described here</a>. To access the four individual words use:
+</p>
+<pre class="wiki">hdr = reply.header
+print hdr.cmdrName,hdr.commandId,hdr.actor,hdr.code
+</pre><p>
+The subfields of the commander name are also available and will be empty strings in case an optional subfield is not present in the reply message:
+</p>
+<pre class="wiki">print hdr.programName,hdr.userName,hdr.actorStack
+</pre><p>
+The code attribute is an instance of a <a class="wiki" href="/wiki/Ops/Types#EnumeratedValueType">enumerated type</a> defined as follows:
+</p>
+<pre class="wiki">MsgCode = types.Enum('&gt;','D','I','W',':','F','!',
+    labelHelp=['Queued','Debug','Information','Warning','Finished','Error','Fatal'],
+    name='code',help='Reply header status code')
+</pre><p>
+Header codes can be directly compared against the enumeration labels:
+</p>
+<pre class="wiki">if hdr.code == 'F':
+   print 'Error'
+</pre><p>
+You can also check if the code is contained within a set of codes using, for example:
+</p>
+<pre class="wiki">if hdr.code in 'F!:':
+   print 'Done'
+</pre><h3 id="OrderedKeywordDictionaries">Ordered Keyword Dictionaries</h3>
+<p>
+The examples above iterate through <tt>cmd.keywords</tt> and <tt>reply.keywords</tt> as ordered lists of Keyword objects:
+</p>
+<pre class="wiki">for keyword in parsed.keywords:
+   ...
+</pre><p>
+Keywords can also be directly indexed by position starting from zero:
+</p>
+<pre class="wiki">first = parsed.keywords[0]
+second = parsed.keywords[1]
+...
+last = parsed.keywords[-1]
+</pre><p>
+Valid indices are less than <tt>len(parsed.keywords)</tt>.
+</p>
+<p>
+In cases where keyword order is not significant, keywords can also be indexed by keyword name (this does not introduce any ambiguities since integers are not valid keyword names):
+</p>
+<pre class="wiki">mode = parsed.keywords['mode']
+</pre><p>
+The presence of a keyword name can be tested with the usual <tt>in</tt> operator:
+</p>
+<pre class="wiki">if 'mode' in parsed.keywords:
+   ...
+</pre><p>
+Note that keyword name matching is always case insensitive, but keyword.name preserves the actual case used.
+</p>
+<p>
+Finally, keywords can be sliced to support mixed positional and unordered processing logic:
+</p>
+<pre class="wiki">required = parsed.keywords[0]
+if 'optional' in parsed.keywords[1:]:
+  ...
+</pre><h3 id="KeywordObjects">Keyword Objects</h3>
+<p>
+A keyword object has the following fields:
+</p>
+<ul><li>name: string keyword name
+</li><li>values: a list of values
+</li></ul><p>
+After parsing, values are stored as opaque strings. Use the <a class="wiki" href="/wiki/Ops/Validation">validation framework</a> to check for the expected number of values and their <a class="wiki" href="/wiki/Ops/Types">data types</a> and, if successful, replace the string values with their typed equivalents.
+</p>
+<h3 id="StringRepresentations">String Representations</h3>
+<p>
+Message classes provide three string representations:
+</p>
+<ul><li>repr(result) is a compact representation of the command.
+</li><li>result.canonical() displays the command in a standard format that serves to define semantic equivalence of commands and is used for <tt>__eq__</tt> and <tt>__ne__</tt> tests.
+</li><li>result.tokenized() displays the command's parse tokens in a standard format that serves to define grammatical equivalence of commands.
+</li></ul><p>
+For the sample command parsed above, the corresponding string representations are:
+</p>
+<pre class="wiki">CMD('drink'=['coffee'];[KEY(type)=['decaf'], KEY(blend)=['20:80', 'Kenyan', 'Bolivian'], KEY(now)=[]])
+drink "coffee" type="decaf" blend=20:80,Kenyan,Bolivian now
+VERB 123 KEY=123 KEY=123,123,123 KEY
+</pre><p>
+The last two representations are themselves valid commands that can be re-parsed. A correct parser implementation will satisfy the following round-trip assertions:
+</p>
+<pre class="wiki">assert(result.canonical() == parser.parse(result.canonical()).canonical())
+assert(result.tokenized() == parser.parse(result.canonical()).tokenized())
+assert(result.tokenized() == parser.parse(result.tokenized()).tokenized())
+</pre><h2 id="Implementation">Implementation</h2>
+<p>
+The <a class="wiki" href="/wiki/Ops/Protocols">formal message grammar</a> has been implemented with two different python parsing libraries:
+</p>
+<ul><li><a class="ext-link" href="http://www.dabeaz.com/ply/ply.html#ply_nn1"><span class="icon">PLY: Python Lex-Yacc</span></a> (tested version 2.5, released 28-May-2008)
+</li><li><a class="ext-link" href="http://pyparsing.wikispaces.com/Introduction"><span class="icon">pyparsing</span></a> (tested version 1.5.0, released 01-Jun-2008)
+</li></ul><p>
+Both are lightweight and pure python and so would be reasonable external dependencies for the operations software. As of 21 Oct 2008, we have selected the PLY version as the recommended parser for SDSS-3 operations software and made it available in the module <a class="source" href="/browser/repo/ops/opscore/trunk/python/opscore/protocols/parser.py">opscore.protocols.parser</a> together with a bundled version of the PLY package in <a class="source" href="/browser/repo/ops/trunk/ops/lib/ply">ops.lib.ply</a>.
+</p>
+<p>
+PLY remains very close to its LEX and YACC origins, including the optimized performance and syntax idiosyncrasies. One pythonic wrinkle it adds is that the parser rules are declared implicitly, rather than through explicit statements, somewhat in the style of regular expressions. As an example, the following PLY code specifies how a single command keyword should be parsed:
+</p>
+<pre class="wiki">def p_keyword_with_values(self,p):
+    "keyword : NAME_OR_VALUE values"
+    p[0] = Keyword(p[1],p[2])
+
+def p_bare_keyword(self,p):
+    "keyword : NAME_OR_VALUE"
+    p[0] = Keyword(p[1])
+
+def p_raw_keyword(self,p):
+    "keyword : RAW LINE"
+    p[0] = Keyword(p[1],[p[2]])
+</pre><p>
+The <a class="source" href="/browser/repo/tops/trunk/sdss3/protocols/parser1.py">PLY command parser</a> is about 200 lines long.
+</p>
+<p>
+Pyparsing is an object oriented framework where parser rules are declared explicitly via python expressions. On the whole is is considerably more expressive that PLY but does not offer the same level of run-time performance. A "packrat" caching optimization is included but does not improve the performance with our grammar. Here is the pyparser specification of the same command keyword rules:
+</p>
+<pre class="wiki">keyword = (RAW + Group(LINE)) | (NAME_OR_VALUE + Group(Optional(values)))
+keyword.setParseAction(lambda s,l,token: Keyword(token[0],token[1].asList()) )
+</pre><p>
+The <a class="source" href="/browser/repo/tops/trunk/sdss3/protocols/parser2.py">pyparsing command parser</a> and is about 100 lines long.
+</p>
+<p>
+Both implementations have been validated against a <a class="source" href="/browser/repo/tops/trunk/sdss3/protocols/test.py">unit test suite</a> with reasonable (but not exhaustive) coverage and including the round-trip assertions mentioned above.
+</p>
+<p>
+The table below summarizes the performance of the two implementations on a <a class="source" href="/browser/repo/tops/trunk/sdss3/protocols/timing.py">timing test suite</a> of about 400 replies and 1000 commands of various lengths and grammars. Raw keywords are not included in the command test suite since they are intended primarily as a diagnostic tool (in any case, they are generally faster to parse and do not change the overall timing ratios). The test suite repeats shorter messages more often, mirroring the expected usage pattern, to calculate a net throughput normalized for a 100-character message:
+</p>
+<table class="wiki">
+<tr><td> Parser Implementation </td><td> Replies </td><td> Commands 
+</td></tr><tr><td> PLY 2.5.0 </td><td> 2.2 kHz </td><td> 2.2 kHz 
+</td></tr><tr><td> pyparsing 1.5.0 </td><td> 460 Hz </td><td> 230 Hz 
+</td></tr><tr><td> pyparsing 1.5.0, packrat enabled </td><td> 270 Hz </td><td> 170 Hz 
+</td></tr></table>
+<p>
+These numbers are obviously dependent on the testing platform (an Intel MacBook Pro in this case), but clearly indicate that PLY is about 5 (10) times faster than pyparsing for replies (commands) and fast enough for the intended application. The pyparsing module throughput is low enough in these tests to justify selecting PLY as the standard parser for the operations software, despite the pyparsing's more expressive syntax. The equal PLY reply and command parsing speeds are expected since table-driven parsing performance should be roughly independent of the grammar complexity. The significantly worse pyparsing performance with packrat caching enabled is unexpected.
+</p>
+
+        
+        
+      </div>
+          <div class="buttons">
+              <form method="get" action="/wiki/Ops/Parsing" id="modifypage">
+                <div>
+                  <input type="hidden" name="action" value="edit" />
+                      <input type="submit" value="Edit this page" />
+                </div>
+              </form>
+    <form method="get" action="/attachment/wiki/Ops/Parsing/" id="attachfile">
+      <div>
+        <input type="hidden" name="action" value="new" />
+        <input type="submit" name="attachfilebutton" value="Attach file" />
+      </div>
+    </form>
+              <form method="get" action="/wiki/Ops/Parsing">
+                <div id="delete">
+                  <input type="hidden" name="action" value="delete" />
+                  <input type="hidden" name="version" value="16" />
+                    <input type="submit" name="delete_version" value="Delete this version" />
+                  <input type="submit" value="Delete page" />
+                </div>
+              </form>
+          </div>
+    </div>
+    <div id="altlinks">
+      <h3>Download in other formats:</h3>
+      <ul>
+        <li class="last first">
+          <a rel="nofollow" href="/wiki/Ops/Parsing?format=txt">Plain Text</a>
+        </li>
+      </ul>
+    </div>
+    </div>
+    <div id="footer" lang="en" xml:lang="en"><hr />
+      <a id="tracpowered" href="http://trac.edgewall.org/"><img src="/chrome/common/trac_logo_mini.png" height="30" width="107" alt="Trac Powered" /></a>
+      <p class="left">
+        Powered by <a href="/about"><strong>Trac 0.11.2.1</strong></a><br />
+        By <a href="http://www.edgewall.org/">Edgewall Software</a>.
+      </p>
+      <p class="right">Visit the Trac open source project at<br /><a href="http://trac.edgewall.org/">http://trac.edgewall.org/</a></p>
+    </div>
+</body>
+</html>

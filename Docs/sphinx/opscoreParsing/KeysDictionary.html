@@ -1,0 +1,289 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+  
+  
+
+  
+
+
+  
+
+  <head>
+    <title>
+      Ops/KeysDictionary – SDSS-III
+    </title>
+        <link rel="search" href="/search" />
+        <link rel="help" href="/wiki/TracGuide" />
+        <link rel="alternate" href="/wiki/Ops/KeysDictionary?format=txt" type="text/x-trac-wiki" title="Plain Text" />
+        <link rel="up" href="/wiki/Ops" title="View parent page" />
+        <link rel="start" href="/wiki" />
+        <link rel="stylesheet" href="/chrome/common/css/trac.css" type="text/css" /><link rel="stylesheet" href="/chrome/common/css/wiki.css" type="text/css" />
+        <link rel="shortcut icon" href="/chrome/site/sdss3.ico" type="image/x-icon" />
+        <link rel="icon" href="/chrome/site/sdss3.ico" type="image/x-icon" />
+      <link type="application/opensearchdescription+xml" rel="search" href="/search/opensearch" title="Search SDSS-III" />
+    <script type="text/javascript" src="/chrome/common/js/jquery.js"></script><script type="text/javascript" src="/chrome/common/js/trac.js"></script><script type="text/javascript" src="/chrome/common/js/search.js"></script>
+    <!--[if lt IE 7]>
+    <script type="text/javascript" src="/chrome/common/js/ie_pre7_hacks.js"></script>
+    <![endif]-->
+    <script type="text/javascript">
+      jQuery(document).ready(function($) {
+        $("#content").find("h1,h2,h3,h4,h5,h6").addAnchor("Link to this section");
+      });
+    </script>
+<link rel="stylesheet" type="text/css" href="/chrome/site/sdss3.css" />
+</head>
+  <body>
+    <div id="banner">
+      <div id="header">
+        <a id="logo" href="http://www.sdss3.org/"><img src="/chrome/site/sdss3shrunk.png" alt="SDSS-III Logo" /></a>
+      </div>
+      <form id="search" action="/search" method="get">
+        <div>
+          <label for="proj-search">Search:</label>
+          <input type="text" id="proj-search" name="q" size="18" value="" />
+          <input type="submit" value="Search" />
+        </div>
+      </form>
+      <div id="metanav" class="nav">
+    <ul>
+      <li class="first">logged in as cloomis</li><li><a href="/logout">Logout</a></li><li><a href="/wiki/TracGuide">Help/Guide</a></li><li><a href="/about">About Trac</a></li><li class="last"><a href="/prefs">Preferences</a></li>
+    </ul>
+  </div>
+    </div>
+    <div id="mainnav" class="nav">
+    <ul>
+      <li class="first active"><a href="/wiki">Wiki</a></li><li><a href="/timeline">Timeline</a></li><li><a href="/roadmap">Roadmap</a></li><li><a href="/browser">Browse Source</a></li><li><a href="/report">View Tickets</a></li><li><a href="/newticket">New Ticket</a></li><li><a href="/search">Search</a></li><li><a href="/admin" title="Administration">Admin</a></li><li class="last"><a href="/tracmailman">Mailing Lists</a></li>
+    </ul>
+  </div>
+    <div id="main">
+      <div id="ctxtnav" class="nav">
+        <h2>Context Navigation</h2>
+          <ul>
+            <li class="first "><a href="/wiki/Ops">Up</a></li><li><a href="/wiki/WikiStart">Start Page</a></li><li><a href="/wiki/TitleIndex">Index</a></li><li><a href="/wiki/Ops/KeysDictionary?action=history">History</a></li><li><a href="/wiki/Ops/KeysDictionary?action=diff&amp;version=16">Last Change</a></li><li class="last"><a href="/admin/general/wikirename?redirect=1&amp;src_page=Ops%2FKeysDictionary">Rename page</a></li>
+          </ul>
+        <hr />
+      </div>
+    <div id="content" class="wiki">
+      <p class="path">
+        <a class="pathentry" title="View Ops" href="/wiki/Ops">Ops</a><span class="pathentry sep">/</span><a class="pathentry" title="View Ops/KeysDictionary" href="/wiki/Ops/KeysDictionary">KeysDictionary</a>
+        <br style="clear: both" />
+      </p>
+      <div class="wikipage searchable">
+        
+          <p>
+</p><div class="wiki-toc"><ol><li><a href="#KeyDictionaries">Key Dictionaries</a><ol><li><a href="#DictionaryDistribution">Dictionary Distribution</a></li><li>
+<a href="#DictionaryValidationandDebugging">Dictionary Validation and Debugging</a></li><li>
+<a href="#DictionaryDocumentation">Dictionary Documentation</a></li></ol></li></ol></div><p>
+</p>
+<p>
+From <a class="wiki" href="/wiki/OperationsSoftware">Ops</a>/<a class="wiki" href="/wiki/Ops/Core">Core</a>
+</p>
+<h1 id="KeyDictionaries">Key Dictionaries</h1>
+<p>
+This page documents the KeysDictionary class in the module <a class="source" href="/browser/repo/ops/opscore/trunk/python/opscore/protocols/keys.py">opscore.protocols.keys</a>.
+</p>
+<p>
+A keyword dictionary collects together a set of specifications of valid keywords for use in command or reply validation. Each keyword specification takes the form of a <a class="wiki" href="/wiki/Ops/Validation#Keywords">Key validator object</a> and they are combined into a named dictionary using, for example:
+</p>
+<pre class="wiki">KeysDictionary("tcc",(1,2),
+    Key('AirTemp',
+        Float(units='C',strFormat='%.1f'),
+        help='Temperature of the outside air. Used for refraction correction.'
+    ),
+    Key('AxePos',
+        Float(units='deg',strFormat='%.3f',reprFormat='%.6f',invalidValues='NaN')*3,
+        help='Actual mount position of azimuth, altitude and instrument rotator.'
+    ),
+    ...
+)
+</pre><p>
+The initial two parameters of the KeysDictionary are the dictionary name (for reply keywords, this should be the actor's name) and the dictionary version in the form of a (major,minor) tuple.
+</p>
+<p>
+Any change to the dictionary should be reflected in a new version number. An update to the major version number implies that the new dictionary is not backwards compatible [TODO: be precise on which changes break the schema].
+</p>
+<p>
+The dictionary name must be lower case. This is more restrictive than just performing case-insensitive name matching and is required since dictionary names are mapped into the python module name space which is generally case sensitive. Attempting to create a dictionary with a name that is not lower case will raise a <tt>KeysDictionaryError</tt>.
+</p>
+<p>
+Each key must have a case-insensitive unique name within the dictionary. By default, keys are registered using the corresponding keyword name:
+</p>
+<pre class="wiki">Key('name',...)
+</pre><p>
+In case variations of a single keyword name must be registered within the same dictionary (for example, if two commands use the same keyword name for different purposes), then they can be assigned case-insensitive unique dictionary names using:
+</p>
+<pre class="wiki">Key('name',...,unique='cmd1.name')
+Key('name',...,unique='cmd2.name')
+</pre><p>
+Keys can be retrieved from a dictionary by name:
+</p>
+<pre class="wiki">kdict = KeysDictionary(...)
+if 'name' in kdict:
+    key = kdict['name']
+</pre><p>
+Note that the <tt>name</tt> used above does not need to in a canonical upper/lower-case form but that matches are case insensitive.
+</p>
+<h2 id="DictionaryDistribution">Dictionary Distribution</h2>
+<p>
+Each actor specifies its valid reply keywords and generates reply messages that are distributed to various listeners. In order to validate incoming replies, a listener needs a dictionary of the generating actor's reply keywords. The actor and listener share a single keyword dictionary that exists as a file in a standard location on the python module search path, namely in the <a class="source" href="/browser/repo/ops/actorkeys/trunk/python/actorkeys">actorkeys</a> package. The contents of this file are exactly the same as would be used inside a python program that has already imported all symbols from <a class="source" href="/browser/repo/ops/opscore/trunk/python/opscore/protocols/keys.py">opscore.protocols.keys</a> and <a class="source" href="/browser/repo/ops/opscore/trunk/python/opscore/protocols/types.py">opscore.protocols.types</a>. For example:
+</p>
+<pre class="wiki">KeysDictionary("tcc",
+    Key('AirTemp',(1,2),
+        Float(units='C',strFormat='%.1f'),
+        help='Temperature of the outside air. Used for refraction correction.'
+    ),
+    Key('AxePos',
+        Float(units='deg',strFormat='%.3f',reprFormat='%.6f',invalidValues='NaN')*3,
+        help='Actual mount position of azimuth, altitude and instrument rotator.'
+    ),
+    ...
+)
+</pre><p>
+The actor and listener both load this dictionary by name using:
+</p>
+<pre class="wiki">kdict = KeysDictionary.load("tcc")
+</pre><p>
+In case the filename containing the dictionary does not match the dictionary name stored within the file, a <tt>KeysDictionaryError</tt> will be raised.
+</p>
+<p>
+Note that there is no requirement that an actor be implemented in python, as long as it provides a reply keyword dictionary in this format (which happens to be valid python). However, a listener that is not implemented in python will need to implement its own dictionary reader (which is probably more trouble than it is worth).
+</p>
+<h2 id="DictionaryValidationandDebugging">Dictionary Validation and Debugging</h2>
+<p>
+The <tt>opscore</tt> package includes two programs under <tt>bin/</tt> that are useful for checking that you have a valid dictionary and debugging dictionary problems. Running <tt>setup opscore</tt> will add these programs to your path automatically.
+</p>
+<p>
+The first program scans the <tt>actorcore</tt> package where all dictionary files are kept and checks each one. It also connects to the running archive server to compare the dictionary versions in your local <tt>actorcore</tt> with those being used in production (according to <a class="ext-link" href="http://sdss-archiver.apo.nmsu.edu/static/data/actors.txt"><span class="icon">this snapshot</span></a> which reflects the dictionaries the archiver knew about when it was last started). You normally run this program using:
+</p>
+<pre class="wiki">dictionaryValidate.py
+</pre><p>
+By default, the production actors are obtained from the archiver server at <tt>sdss-archiver.apo.nmsu.edu</tt> but you can pass a different hostname (with optional port number) on the command line, e.g.
+</p>
+<pre class="wiki">dictionaryValidate.py localhost:8080
+</pre><p>
+In case you are running offline and just want to check the syntax of your local dictionaries, use:
+</p>
+<pre class="wiki">dictionaryValidate.py --offline
+</pre><p>
+The program lists the dictionary status of all known actors which will be one of the following:
+</p>
+<ul><li>has no dictionary: the archive server does not have a dictionary registered for this actor (this is normal for the <tt>auth</tt> and <tt>keys</tt> actors)
+</li><li>already in use and unchanged: your local dictionary matches the production version
+</li><li>X.Y replaces N.M: your local dictionary is newer than the one in production and has a larger version number
+</li><li>is new: your local dictionary is for an actor that has no dictionary in production now (most dictionaries will have this status in the <tt>--offline</tt> mode)
+</li><li>has invalid version: your local dictionary version is older than the one in production (normally an <tt>svn update</tt> in <tt>actorkeys</tt> will fix this, or else you made a mistake in updating the version)
+</li><li>has changed and needs a version bump: your local dictionary is different from the one in production but still has the same version (you should normally increase the minor version number by one in this case)
+</li></ul><p>
+Note that matching is determined by a file checksum in addition to the major and minor version numbers. In case an actor has a syntax error, it will be reported, e.g.
+</p>
+<pre class="wiki">badly formatted keys dictionary in .../actorkeys/mcp-test.py:
+ &gt;&gt; dictionary filename and name are different: mcp-test, mcp
+badly formatted keys dictionary in .../actorkeys/msg.py:
+ &gt;&gt; name 'key' is not defined
+</pre><p>
+In cases where a production dictionary is valid but is not doing what you expect for certain reply messages, you can trace how the core message parsing and validation code is handling it using:
+</p>
+<pre class="wiki">messageTrace.py
+Enter a reply message to trace how it is handled by the core parsing and validation
+code. Validation is based on the current dictionaries in the actorkeys package.
+Use ^C to quit this program.
+&gt; 
+</pre><p>
+Any messages you enter at the prompt will now be processed with verbose trace output so you can see where things are going wrong. For example, here is a successfully processed message:
+</p>
+<pre class="wiki">&gt; .tcc 0 tcc I TCCStatus="TTT","NNN"; TCCPos=121.000,30.000,0.000; AxePos=121.000,29.910,0.000
+# Parsing...
+Header: HDR(,tcc,0,tcc,I)
+Keywords:
+   KEY(TCCStatus)=['TTT', 'NNN']
+   KEY(TCCPos)=['121.000', '30.000', '0.000']
+   KEY(AxePos)=['121.000', '29.910', '0.000']
+# Loading dictionary for actor "tcc"...
+loaded dictionary version (3, 7)
+# Validating...
+found valid key {KEY(TCCStatus)=[String('TTT'), String('NNN')]}
+found valid key {KEY(TCCPos)=[Float(121.0 deg), Float(30.0 deg), Float(0.0 deg)]}
+found valid key {KEY(AxePos)=[Float(121.0 deg), Float(29.91 deg), Float(0.0 deg)]}
+</pre><p>
+In case you are cutting and pasting from a STUI log window, leave off the initial timestamp. Use control-C to quit the program.
+</p>
+<h2 id="DictionaryDocumentation">Dictionary Documentation</h2>
+<p>
+A dictionary can describe the valid keywords it contains in either plain text:
+</p>
+<pre class="wiki">print kdict.describe()
+</pre><p>
+or else in HTML format:
+</p>
+<pre class="wiki">print &gt;&gt; htmlfile, kdict.describeAsHTML()
+</pre><p>
+Here is some sample plain text output:
+</p>
+<pre class="wiki">Keys Dictionary for "tcc" version (1, 2)
+
+     Keyword: AirTemp
+ Description: Temperature of the outside air. Used for refraction correction.
+      Values: 1
+
+        Repeated: once
+            Type: Float (float)
+           Units: C
+
+     Keyword: AxePos
+ Description: Actual mount position of azimuth, altitude and instrument rotator.
+      Values: 3
+
+        Repeated: 3 times
+            Type: Float (float)
+           Units: deg
+
+     ...
+</pre><p>
+Refer to the description of <a class="wiki" href="/wiki/Ops/Validation#KeywordDocumentation">keyword documentation</a> for details.
+</p>
+
+        
+        
+      </div>
+          <div class="buttons">
+              <form method="get" action="/wiki/Ops/KeysDictionary" id="modifypage">
+                <div>
+                  <input type="hidden" name="action" value="edit" />
+                      <input type="submit" value="Edit this page" />
+                </div>
+              </form>
+    <form method="get" action="/attachment/wiki/Ops/KeysDictionary/" id="attachfile">
+      <div>
+        <input type="hidden" name="action" value="new" />
+        <input type="submit" name="attachfilebutton" value="Attach file" />
+      </div>
+    </form>
+              <form method="get" action="/wiki/Ops/KeysDictionary">
+                <div id="delete">
+                  <input type="hidden" name="action" value="delete" />
+                  <input type="hidden" name="version" value="16" />
+                    <input type="submit" name="delete_version" value="Delete this version" />
+                  <input type="submit" value="Delete page" />
+                </div>
+              </form>
+          </div>
+    </div>
+    <div id="altlinks">
+      <h3>Download in other formats:</h3>
+      <ul>
+        <li class="last first">
+          <a rel="nofollow" href="/wiki/Ops/KeysDictionary?format=txt">Plain Text</a>
+        </li>
+      </ul>
+    </div>
+    </div>
+    <div id="footer" lang="en" xml:lang="en"><hr />
+      <a id="tracpowered" href="http://trac.edgewall.org/"><img src="/chrome/common/trac_logo_mini.png" height="30" width="107" alt="Trac Powered" /></a>
+      <p class="left">
+        Powered by <a href="/about"><strong>Trac 0.11.2.1</strong></a><br />
+        By <a href="http://www.edgewall.org/">Edgewall Software</a>.
+      </p>
+      <p class="right">Visit the Trac open source project at<br /><a href="http://trac.edgewall.org/">http://trac.edgewall.org/</a></p>
+    </div>
+</body>
+</html>
