@@ -9,16 +9,19 @@ Contents
 --------
 
 .. toctree::
+   :maxdepth: 2
 
- overview
- INSTALL
- sampleActor
- keywords
- summary
- PFS
+   overview
+   INSTALL
+   sampleActor
+   keywords
+   summary
+   PFS
+
+   glossary
 
 TODO (for this document)
-----
+------------------------
 
 .. todolist::
 
@@ -29,4 +32,5 @@ TODO (for this document)
 .. * :ref:`genindex`
 .. * :ref:`modindex`
 .. * :ref:`search`
+
 
