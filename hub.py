@@ -629,7 +629,7 @@ def startManagedNub(name, managerName='mhsActor', hostname=None, port=None):
     # And call the start() function.
     #
     CPL.log('hub.startNub', 'starting managed Nub %s...' % (name))
-    g.bcast.inform('text="starting managed Nub %s..."' % (name))
+    g.hubcmd.inform('text="starting managed Nub %s..."' % (name))
     try:
         mod.start(g.poller, name, hostname=hostname, port=port)
     except Exception, e:
