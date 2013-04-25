@@ -186,6 +186,32 @@ class hubCommands(InternalCmd.InternalCmd):
 
         cmd.finish('')
 
+    def startOneNub(self, cmd):
+        """ (re-)start a nub, perhaps fully specified.. """
+
+        parts = cmd.argDict.keys()[1:]
+        if len(parts) == 0:
+            cmd.fail('text="must specify one nub to start..."')
+            return
+
+        hostname = parts[1] if len(parts) >= 2 else None
+        port = parts[2] if len(parts) >= 3 else None
+        try:
+            port = int(port)
+        except Exception, e:
+            cmd.fail('text="nub port must be an integer, not %s"' % (port))
+            return
+
+        ok = True
+
+        try:
+            cmd.inform('text=%s' % (CPL.qstr("(re-)starting nub %s" % (nub))))
+            hub.startNub(nub, hostname=hostname, port=port)
+        except Exception, e:
+            cmd.warn('text=%s' % (CPL.qstr("failed to start nub %s: %s" % (nub, e))))
+
+        cmd.finish('')
+
     def actorInfo(self, cmd):
         """ Get gory status about a list of actor nubs. """
 

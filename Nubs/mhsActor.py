@@ -13,22 +13,30 @@ import os.path
     binary protocols.
 """
 
-
 from Hub.Command.Encoders.ASCIICmdEncoder import ASCIICmdEncoder
 from Hub.Reply.Decoders.ASCIIReplyDecoder import ASCIIReplyDecoder
 from Hub.Nub.SocketActorNub import SocketActorNub
 
 import CPL.cfg
+from CPL import qstr
 import hub
 import g
 
 def start(poller, name, initCmds=None, 
           encoderDebug=1,
           decoderDebug=1,
-          nubDebug=1):
+          nubDebug=1,
+          hostname=None, port=None):
 
     cfg = CPL.cfg.get('hub', 'actors', doFlush=True)[name]
     stop(name)
+
+    if hostname == None:
+        hostname = cfg['host']
+    if port == None:
+        port = cfg['port']
+
+    g.hubcmd.inform('text="connecting to MHS Nub %s at %s:%s"' % (name, hostname, port))
 
     if initCmds == None:
         initCmds = ('ping',
@@ -38,13 +46,19 @@ def start(poller, name, initCmds=None,
     d = ASCIIReplyDecoder(debug=decoderDebug)
     e = ASCIICmdEncoder(sendCommander=True, useCID=False, 
                         debug=encoderDebug)
-    nub = SocketActorNub(poller, cfg['host'], cfg['port'],
-                         name=name, encoder=e, decoder=d,
-                         grabCID=True,
-                         initCmds=initCmds, # safeCmds=safeCmds,
-                         needsAuth=False,
-                         logDir=os.path.join(g.logDir, name),
-                         debug=nubDebug)
+
+    try:
+        nub = SocketActorNub(poller, hostname, port,
+                             name=name, encoder=e, decoder=d,
+                             grabCID=True,
+                             initCmds=initCmds, # safeCmds=safeCmds,
+                             needsAuth=False,
+                             logDir=os.path.join(g.logDir, name),
+                             debug=nubDebug)
+    except Exception, e:
+        g.hubcmd.warn('text=%s' % (qstr("failed to start MHS Nub  %s at %s:%s: %s" % (name, hostname, port, e))))
+        raise
+
     hub.addActor(nub)
     
 def stop(name):
