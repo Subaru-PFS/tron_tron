@@ -595,13 +595,61 @@ def stopNub(name):
     if n:
         dropActor(n)
 
-def startNub(name):
+def startManagedNub(name, managerName='mhsActor', hostname=None, port=None):
+    """ Launch a single Nub. 
+
+    (Re-)Loads a module named 'name' from the Nubs folder and calls the start function.
+    """
+
+    # First, (re-)load the entire Nubs module. Let that fail to the top
+    # level.
+    #
+    fp, pathname, description = imp.find_module('Nubs')
+    nubs_mod = imp.load_module('Nubs', fp, pathname, description)
+    if fp:
+        fp.close()
+     
+    # Now try to load the nub manager itself.
+    #
+    try:
+        CPL.log('hub.startNub', 'trying to (re-)load Nub manager %s' % (managerName))
+        fp, pathname, description = imp.find_module(managerName, nubs_mod.__path__)
+    except:
+        return False
+
+    try:
+        mod = imp.load_module(managerName, fp, pathname, description)
+    except:
+        return False
+    finally:
+        # Since we may exit via an exception, close fp explicitly.
+        if fp:
+            fp.close()
+
+    # And call the start() function.
+    #
+    CPL.log('hub.startNub', 'starting managed Nub %s...' % (name))
+    g.bcast.inform('text="starting managed Nub %s..."' % (name))
+    try:
+        mod.start(g.poller, name, hostname=hostname, port=port)
+    except Exception, e:
+        CPL.log('hub.startNub', 'failed to start managed Nub %s: %s' % (name, e))
+        return False
+
+    return True
+
+def startNub(name, hostname=None, port=None):
     """ Launch a single Nub. 
 
     (Re-)Loads a module named 'name' from the Nubs folder and calls the start function.
     """
 
     CPL.log('hub.startNub', 'trying to start %s' % (name))
+
+    if startManagedNub(name, hostname=hostname, port=port):
+        return True
+
+    CPL.log('hub.startNub', 'managed Nub failed, trying again to start %s' % (name))
 
     # First, (re-)load the entire Nubs module. Let that fail to the top
     # level.
@@ -617,7 +665,11 @@ def startNub(name):
         CPL.log('hub.startNub', 'trying to (re-)load Nub %s' % (name))
         fp, pathname, description = imp.find_module(name, nubs_mod.__path__)
     except:
-        raise
+        try:
+            CPL.log('hub.startNub', 'trying to (re-)load Nub mhs')
+            fp, pathname, description = imp.find_module('mhs', nubs_mod.__path__)
+        except:
+            raise
 
     try:
         mod = imp.load_module(name, fp, pathname, description)
