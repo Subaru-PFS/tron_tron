@@ -1,7 +1,7 @@
 Installing the MHS and actors
 =============================
 
-..todo:: This documents a test, or sample instalation, but **NOT**
+..todo:: This documents a test, or sample installation, but **NOT**
 what a real developer would use, nor a propoer operational
 installation. Split things up, or refactor installation...
 

@@ -1,31 +1,24 @@
 <!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
 <html xmlns="http://www.w3.org/1999/xhtml">
-  
-  
-
-  
-
-
-  
-
   <head>
     <title>
-      Ops/Protocols – SDSS-III
+      Tron Protocols
     </title>
-</p><div class="wiki-toc"><ol><li><a href="#OperationsSoftwareMessageProtocols">Operations Software Message Protocols</a><ol><li><a href="#Keywords">Keywords</a></li><li>
+</p>
+<h1 id="#OperationsSoftwareMessageProtocols">Operations Software Message Protocols</h1>
+<ol><li><a href="#Keywords">Keywords</a></li><li>
 <a href="#Replies">Replies</a></li><li>
 <a href="#ReplyHeader">Reply Header</a></li><li>
 <a href="#Commands">Commands</a></li></ol></li></ol></div><p>
 </p>
 <p>
-From <a class="wiki" href="/wiki/OperationsSoftware">Ops</a>/<a class="wiki" href="/wiki/Ops/Core.html">Core</a>
-</p>
-<h1 id="OperationsSoftwareMessageProtocols">Operations Software Message Protocols</h1>
-<p>
-Refer to the <a class="wiki" href="/wiki/Ops/Glossary">glossary</a> for definitions of the terms used below. The primary message protocol consists of <span class="underline">commands</span> (from <span class="underline">commanders</span> to <span class="underline">actors</span>) and <span class="underline">replies</span> (from <span class="underline">actors</span>, but might not have been solicited). Both types of message include <span class="underline">keywords</span>.
+From <a href="Core.html">Core Protocols</a>
 </p>
 <p>
-Information about parsing message strings is <a class="wiki" href="/wiki/Ops/Parsing.html">collected here</a>.
+Refer to the <a href="Glossary.html">glossary</a> for definitions of the terms used below. The primary message protocol consists of <span class="underline">commands</span> (from <span class="underline">commanders</span> to <span class="underline">actors</span>) and <span class="underline">replies</span> (from <span class="underline">actors</span>, but might not have been solicited). Both types of message include <span class="underline">keywords</span>.
+</p>
+<p>
+Information about parsing message strings is <a href="Parsing.html">collected here</a>.
 </p>
 <h2 id="Keywords">Keywords</h2>
 <p>
@@ -34,7 +27,7 @@ Keywords consist of a name optionally followed by a list of comma-separated valu
 <pre class="wiki">start
 constants = 2.71828,3.14159
 </pre><p>
-White space (space and tab characters) surrounding the equals sign or commas is not significant. A keyword name must begin with a letter A-Z or a-z and can only contain letters, numbers (0-9) and the punctuation dot (.) and underscore (_). Note that the keyword <a class="wiki" href="/wiki/Ops/Validation.html">validation framework</a> considers keyword names to be case insensitive, although capitalization is encouraged to improve readability. Also, the keyword namespace provided by a <a class="wiki" href="/wiki/Ops/KeysDictionary">Keys dictionary</a> is case insensitive.
+White space (space and tab characters) surrounding the equals sign or commas is not significant. A keyword name must begin with a letter A-Z or a-z and can only contain letters, numbers (0-9) and the punctuation dot (.) and underscore (_). Note that the keyword <a href="Validation.html">validation framework</a> considers keyword names to be case insensitive, although capitalization is encouraged to improve readability. Also, the keyword namespace provided by a <a href="KeysDictionary.html">Keys dictionary</a> is case insensitive.
 </p>
 <p>
 Values are treated as strings so invalid number formats are still considered valid keyword values. A value must be quoted if it it is empty "" or else contains any of the following characters:
@@ -107,7 +100,7 @@ program.user.actor1.actor2.actor3
 The program name and user name must be valid python identifiers.
 </p>
 <p>
-The <a class="wiki" href="/wiki/Ops/Parsing#ReplyHeaders">message parsing documentation</a> has details about the reply header fields.
+The <a href="Parsing#ReplyHeaders">message parsing documentation</a> has details about the reply header fields.
 </p>
 <h2 id="Commands">Commands</h2>
 <p>
