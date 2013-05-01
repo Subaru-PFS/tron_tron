@@ -108,5 +108,5 @@ def log(system, detail, state=None):
         logfile.flush()
         
 def error(*args):
-    apply(log, args, {'state':ERROR})
+    log(*args, state=ERROR)
     
