@@ -125,20 +125,22 @@ def loadKeys():
 
     getSetHubVersion()
     
-def loadWords(words=None):
+def loadWords(words=None, cmd=None):
     if words == None:
         words = CPL.cfg.get('hub', 'vocabulary')
 
     for w in words:
-        _loadWords([w])
+        _loadWords([w], cmd=cmd)
 
-def _loadWords(wordlist):
+def _loadWords(wordlist, cmd=None):
     """ (Re-)load a list of Vocabulary words, overwriting any existing info. 
     """
 
     # First, (re-)load the entire Vocabulary module. Let that fail to the top
     # level.
     #
+    
+    CPL.log('hub.loadVocab', 'trying to (re-)load Vocab module')
     CPL.log('hub.loadVocab', 'trying to (re-)load Vocab module')
     fp, pathname, description = imp.find_module('Vocab')
     vocab_mod = imp.load_module('Vocab', fp, pathname, description)
