@@ -18,6 +18,9 @@ Contents
    summary
    PFS
 
+   actor-how-it-works
+   actor-get-started
+
    glossary
 
 TODO (for this document)

@@ -1,0 +1,119 @@
+%!PS-Adobe-3.0 EPSF-3.0
+%%Creator: Atsushi Shimono
+%%Title: TEMPLATE
+%%CreationDate: Sun Jan 16 00:00:00 2005
+%%BoundingBox: 0 0 400 300
+%%DocumentData: Clean7Bit
+%%LanguageLevel: 2
+%%EndComments
+%%%BeginProlog
+%%%EndProlog
+%%Page: 1 1
+
+/L {moveto rlineto currentpoint stroke moveto} bind def
+/C {rlineto currentpoint stroke moveto} bind def
+/D {moveto 0 0 rlineto currentpoint stroke moveto} bind def
+/LW {5 mul setlinewidth} bind def
+/BP {newpath moveto} bind def
+/LP /rlineto load def
+/EP {rlineto closepath eofill} bind def
+/MB {gsave translate MFAC dup scale 1 setlinewidth 2 setlinecap 0 setlinejoin newpath} bind def
+/ME /grestore load def
+/CC {0 360 arc stroke} bind def
+/FC {0 360 arc fill} bind def
+/G {1024 div setgray} bind def
+/K {3 -1 roll 1024 div 3 -1 roll 1024 div 3 -1 roll 1024 div setrgbcolor} bind def
+
+/B {CS newpath moveto} def
+/F {moveto 0 setlinecap} def
+/C {CS M 1 1 3 {pop 3 1 roll 255 div} for SET_COLOUR} def
+/CS {currentpoint stroke} def
+/CF {currentpoint eofill} def
+/L {lineto} def /l {rlineto} def /M {moveto} def /m {rmoveto} def
+/P {currentpoint 0 1 rlineto stroke moveto} def
+/T {currentlinecap exch 1 setlinecap show setlinecap} def
+errordict /nocurrentpoint {pop 0 0 M currentpoint} put
+/SET_COLOUR statusdict begin /processcolors where
+  {pop processcolors 1 gt} {false} ifelse
+  {(setrgbcolor)} {(pop pop pop)} ifelse cvx end def
+/cshow {CS M dup stringwidth pop -2 div 0 m show} def
+/lshow {CS M dup stringwidth pop -1 div 0 m show} def
+
+/Helvetica findfont
+10 scalefont setfont
+
+gsave
+
+0.2 LW
+
+25 240 M (Devices) cshow
+25 140 M (Actor) cshow
+
+50 190 M 340 0 l 0 -90 l -340 0 l 0 90 l
+
+180 50 M 80 0 l 0 -20 m -80 0 l stroke
+180 40 10 90 270 arc stroke
+260 40 10 -90 90 arc stroke
+220 35 M (tron) cshow
+
+170 130 M 100 0 l 0 -20 m -100 0 l stroke
+170 120 10 90 270 arc stroke
+270 120 10 -90 90 arc stroke
+220 115 M (abcdActor/main.py) cshow
+220 130 M 0 10 l stroke
+220 143 3 0 360 arc stroke
+
+65 180 M 130 0 l 0 -20 m -130 0 l stroke
+65 170 10 90 270 arc stroke
+195 170 10 -90 90 arc stroke
+130 165 M (abcdActor/Commands/ACmd.py) cshow
+
+245 180 M 130 0 l 0 -20 m -130 0 l stroke
+245 170 10 90 270 arc stroke
+375 170 10 -90 90 arc stroke
+310 165 M (abcdActor/Commands/BCmd.py) cshow
+
+220 50 M 0 60 l
+
+205 170 M 15 -24 l -5 2 l 5 3 m 0 -5 l
+234 170 M -15 -24 l 5 2 l -5 3 m 0 -5 l
+230 150 M (Interface) show
+
+150 160 M 5 -1 l -4 -4 m -1 5 l
+290 160 M -5 -1 l 4 -4 m 1 5 l
+280 140 M (Load) show
+
+110 260 M 40 0 l 0 -20 l -40 0 l 0 20 l
+130 245 M (A) cshow
+130 240 M 0 -60 l
+
+290 260 M 40 0 l 0 -20 l -40 0 l 0 20 l
+310 245 M (B) cshow
+310 240 M 0 -60 l
+
+stroke
+
+[4 4] 0 setdash
+
+50 290 M 340 0 l 0 -90 l -340 0 l 0 90 l
+
+180 130 M -30 30 l
+260 130 M 30 30 l
+
+stroke
+
+[] 0 setdash
+
+gsave
+0 0 translate
+1 1 scale
+%
+stroke
+grestore
+
+
+
+stroke
+showpage
+grestore
+%%EOF
