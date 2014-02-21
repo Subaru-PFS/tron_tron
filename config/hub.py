@@ -20,6 +20,7 @@ listeners = ('cmdin',
 # to a single manager, which reads this dictionary.
 actors = dict(iic=       dict(host="localhost", port=9000, actorName='mhsActor'),
 
+              enu=       dict(host="localhost", port=9999, actorName='mhsActor'),
               mps=       dict(host="localhost", port=9001, actorName='mhsActor'),
               mcs=       dict(host="localhost", port=9002, actorName='mhsActor'),
               gen2=      dict(host="localhost", port=9003, actorName='mhsActor'),
