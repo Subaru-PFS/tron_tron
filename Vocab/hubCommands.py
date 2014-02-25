@@ -25,6 +25,7 @@ class hubCommands(InternalCmd.InternalCmd):
         self.commands = { 'actors' : self.actors,
                           'commanders' : self.commanders,
                           'restart!' : self.reallyReallyRestart,
+                          'startNub' : self.startOneNub,
                           'startNubs' : self.startNubs,
                           'stopNubs' : self.stopNubs,
                           'actorInfo' : self.actorInfo,
@@ -187,28 +188,35 @@ class hubCommands(InternalCmd.InternalCmd):
         cmd.finish('')
 
     def startOneNub(self, cmd):
-        """ (re-)start a nub, perhaps fully specified.. """
+        """ (re-)start a nub, perhaps fully specified. 
+
+        startNub nubName [hostname:port]
+
+        """
 
         parts = cmd.argDict.keys()[1:]
         if len(parts) == 0:
-            cmd.fail('text="must specify one nub to start..."')
+            cmd.fail('text="must specify a nub to start..."')
             return
 
-        hostname = parts[1] if len(parts) >= 2 else None
-        port = parts[2] if len(parts) >= 3 else None
+        nubName = parts[0]
+        hostAndPort = parts[1] if len(parts) >= 2 else None
+        if hostAndPort:
+            hostname, port = hostAndPort.split(':')
+        else:
+            hostname, port = None, None
+
         try:
             port = int(port)
         except Exception, e:
             cmd.fail('text="nub port must be an integer, not %s"' % (port))
             return
 
-        ok = True
-
         try:
-            cmd.inform('text=%s' % (CPL.qstr("(re-)starting nub %s" % (nub))))
-            hub.startNub(nub, hostname=hostname, port=port)
+            cmd.inform('text=%s' % (CPL.qstr("(re-)starting nub %s (%s:%s) " % (nubName, hostname, port))))
+            hub.startNub(nubName, hostname=hostname, port=port)
         except Exception, e:
-            cmd.warn('text=%s' % (CPL.qstr("failed to start nub %s: %s" % (nub, e))))
+            cmd.warn('text=%s' % (CPL.qstr("failed to start nub %s: %s" % (nubName, e))))
 
         cmd.finish('')
 
