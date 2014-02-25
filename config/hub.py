@@ -17,8 +17,9 @@ listeners = ('cmdin',
 
 # This lists all the outgoing actor connections we know how to make.
 # For the PFS MHS, all the current actors use the same connection protocol, so we hand off 
-# to a single manager, which reads this dictionary.
-actors = dict(iic=       dict(host="localhost", port=9000, actorName='mhsActor'),
+# to a single manager which reads this dictionary.
+# 
+actors = dict(iic=       dict(host="localhost", port=9000, actorName='mhsActor', fixed=True),
 
               mps=       dict(host="localhost", port=9001, actorName='mhsActor'),
               mcs=       dict(host="localhost", port=9002, actorName='mhsActor'),
@@ -37,10 +38,6 @@ actors = dict(iic=       dict(host="localhost", port=9000, actorName='mhsActor')
               cam2=      dict(host="localhost", port=9022, actorName='mhsActor'),
               cam3=      dict(host="localhost", port=9023, actorName='mhsActor'),
               cam4=      dict(host="localhost", port=9024, actorName='mhsActor'),
-
-              foo7=      dict(host="localhost", port=9997, actorName='mhsActor'),
-              foo8=      dict(host="localhost", port=9998, actorName='mhsActor'),
-              foo9=      dict(host="localhost", port=9999, actorName='mhsActor'),
               )
 
 httpHost = 'localhost'
