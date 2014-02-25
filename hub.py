@@ -600,7 +600,8 @@ def stopNub(name):
 def startManagedNub(name, managerName='mhsActor', hostname=None, port=None):
     """ Launch a single Nub. 
 
-    (Re-)Loads a module named 'name' from the Nubs folder and calls the start function.
+    (Re-)Loads a module named managerName from the Nubs folder and calls its start function,
+    as manager.start(name, hostname=hostname, port=port)
     """
 
     # First, (re-)load the entire Nubs module. Let that fail to the top
@@ -611,7 +612,7 @@ def startManagedNub(name, managerName='mhsActor', hostname=None, port=None):
     if fp:
         fp.close()
      
-    # Now try to load the nub manager itself.
+    # Now try to load the manager nub itself.
     #
     try:
         CPL.log('hub.startNub', 'trying to (re-)load Nub manager %s' % (managerName))
@@ -621,7 +622,8 @@ def startManagedNub(name, managerName='mhsActor', hostname=None, port=None):
 
     try:
         mod = imp.load_module(managerName, fp, pathname, description)
-    except:
+    except Exception, e:
+        g.hubcmd.warn('text=%s' % (CPL.qstr("failed to load manager Nub %s: %s" % (managerName, e))))
         return False
     finally:
         # Since we may exit via an exception, close fp explicitly.
@@ -631,11 +633,11 @@ def startManagedNub(name, managerName='mhsActor', hostname=None, port=None):
     # And call the start() function.
     #
     CPL.log('hub.startNub', 'starting managed Nub %s...' % (name))
-    g.hubcmd.inform('text="starting managed Nub %s..."' % (name))
     try:
+        g.hubcmd.inform('text="starting managed Nub %s at %s:%s..."' % (name, hostname, port))
         mod.start(g.poller, name, hostname=hostname, port=port)
     except Exception, e:
-        CPL.log('hub.startNub', 'failed to start managed Nub %s: %s' % (name, e))
+        g.hubcmd.warn('text=%s' % (CPL.qstr("failed to start managed Nub %s: %s" % (name, e))))
         return False
 
     return True
@@ -647,11 +649,6 @@ def startNub(name, hostname=None, port=None):
     """
 
     CPL.log('hub.startNub', 'trying to start %s' % (name))
-
-    if startManagedNub(name, hostname=hostname, port=port):
-        return True
-
-    CPL.log('hub.startNub', 'managed Nub failed, trying again to start %s' % (name))
 
     # First, (re-)load the entire Nubs module. Let that fail to the top
     # level.
@@ -667,11 +664,7 @@ def startNub(name, hostname=None, port=None):
         CPL.log('hub.startNub', 'trying to (re-)load Nub %s' % (name))
         fp, pathname, description = imp.find_module(name, nubs_mod.__path__)
     except:
-        try:
-            CPL.log('hub.startNub', 'trying to (re-)load Nub mhs')
-            fp, pathname, description = imp.find_module('mhs', nubs_mod.__path__)
-        except:
-            raise
+        return startManagedNub(name, hostname=hostname, port=port)
 
     try:
         mod = imp.load_module(name, fp, pathname, description)
