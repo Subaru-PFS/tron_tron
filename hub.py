@@ -635,7 +635,7 @@ def startManagedNub(name, managerName='mhsActor', hostname=None, port=None):
     CPL.log('hub.startNub', 'starting managed Nub %s...' % (name))
     try:
         g.hubcmd.inform('text="starting managed Nub %s at %s:%s..."' % (name, hostname, port))
-        mod.start(g.poller, name, hostname=hostname, port=port)
+        mod.start(g.poller, name, argHost=hostname, argPort=port)
     except Exception, e:
         g.hubcmd.warn('text=%s' % (CPL.qstr("failed to start managed Nub %s: %s" % (name, e))))
         return False
