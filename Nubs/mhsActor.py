@@ -61,11 +61,11 @@ def start(poller, name, initCmds=None,
         hostname = cfgHost
         port = cfgPort
         if hostname is None or port is None:
-            raise RuntimeError("tron host:port configuration for %s is fixed, but the address is not complete (%s:%s)" % 
+            raise RuntimeError('text="tron host:port configuration for %s is fixed, but the address is not complete (%s:%s)"' % 
                                (name, hostname, port))
     else:
         if (cfgHost is not None and argHost != cfgHost) or (cfgPort is not None and argPort != cfgPort):
-            g.hubcmd.warn('"user and tron addresses for %s differ, using user-specified address"' % (name))
+            g.hubcmd.warn('text="user and tron addresses for %s differ, using user-specified address"' % (name))
 
         hostname = argHost if argHost else cfgHost
         port = argPort if argPort else cfgPort
