@@ -1,88 +1,21 @@
 <!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
 <html xmlns="http://www.w3.org/1999/xhtml">
-  
-  
-
-  
-
-
-  
-
   <head>
     <title>
-      Ops/Parsing – SDSS-III
+      OpsParsing – SDSS-III
     </title>
-        <link rel="search" href="/search" />
-        <link rel="help" href="/wiki/TracGuide" />
-        <link rel="alternate" href="/wiki/Ops/Parsing?format=txt" type="text/x-trac-wiki" title="Plain Text" />
-        <link rel="up" href="/wiki/Ops" title="View parent page" />
-        <link rel="start" href="/wiki" />
-        <link rel="stylesheet" href="/chrome/common/css/trac.css" type="text/css" /><link rel="stylesheet" href="/chrome/common/css/wiki.css" type="text/css" />
-        <link rel="shortcut icon" href="/chrome/site/sdss3.ico" type="image/x-icon" />
-        <link rel="icon" href="/chrome/site/sdss3.ico" type="image/x-icon" />
-      <link type="application/opensearchdescription+xml" rel="search" href="/search/opensearch" title="Search SDSS-III" />
-    <script type="text/javascript" src="/chrome/common/js/jquery.js"></script><script type="text/javascript" src="/chrome/common/js/trac.js"></script><script type="text/javascript" src="/chrome/common/js/search.js"></script>
-    <!--[if lt IE 7]>
-    <script type="text/javascript" src="/chrome/common/js/ie_pre7_hacks.js"></script>
-    <![endif]-->
-    <script type="text/javascript">
-      jQuery(document).ready(function($) {
-        $("#content").find("h1,h2,h3,h4,h5,h6").addAnchor("Link to this section");
-      });
-    </script>
-<link rel="stylesheet" type="text/css" href="/chrome/site/sdss3.css" />
-</head>
-  <body>
-    <div id="banner">
-      <div id="header">
-        <a id="logo" href="http://www.sdss3.org/"><img src="/chrome/site/sdss3shrunk.png" alt="SDSS-III Logo" /></a>
-      </div>
-      <form id="search" action="/search" method="get">
-        <div>
-          <label for="proj-search">Search:</label>
-          <input type="text" id="proj-search" name="q" size="18" value="" />
-          <input type="submit" value="Search" />
-        </div>
-      </form>
-      <div id="metanav" class="nav">
-    <ul>
-      <li class="first">logged in as cloomis</li><li><a href="/logout">Logout</a></li><li><a href="/wiki/TracGuide">Help/Guide</a></li><li><a href="/about">About Trac</a></li><li class="last"><a href="/prefs">Preferences</a></li>
-    </ul>
-  </div>
-    </div>
-    <div id="mainnav" class="nav">
-    <ul>
-      <li class="first active"><a href="/wiki">Wiki</a></li><li><a href="/timeline">Timeline</a></li><li><a href="/roadmap">Roadmap</a></li><li><a href="/browser">Browse Source</a></li><li><a href="/report">View Tickets</a></li><li><a href="/newticket">New Ticket</a></li><li><a href="/search">Search</a></li><li><a href="/admin" title="Administration">Admin</a></li><li class="last"><a href="/tracmailman">Mailing Lists</a></li>
-    </ul>
-  </div>
-    <div id="main">
-      <div id="ctxtnav" class="nav">
-        <h2>Context Navigation</h2>
-          <ul>
-            <li class="first "><a href="/wiki/Ops">Up</a></li><li><a href="/wiki/WikiStart">Start Page</a></li><li><a href="/wiki/TitleIndex">Index</a></li><li><a href="/wiki/Ops/Parsing?action=history">History</a></li><li><a href="/wiki/Ops/Parsing?action=diff&amp;version=16">Last Change</a></li><li class="last"><a href="/admin/general/wikirename?redirect=1&amp;src_page=Ops%2FParsing">Rename page</a></li>
-          </ul>
-        <hr />
-      </div>
-    <div id="content" class="wiki">
-      <p class="path">
-        <a class="pathentry" title="View Ops" href="/wiki/Ops">Ops</a><span class="pathentry sep">/</span><a class="pathentry" title="View Ops/Parsing" href="/wiki/Ops/Parsing">Parsing</a>
-        <br style="clear: both" />
-      </p>
-      <div class="wikipage searchable">
-        
-          <p>
-</p><div class="wiki-toc"><ol><li><a href="#ParsingSupportforOperationsSoftwareMessages">Parsing Support for Operations Software Messages</a><ol><li><a href="#Interface">Interface</a><ol><li><a href="#ReplyHeaders">Reply Headers</a></li><li>
+<div class="wiki-toc"><ol><li><a href="#ParsingSupportforOperationsSoftwareMessages">Parsing Support for Operations Software Messages</a><ol><li><a href="#Interface">Interface</a><ol><li><a href="#ReplyHeaders">Reply Headers</a></li><li>
 <a href="#OrderedKeywordDictionaries">Ordered Keyword Dictionaries</a></li><li>
 <a href="#KeywordObjects">Keyword Objects</a></li><li>
 <a href="#StringRepresentations">String Representations</a></li></ol></li><li>
 <a href="#Implementation">Implementation</a></li></ol></li></ol></div><p>
 </p>
 <p>
-From <a class="wiki" href="/wiki/OperationsSoftware">Ops</a>/<a class="wiki" href="/wiki/Ops/Core">Core</a>
+From <a class="wiki" href="/wiki/OperationsSoftware">Ops</a>/<a href="Core.html">Core</a>
 </p>
 <h1 id="ParsingSupportforOperationsSoftwareMessages">Parsing Support for Operations Software Messages</h1>
 <p>
-This page describes the interface and implementation of parsers for the standard operations software messages. The underlying protocols being parsed are described <a class="wiki" href="/wiki/Ops/Protocols">here</a>.
+This page describes the interface and implementation of parsers for the standard operations software messages. The underlying protocols being parsed are described <a href="Protocols.html">here</a>.
 </p>
 <h2 id="Interface">Interface</h2>
 <p>
@@ -119,11 +52,11 @@ except ParseError:
 Both the Command and Reply classes include a <tt>string</tt> attribute that stores the original input text before parsing.
 </p>
 <p>
-The message classes (Command, Reply, Keywords, Keyword, Values) are designed to be instantiated by the parser and so only perform minimal protocol validation and do not test assertions that are already guaranteed by the grammar. A message validation framework, built on top of the parser, is <a class="wiki" href="/wiki/Ops/Validation">documented here</a>.
+The message classes (Command, Reply, Keywords, Keyword, Values) are designed to be instantiated by the parser and so only perform minimal protocol validation and do not test assertions that are already guaranteed by the grammar. A message validation framework, built on top of the parser, is <a class="wiki" href="Validation.html">documented here</a>.
 </p>
 <h3 id="ReplyHeaders">Reply Headers</h3>
 <p>
-A parsed reply has a header attribute that stores the fields <a class="wiki" href="/wiki/Ops/Protocols#ReplyHeader">described here</a>. To access the four individual words use:
+A parsed reply has a header attribute that stores the fields <a class="wiki" href="Protocols.html#ReplyHeader">described here</a>. To access the four individual words use:
 </p>
 <pre class="wiki">hdr = reply.header
 print hdr.cmdrName,hdr.commandId,hdr.actor,hdr.code
@@ -132,7 +65,7 @@ The subfields of the commander name are also available and will be empty strings
 </p>
 <pre class="wiki">print hdr.programName,hdr.userName,hdr.actorStack
 </pre><p>
-The code attribute is an instance of a <a class="wiki" href="/wiki/Ops/Types#EnumeratedValueType">enumerated type</a> defined as follows:
+The code attribute is an instance of a <a class="wiki" href="Types.html#EnumeratedValueType">enumerated type</a> defined as follows:
 </p>
 <pre class="wiki">MsgCode = types.Enum('&gt;','D','I','W',':','F','!',
     labelHelp=['Queued','Debug','Information','Warning','Finished','Error','Fatal'],
@@ -188,7 +121,7 @@ A keyword object has the following fields:
 <ul><li>name: string keyword name
 </li><li>values: a list of values
 </li></ul><p>
-After parsing, values are stored as opaque strings. Use the <a class="wiki" href="/wiki/Ops/Validation">validation framework</a> to check for the expected number of values and their <a class="wiki" href="/wiki/Ops/Types">data types</a> and, if successful, replace the string values with their typed equivalents.
+After parsing, values are stored as opaque strings. Use the <a href="Validation.html">validation framework</a> to check for the expected number of values and their <a href="Types.html">data types</a> and, if successful, replace the string values with their typed equivalents.
 </p>
 <h3 id="StringRepresentations">String Representations</h3>
 <p>
@@ -211,7 +144,7 @@ assert(result.tokenized() == parser.parse(result.canonical()).tokenized())
 assert(result.tokenized() == parser.parse(result.tokenized()).tokenized())
 </pre><h2 id="Implementation">Implementation</h2>
 <p>
-The <a class="wiki" href="/wiki/Ops/Protocols">formal message grammar</a> has been implemented with two different python parsing libraries:
+The <a "Protocols.html">formal message grammar</a> has been implemented with two different python parsing libraries:
 </p>
 <ul><li><a class="ext-link" href="http://www.dabeaz.com/ply/ply.html#ply_nn1"><span class="icon">PLY: Python Lex-Yacc</span></a> (tested version 2.5, released 28-May-2008)
 </li><li><a class="ext-link" href="http://pyparsing.wikispaces.com/Introduction"><span class="icon">pyparsing</span></a> (tested version 1.5.0, released 01-Jun-2008)
@@ -257,50 +190,5 @@ The table below summarizes the performance of the two implementations on a <a cl
 </td></tr></table>
 <p>
 These numbers are obviously dependent on the testing platform (an Intel MacBook Pro in this case), but clearly indicate that PLY is about 5 (10) times faster than pyparsing for replies (commands) and fast enough for the intended application. The pyparsing module throughput is low enough in these tests to justify selecting PLY as the standard parser for the operations software, despite the pyparsing's more expressive syntax. The equal PLY reply and command parsing speeds are expected since table-driven parsing performance should be roughly independent of the grammar complexity. The significantly worse pyparsing performance with packrat caching enabled is unexpected.
-</p>
-
-        
-        
-      </div>
-          <div class="buttons">
-              <form method="get" action="/wiki/Ops/Parsing" id="modifypage">
-                <div>
-                  <input type="hidden" name="action" value="edit" />
-                      <input type="submit" value="Edit this page" />
-                </div>
-              </form>
-    <form method="get" action="/attachment/wiki/Ops/Parsing/" id="attachfile">
-      <div>
-        <input type="hidden" name="action" value="new" />
-        <input type="submit" name="attachfilebutton" value="Attach file" />
-      </div>
-    </form>
-              <form method="get" action="/wiki/Ops/Parsing">
-                <div id="delete">
-                  <input type="hidden" name="action" value="delete" />
-                  <input type="hidden" name="version" value="16" />
-                    <input type="submit" name="delete_version" value="Delete this version" />
-                  <input type="submit" value="Delete page" />
-                </div>
-              </form>
-          </div>
-    </div>
-    <div id="altlinks">
-      <h3>Download in other formats:</h3>
-      <ul>
-        <li class="last first">
-          <a rel="nofollow" href="/wiki/Ops/Parsing?format=txt">Plain Text</a>
-        </li>
-      </ul>
-    </div>
-    </div>
-    <div id="footer" lang="en" xml:lang="en"><hr />
-      <a id="tracpowered" href="http://trac.edgewall.org/"><img src="/chrome/common/trac_logo_mini.png" height="30" width="107" alt="Trac Powered" /></a>
-      <p class="left">
-        Powered by <a href="/about"><strong>Trac 0.11.2.1</strong></a><br />
-        By <a href="http://www.edgewall.org/">Edgewall Software</a>.
-      </p>
-      <p class="right">Visit the Trac open source project at<br /><a href="http://trac.edgewall.org/">http://trac.edgewall.org/</a></p>
-    </div>
 </body>
 </html>
