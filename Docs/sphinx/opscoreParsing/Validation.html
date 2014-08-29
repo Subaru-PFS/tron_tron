@@ -1,77 +1,10 @@
 <!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
 <html xmlns="http://www.w3.org/1999/xhtml">
-  
-  
-
-  
-
-
-  
-
   <head>
-    <title>
-      Ops/Validation – SDSS-III
-    </title>
-        <link rel="search" href="/search" />
-        <link rel="help" href="/wiki/TracGuide" />
-        <link rel="alternate" href="/wiki/Ops/Validation?format=txt" type="text/x-trac-wiki" title="Plain Text" />
-        <link rel="up" href="/wiki/Ops" title="View parent page" />
-        <link rel="start" href="/wiki" />
-        <link rel="stylesheet" href="/chrome/common/css/trac.css" type="text/css" /><link rel="stylesheet" href="/chrome/common/css/wiki.css" type="text/css" />
-        <link rel="shortcut icon" href="/chrome/site/sdss3.ico" type="image/x-icon" />
-        <link rel="icon" href="/chrome/site/sdss3.ico" type="image/x-icon" />
-      <link type="application/opensearchdescription+xml" rel="search" href="/search/opensearch" title="Search SDSS-III" />
-    <script type="text/javascript" src="/chrome/common/js/jquery.js"></script><script type="text/javascript" src="/chrome/common/js/trac.js"></script><script type="text/javascript" src="/chrome/common/js/search.js"></script>
-    <!--[if lt IE 7]>
-    <script type="text/javascript" src="/chrome/common/js/ie_pre7_hacks.js"></script>
-    <![endif]-->
-    <script type="text/javascript">
-      jQuery(document).ready(function($) {
-        $("#content").find("h1,h2,h3,h4,h5,h6").addAnchor("Link to this section");
-      });
-    </script>
-<link rel="stylesheet" type="text/css" href="/chrome/site/sdss3.css" />
+    <title>Keyword Dictionary Validation</title>
 </head>
-  <body>
-    <div id="banner">
-      <div id="header">
-        <a id="logo" href="http://www.sdss3.org/"><img src="/chrome/site/sdss3shrunk.png" alt="SDSS-III Logo" /></a>
-      </div>
-      <form id="search" action="/search" method="get">
-        <div>
-          <label for="proj-search">Search:</label>
-          <input type="text" id="proj-search" name="q" size="18" value="" />
-          <input type="submit" value="Search" />
-        </div>
-      </form>
-      <div id="metanav" class="nav">
-    <ul>
-      <li class="first">logged in as cloomis</li><li><a href="/logout">Logout</a></li><li><a href="/wiki/TracGuide">Help/Guide</a></li><li><a href="/about">About Trac</a></li><li class="last"><a href="/prefs">Preferences</a></li>
-    </ul>
-  </div>
-    </div>
-    <div id="mainnav" class="nav">
-    <ul>
-      <li class="first active"><a href="/wiki">Wiki</a></li><li><a href="/timeline">Timeline</a></li><li><a href="/roadmap">Roadmap</a></li><li><a href="/browser">Browse Source</a></li><li><a href="/report">View Tickets</a></li><li><a href="/newticket">New Ticket</a></li><li><a href="/search">Search</a></li><li><a href="/admin" title="Administration">Admin</a></li><li class="last"><a href="/tracmailman">Mailing Lists</a></li>
-    </ul>
-  </div>
-    <div id="main">
-      <div id="ctxtnav" class="nav">
-        <h2>Context Navigation</h2>
-          <ul>
-            <li class="first "><a href="/wiki/Ops">Up</a></li><li><a href="/wiki/WikiStart">Start Page</a></li><li><a href="/wiki/TitleIndex">Index</a></li><li><a href="/wiki/Ops/Validation?action=history">History</a></li><li><a href="/wiki/Ops/Validation?action=diff&amp;version=35">Last Change</a></li><li class="last"><a href="/admin/general/wikirename?redirect=1&amp;src_page=Ops%2FValidation">Rename page</a></li>
-          </ul>
-        <hr />
-      </div>
-    <div id="content" class="wiki">
-      <p class="path">
-        <a class="pathentry" title="View Ops" href="/wiki/Ops">Ops</a><span class="pathentry sep">/</span><a class="pathentry" title="View Ops/Validation" href="/wiki/Ops/Validation">Validation</a>
-        <br style="clear: both" />
-      </p>
-      <div class="wikipage searchable">
-        
-          <p>
-</p><div class="wiki-toc"><ol><li><a href="#MessageValidationandCallbackFramework">Message Validation and Callback Framework</a><ol><li><a href="#Keywords">Keywords</a><ol><li><a href="#KeywordCreation">Keyword Creation</a></li><li>
+<body>
+<div class="wiki-toc"><ol><li><a href="#MessageValidationandCallbackFramework">Message Validation and Callback Framework</a><ol><li><a href="#Keywords">Keywords</a><ol><li><a href="#KeywordCreation">Keyword Creation</a></li><li>
 <a href="#KeywordValidation">Keyword Validation</a></li><li>
 <a href="#KeywordDocumentation">Keyword Documentation</a></li></ol></li><li>
 <a href="#Commands">Commands</a><ol><li><a href="#KeysFormatString">Keys Format String</a></li><li>
@@ -82,11 +15,11 @@
 <a href="#Replies">Replies</a></li></ol></li></ol></div><p>
 </p>
 <p>
-From <a class="wiki" href="/wiki/OperationsSoftware">Ops</a>/<a class="wiki" href="/wiki/Ops/Core">Core</a>
+From <a href="Core.html">Core</a>
 </p>
 <h1 id="MessageValidationandCallbackFramework">Message Validation and Callback Framework</h1>
 <p>
-The formal grammars that define <a class="wiki" href="/wiki/Ops/Protocols">valid command and reply strings</a> enable a <a class="wiki" href="/wiki/Ops/Parsing">parser</a> to perform a first level of validation, but additional validation is generally required to ensure that keyword values can be interpreted according to their <a class="wiki" href="/wiki/Ops/Types">expected types</a> (the grammar considers all keyword values to be strings) and, for commands, to test for valid keyword sequences.
+The formal grammars that define <a href="Protocols.html">valid command and reply strings</a> enable a <a href="Parsing.html">parser</a> to perform a first level of validation, but additional validation is generally required to ensure that keyword values can be interpreted according to their <a href="Types.html">expected types</a> (the grammar considers all keyword values to be strings) and, for commands, to test for valid keyword sequences.
 </p>
 <p>
 This page describes a python framework for declaring valid keywords and commands, and associating them with user-defined callbacks. The framework is implemented in the python modules <a class="source" href="/browser/repo/ops/opscore/trunk/python/opscore/protocols/validation.py">opscore.protocols.validation</a>, <a class="source" href="/browser/repo/ops/opscore/trunk/python/opscore/protocols/keysformat.py">opscore.protocols.keysformat</a> and <a class="source" href="/browser/repo/ops/opscore/trunk/python/opscore/protocols/keys.py">opscore.protocols.keys</a>.
@@ -104,10 +37,10 @@ The resulting Key object serves as a template for valid Keyword objects. The gen
 </p>
 <pre class="wiki">Key(&lt;name&gt;,&lt;type-1&gt;,&lt;type-2&gt;,...&lt;type-n&gt;,help=...)
 </pre><p>
-where the <tt>help</tt> value is optional and type declarations are <a class="wiki" href="/wiki/Ops/Types">documented elsewhere</a>.
+where the <tt>help</tt> value is optional and type declarations are <a href="Types.html">documented elsewhere</a>.
 </p>
 <p>
-Note that the Key object stores the name with whatever capitalization is provided, for improved readability of the code and any automatically generated documentation. However, for the purposes of validation, keyword name matches are case insensitive and names must be unique within the namespace of a <a class="wiki" href="/wiki/Ops/KeysDictionary">Keys dictionary</a>, which usually groups together all reply or command keywords of a single actor.
+Note that the Key object stores the name with whatever capitalization is provided, for improved readability of the code and any automatically generated documentation. However, for the purposes of validation, keyword name matches are case insensitive and names must be unique within the namespace of a <a href="KeysDictionary.html">Keys dictionary</a>, which usually groups together all reply or command keywords of a single actor.
 </p>
 <h3 id="KeywordCreation">Keyword Creation</h3>
 <p>
@@ -245,7 +178,7 @@ There are three ways to match a single keyword in a format string:
 </li><li>A keyword name enclosed in angle &lt;brackets&gt; looks up a corresponding Key definition which will generally specify values and metadata
 </li><li>A logical OR of the previous two forms, written using '|' without any whitespace between keywords
 </li></ul><p>
-The second form looks up Key definitions by name in a <a class="wiki" href="/wiki/Ops/KeysDictionary">keys dictionary</a> that has been assigned using:
+The second form looks up Key definitions by name in a <a href="KeysDictionary.html">keys dictionary</a> that has been assigned using:
 </p>
 <pre class="wiki">CmdKey.setKeys(keysdict)
 </pre><p>
@@ -334,7 +267,7 @@ As always, each value can either be provided as a string or already typed. Inval
 </p>
 <h3 id="CommandValidation">Command Validation</h3>
 <p>
-Although you will not normally use a Cmd to directly validate a Command, this is how it works (help metadata has been omitted for clarity). First, register the <a class="wiki" href="/wiki/Ops/KeysDictionary">keys dictionary</a> that defines any keywords referenced in the command's format string:
+Although you will not normally use a Cmd to directly validate a Command, this is how it works (help metadata has been omitted for clarity). First, register the <a href="KeysDictionary.html">keys dictionary</a> that defines any keywords referenced in the command's format string:
 </p>
 <pre class="wiki">CmdKey.setKeys(keysdict)
 </pre><p>
@@ -442,14 +375,14 @@ An alternative way to use callbacks is via the <tt>match</tt> method, which take
 for func in funcList:
     func(cmd, 666)
 </pre><p>
-<a class="wiki" href="/wiki/Ops/CommandParsingExample">Here's</a> an example of your various command parsing options.
+<a href="CommandParsingExample.html">Here's</a> an example of your various command parsing options.
 </p>
 <h2 id="Replies">Replies</h2>
 <p>
 The following describes a simple reply callback mechanism that is suitable for testing and simple applications. TUI uses a more sophisticated dispatch mechanism.
 </p>
 <p>
-Reply messages are handled using a combination of the ingredients describe above. Valid reply keywords are collected in a <a class="wiki" href="/wiki/Ops/KeysDictionary">keys dictionary</a> and registered using:
+Reply messages are handled using a combination of the ingredients describe above. Valid reply keywords are collected in a <a href="KeysDictionary.html">keys dictionary</a> and registered using:
 </p>
 <pre class="wiki">ReplyKey.setKeys(keysdict)
 </pre><p>
@@ -487,48 +420,5 @@ def exposureState(key):
 Reply keyword callbacks can be chained and modify their argument, as described above for command callbacks.
 </p>
 
-        
-        
-      </div>
-          <div class="buttons">
-              <form method="get" action="/wiki/Ops/Validation" id="modifypage">
-                <div>
-                  <input type="hidden" name="action" value="edit" />
-                      <input type="submit" value="Edit this page" />
-                </div>
-              </form>
-    <form method="get" action="/attachment/wiki/Ops/Validation/" id="attachfile">
-      <div>
-        <input type="hidden" name="action" value="new" />
-        <input type="submit" name="attachfilebutton" value="Attach file" />
-      </div>
-    </form>
-              <form method="get" action="/wiki/Ops/Validation">
-                <div id="delete">
-                  <input type="hidden" name="action" value="delete" />
-                  <input type="hidden" name="version" value="35" />
-                    <input type="submit" name="delete_version" value="Delete this version" />
-                  <input type="submit" value="Delete page" />
-                </div>
-              </form>
-          </div>
-    </div>
-    <div id="altlinks">
-      <h3>Download in other formats:</h3>
-      <ul>
-        <li class="last first">
-          <a rel="nofollow" href="/wiki/Ops/Validation?format=txt">Plain Text</a>
-        </li>
-      </ul>
-    </div>
-    </div>
-    <div id="footer" lang="en" xml:lang="en"><hr />
-      <a id="tracpowered" href="http://trac.edgewall.org/"><img src="/chrome/common/trac_logo_mini.png" height="30" width="107" alt="Trac Powered" /></a>
-      <p class="left">
-        Powered by <a href="/about"><strong>Trac 0.11.2.1</strong></a><br />
-        By <a href="http://www.edgewall.org/">Edgewall Software</a>.
-      </p>
-      <p class="right">Visit the Trac open source project at<br /><a href="http://trac.edgewall.org/">http://trac.edgewall.org/</a></p>
-    </div>
 </body>
 </html>

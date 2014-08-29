@@ -1,96 +1,42 @@
 <!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
 <html xmlns="http://www.w3.org/1999/xhtml">
-  
-  
-
-  
-
-
-  
-
   <head>
-    <title>
-      Ops/Types – SDSS-III
-    </title>
-        <link rel="search" href="/search" />
-        <link rel="help" href="/wiki/TracGuide" />
-        <link rel="alternate" href="/wiki/Ops/Types?format=txt" type="text/x-trac-wiki" title="Plain Text" />
-        <link rel="up" href="/wiki/Ops" title="View parent page" />
-        <link rel="start" href="/wiki" />
-        <link rel="stylesheet" href="/chrome/common/css/trac.css" type="text/css" /><link rel="stylesheet" href="/chrome/common/css/wiki.css" type="text/css" />
-        <link rel="shortcut icon" href="/chrome/site/sdss3.ico" type="image/x-icon" />
-        <link rel="icon" href="/chrome/site/sdss3.ico" type="image/x-icon" />
-      <link type="application/opensearchdescription+xml" rel="search" href="/search/opensearch" title="Search SDSS-III" />
-    <script type="text/javascript" src="/chrome/common/js/jquery.js"></script><script type="text/javascript" src="/chrome/common/js/trac.js"></script><script type="text/javascript" src="/chrome/common/js/search.js"></script>
-    <!--[if lt IE 7]>
-    <script type="text/javascript" src="/chrome/common/js/ie_pre7_hacks.js"></script>
-    <![endif]-->
-    <script type="text/javascript">
-      jQuery(document).ready(function($) {
-        $("#content").find("h1,h2,h3,h4,h5,h6").addAnchor("Link to this section");
-      });
-    </script>
-<link rel="stylesheet" type="text/css" href="/chrome/site/sdss3.css" />
+    <title>Keyword Dictionary Types</title>
 </head>
-  <body>
-    <div id="banner">
-      <div id="header">
-        <a id="logo" href="http://www.sdss3.org/"><img src="/chrome/site/sdss3shrunk.png" alt="SDSS-III Logo" /></a>
-      </div>
-      <form id="search" action="/search" method="get">
-        <div>
-          <label for="proj-search">Search:</label>
-          <input type="text" id="proj-search" name="q" size="18" value="" />
-          <input type="submit" value="Search" />
-        </div>
-      </form>
-      <div id="metanav" class="nav">
-    <ul>
-      <li class="first">logged in as cloomis</li><li><a href="/logout">Logout</a></li><li><a href="/wiki/TracGuide">Help/Guide</a></li><li><a href="/about">About Trac</a></li><li class="last"><a href="/prefs">Preferences</a></li>
-    </ul>
-  </div>
+<body>
+<div class="wiki-toc">
+<ol>
+  <li><a href="#KeywordValueTypes">Keyword Value Types</a>
+    <ol>
+      <li>
+        <ol><li><a href="#BooleanValueType">Boolean Value Type</a>
+          </li>
+          <li><a href="#EnumeratedValueType">Enumerated Value Type</a></li>
+          <li><a href="#BitfieldValueType">Bitfield Value
+          Type</a></li>
+      </ol>
+      </li>
+      <li><a href="#RepeatedValueType">Repeated Value Type</a></li>
+      <li><a href="#CompoundValueType">Compound Value Type</a></li>
+      <li><a href="#StringConversion">String Conversion</a></li>
+      <li><a href="#AutomatedDocumentation">Automated Documentation</a></li>
+    </ol>
+    </li>
+    </ol>
     </div>
-    <div id="mainnav" class="nav">
-    <ul>
-      <li class="first active"><a href="/wiki">Wiki</a></li><li><a href="/timeline">Timeline</a></li><li><a href="/roadmap">Roadmap</a></li><li><a href="/browser">Browse Source</a></li><li><a href="/report">View Tickets</a></li><li><a href="/newticket">New Ticket</a></li><li><a href="/search">Search</a></li><li><a href="/admin" title="Administration">Admin</a></li><li class="last"><a href="/tracmailman">Mailing Lists</a></li>
-    </ul>
-  </div>
-    <div id="main">
-      <div id="ctxtnav" class="nav">
-        <h2>Context Navigation</h2>
-          <ul>
-            <li class="first "><a href="/wiki/Ops">Up</a></li><li><a href="/wiki/WikiStart">Start Page</a></li><li><a href="/wiki/TitleIndex">Index</a></li><li><a href="/wiki/Ops/Types?action=history">History</a></li><li><a href="/wiki/Ops/Types?action=diff&amp;version=28">Last Change</a></li><li class="last"><a href="/admin/general/wikirename?redirect=1&amp;src_page=Ops%2FTypes">Rename page</a></li>
-          </ul>
-        <hr />
-      </div>
-    <div id="content" class="wiki">
-      <p class="path">
-        <a class="pathentry" title="View Ops" href="/wiki/Ops">Ops</a><span class="pathentry sep">/</span><a class="pathentry" title="View Ops/Types" href="/wiki/Ops/Types">Types</a>
-        <br style="clear: both" />
-      </p>
-      <div class="wikipage searchable">
-        
-          <p>
-</p><div class="wiki-toc"><ol><li><a href="#KeywordValueTypes">Keyword Value Types</a><ol><li><ol><li><a href="#BooleanValueType">Boolean Value Type</a></li><li>
-<a href="#EnumeratedValueType">Enumerated Value Type</a></li><li>
-<a href="#BitfieldValueType">Bitfield Value Type</a></li></ol></li><li>
-<a href="#RepeatedValueType">Repeated Value Type</a></li><li>
-<a href="#CompoundValueType">Compound Value Type</a></li><li>
-<a href="#StringConversion">String Conversion</a></li><li>
-<a href="#AutomatedDocumentation">Automated Documentation</a></li></ol></li></ol></div><p>
-</p>
+<p></p>
 <p>
-From <a class="wiki" href="/wiki/OperationsSoftware">Ops</a>/<a class="wiki" href="/wiki/Ops/Core">Core</a>
+From <a class="wiki" href="/wiki/OperationsSoftware">Ops</a>/<a href="Core.html">Core</a>
 </p>
 <h1 id="KeywordValueTypes">Keyword Value Types</h1>
 <p>
 This page documents the python module <a class="source" href="/browser/repo/ops/opscore/trunk/python/opscore/protocols/types.py">opscore.protocols.types</a>.
 </p>
 <p>
-The optional values associated with <a class="wiki" href="/wiki/Ops/Protocols">message keywords</a> are, by default, treated as opaque strings. A value type declaration associates a value with the metadata necessary to to support services such as:
+The optional values associated with <a href="Protocols.html">message keywords</a> are, by default, treated as opaque strings. A value type declaration associates a value with the metadata necessary to to support services such as:
 </p>
-<ul><li><a class="wiki" href="/wiki/Ops/DataDictionary">data dictionary generation</a>
-</li><li><a class="wiki" href="/wiki/Ops/Validation">message validation</a>
+<ul><li><a href="DataDictionary.html">data dictionary generation</a>
+</li><li><a href="Validation.html">message validation</a>
 </li><li>conversions to and from strings
 </li><li>keyword archiving
 </li><li>documentation generation
@@ -98,7 +44,7 @@ The optional values associated with <a class="wiki" href="/wiki/Ops/Protocols">m
 </li></ul><p>
 The following types are currently supported:
 </p>
-<table class="wiki">
+<table>
 <tr><td> String </td><td> A string value 
 </td></tr><tr><td> Float </td><td> An IEEE single-precision floating point number 
 </td></tr><tr><td> Double </td><td> An IEEE double-precision floating point number 
@@ -106,12 +52,12 @@ The following types are currently supported:
 </td></tr><tr><td> UInt </td><td> An unsigned 32-bit decimal integer 
 </td></tr><tr><td> Long </td><td> A signed 64-bit decimal integer 
 </td></tr><tr><td> Hex </td><td> An unsigned 32-bit hexadecimal integer 
-</td></tr><tr><td> <a class="wiki" href="/wiki/Ops/Types#BooleanValueType">Bool</a> </td><td> A boolean value 
-</td></tr><tr><td> <a class="wiki" href="/wiki/Ops/Types#EnumeratedValueType">Enum</a> </td><td> An enumerated value 
-</td></tr><tr><td> <a class="wiki" href="/wiki/Ops/Types#BitfieldValueType">Bits</a> </td><td> An unsigned 32-bit integer interpreted as packed bit fields 
+</td></tr><tr><td> <a href="Types.html#BooleanValueType">Bool</a> </td><td> A boolean value 
+</td></tr><tr><td> <a href="Types.html#EnumeratedValueType">Enum</a> </td><td> An enumerated value 
+</td></tr><tr><td> <a href="Types.html#BitfieldValueType">Bits</a> </td><td> An unsigned 32-bit integer interpreted as packed bit fields 
 </td></tr></table>
 <p>
-The following string metadata can be associated with any type (adapted from the <a class="wiki" href="/wiki/Ops/DataDictionary">data dictionary</a> keyValInfo):
+The following string metadata can be associated with any type (adapted from the <a href="DataDictionary.html">data dictionary</a> keyValInfo):
 </p>
 <table class="wiki">
 <tr><td> name </td><td> An optional name identifying this value. Should be a valid python identifier. Used by the archiver when building expressions and creating tables. 
@@ -248,7 +194,7 @@ All value types can be initialized from a string value, for example:
 Enum('RED','GREEN','BLUE')('GREEN')
 Bool('no','yes')('no')
 </pre><p>
-This is the mechanism used to <a class="wiki" href="/wiki/Ops/Validation">assign typed values to keywords</a>. Assuming that the constructor argument is a string, then there are two ways in which an initialization can fail. First, the string might be a case-insensitive match to value of the <tt>invalid</tt> metadata field:
+This is the mechanism used to <a href="Validation.html">assign typed values to keywords</a>. Assuming that the constructor argument is a string, then there are two ways in which an initialization can fail. First, the string might be a case-insensitive match to value of the <tt>invalid</tt> metadata field:
 </p>
 <pre class="wiki">Float(invalid='???')('???')
 </pre><p>
@@ -325,49 +271,5 @@ Descriptions formatted for HTML contain the same (label,value) descriptor elemen
   &lt;div class="descriptor"&gt;&lt;span class="label"&gt;Units&lt;/span&gt;&lt;span class="value"&gt;C&lt;/span&gt;&lt;/div&gt;
   &lt;div class="descriptor"&gt;&lt;span class="label"&gt;Invalid&lt;/span&gt;&lt;span class="value"&gt;?&lt;/span&gt;&lt;/div&gt;
 &lt;/div&gt;
-</pre>
-        
-        
-      </div>
-          <div class="buttons">
-              <form method="get" action="/wiki/Ops/Types" id="modifypage">
-                <div>
-                  <input type="hidden" name="action" value="edit" />
-                      <input type="submit" value="Edit this page" />
-                </div>
-              </form>
-    <form method="get" action="/attachment/wiki/Ops/Types/" id="attachfile">
-      <div>
-        <input type="hidden" name="action" value="new" />
-        <input type="submit" name="attachfilebutton" value="Attach file" />
-      </div>
-    </form>
-              <form method="get" action="/wiki/Ops/Types">
-                <div id="delete">
-                  <input type="hidden" name="action" value="delete" />
-                  <input type="hidden" name="version" value="28" />
-                    <input type="submit" name="delete_version" value="Delete this version" />
-                  <input type="submit" value="Delete page" />
-                </div>
-              </form>
-          </div>
-    </div>
-    <div id="altlinks">
-      <h3>Download in other formats:</h3>
-      <ul>
-        <li class="last first">
-          <a rel="nofollow" href="/wiki/Ops/Types?format=txt">Plain Text</a>
-        </li>
-      </ul>
-    </div>
-    </div>
-    <div id="footer" lang="en" xml:lang="en"><hr />
-      <a id="tracpowered" href="http://trac.edgewall.org/"><img src="/chrome/common/trac_logo_mini.png" height="30" width="107" alt="Trac Powered" /></a>
-      <p class="left">
-        Powered by <a href="/about"><strong>Trac 0.11.2.1</strong></a><br />
-        By <a href="http://www.edgewall.org/">Edgewall Software</a>.
-      </p>
-      <p class="right">Visit the Trac open source project at<br /><a href="http://trac.edgewall.org/">http://trac.edgewall.org/</a></p>
-    </div>
 </body>
 </html>
