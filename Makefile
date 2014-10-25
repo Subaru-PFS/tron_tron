@@ -11,8 +11,8 @@ tags:
 	etags `find . -name '*.py' -print`
 
 install:
-	echo Installing tron to $$PREFIX
+	echo Installing tron to $(PREFIX)
 	sleep 1
-	mkdir -p $$PREFIX
-	cp -pr . $$PREFIX
+	mkdir -p $(PREFIX)
+	cp -pr . $(PREFIX)
 
