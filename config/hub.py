@@ -4,7 +4,7 @@ import os
 logDir = os.path.join(os.environ['ICS_MHS_LOGS_ROOT'], 'tron')
 
 # What file has the passwords.
-passwordFile = os.path.join(os.environ['ICS_MHS_TRON_DIR'], 'passwords')
+passwordFile = os.path.join(os.environ['TRON_TRON_DIR'], 'passwords')
 
 # Which words to load internally.
 vocabulary = ('hub', 'keys', 'msg')
