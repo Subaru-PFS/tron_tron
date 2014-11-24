@@ -1,5 +1,5 @@
 # ics_mhs_root defines the disk layout.
-setupRequired(ics_mhs_config)
+setupRequired(ics_config)
 
 pathPrepend(PATH, ${UPS_PROD_DIR}/bin)
 pathPrepend(PYTHONPATH, ${UPS_PROD_DIR})
