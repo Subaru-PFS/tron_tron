@@ -46,7 +46,7 @@ def init(configName=''):
 
     # Bootstrap the whole configuration system
     configPath = os.environ.get('CONFIG_DIR',
-                                os.path.join(os.environ['ICS_MHS_TRON_DIR'], 'config', configName))
+                                os.path.join(os.environ['TRON_TRON_DIR'], 'config', configName))
     CPL.cfg.init(path=configPath)
     os.environ['CONFIG_DIR'] = configPath
     
