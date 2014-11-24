@@ -1,18 +1,13 @@
 #!/bin/bash
 
-if test -z "$ICS_MHS_TRON_DIR"; then
-    echo "ICS_MHS_TRON_DIR is not set, and needs to be setup" >&1
+if test -z "$TRON_TRON_DIR"; then
+    echo "TRON_TRON_DIR is not set, and needs to be setup" >&1
     exit 1
 fi
 export LOG_DIR=$ICS_MHS_LOGS_ROOT/tron
 
-#if test -z "$PYGUIDE_DIR"; then
-#    echo "PYGUIDE_DIR is not set, and needs to be setup" >&1
-#    exit 1
-#fi
-
 echo
-echo ====================== Using tron with ICS_MHS_TRON_DIR=$ICS_MHS_TRON_DIR
+echo ====================== Using tron with TRON_TRON_DIR=$TRON_TRON_DIR
 echo
 
 usage() {
@@ -25,7 +20,7 @@ if test $# != 1; then
 fi
 cmd=$1
 
-cd $ICS_MHS_TRON_DIR
+cd $TRON_TRON_DIR
 
 # Return the ICC's pid, or the empty string.
 #
@@ -55,7 +50,7 @@ do_start() {
     echo "Starting new tron...\c"
 
     # This log will only get startup bomb messages. Don't bother saving them.
-    cd $ICS_MHS_TRON_DIR
+    cd $TRON_TRON_DIR
     mv $LOG_DIR/run.log $LOG_DIR/run.log-last 2>/dev/null
     python runhub.py >$LOG_DIR/run.log 2>&1 &        
     
