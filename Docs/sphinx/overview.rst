@@ -4,7 +4,7 @@ Overview
 Control software for complex and distributed systems is
 challenging. One approach is to couple the individual pieces loosely
 with light-weight protocols, while enforcing public interfaces with
-well-typed contracts. This is especially useful submodules are
+well-typed contracts. This is especially useful when submodules are
 developed independantly: the individual teams want day-to-day
 flexibility unencumbered by complexity, but also expecting reliable
 integration.
@@ -15,7 +15,7 @@ uses, it is logical to try to factor it out as its own
 device. Modularization can also help with testing and maintenance, by
 making hardware more directly accessible.
 
-Tron is a centralwas developed as a relatively simple distributed communication
+Tron was developed as a relatively simple distributed communication
 system, designed to encourage independant development of hardware and
 software subsystems, and their eventual integration. The only
 significant requirement is that each component or program must come

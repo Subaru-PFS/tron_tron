@@ -142,7 +142,7 @@ One thing I will point out now. You can create a complete new actor
 from a template using the `genActor` shell command. Cd to, say,
 `~mhs/devel` and invoke, say::
 
-  genActor mytestActor
+  genActor mytest
 
 then cd into the new directory, invoke `setup -v -r .` to setup all
 the runtime dependencies. Start it with `stageManager mytest start`
