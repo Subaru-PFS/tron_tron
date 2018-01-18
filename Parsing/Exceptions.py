@@ -1,8 +1,6 @@
 __all__ = [ 'ParseException' ]
 
-import exceptions
-
-class ParseException(exceptions.Exception):
+class ParseException(Exception):
     """ A mini Exception used to pass useful information up from the bowels of the parser.
 
     In particular:
@@ -12,7 +10,7 @@ class ParseException(exceptions.Exception):
     """
     
     def __init__(self, leftoverText, KVs=None):
-        exceptions.Exception.__init__(self)
+        Exception.__init__(self)
 
         self.leftoverText = leftoverText
         self.KVs = KVs
