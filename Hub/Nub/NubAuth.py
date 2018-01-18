@@ -1,3 +1,5 @@
+from builtins import map
+from builtins import object
 __all__ = ['NubAuth']
 
 import base64
@@ -74,7 +76,7 @@ class NubAuth(object):
         CPL.log('NubAut', 'parsing version %s' % (s))
 
         parts = s.split(',')
-        dqparts = map(Parsing.dequote, parts)
+        dqparts = list(map(Parsing.dequote, parts))
 
         CPL.log('NubAut', 'parsed %s' % (dqparts))
         return dqparts

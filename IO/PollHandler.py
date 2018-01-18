@@ -1,5 +1,7 @@
 #!/usr/bin/env python
 
+from builtins import range
+from builtins import object
 __all__ = ['PollHandler']
 
 """ PollHandler.py -- wrap poll loop.
@@ -365,7 +367,7 @@ class PollHandler(CPL.Object):
         """ Returns string describing the files we believe we are waiting on... """
 
         dlist = []
-        for fd, f in self.files.iteritems():
+        for fd, f in self.files.items():
             inHandler = f.get('inputHandler', None)
             outHandler = f.get('outputHandler', None)
             

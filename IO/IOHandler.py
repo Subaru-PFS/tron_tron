@@ -1,5 +1,6 @@
 #/usr/bin/env python
 
+from builtins import str
 __all__ = ['IOHandler']
 
 import os

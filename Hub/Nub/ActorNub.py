@@ -1,4 +1,6 @@
 from __future__ import absolute_import
+from builtins import str
+from past.builtins import basestring
 __all__ = ['ActorNub']
 
 import re
@@ -250,7 +252,7 @@ class ActorNub(CoreNub):
         cmd.inform('actorCmds=%s,%d,%d' % \
                    (CPL.qstr(self.name), len(self.liveCommands), len(self.ourCommands)))
 
-        for id, ourCmd in self.ourCommands.iteritems():
+        for id, ourCmd in self.ourCommands.items():
             cmd.inform('actorCmd=%s,%s,%s' % \
                    (CPL.qstr(self.name), CPL.qstr(id), CPL.qstr(ourCmd)))
             

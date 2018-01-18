@@ -1,4 +1,5 @@
 from __future__ import absolute_import
+from builtins import range
 __all__ = ['parseArgs', 'match']
 
 import collections
@@ -159,7 +160,7 @@ def match(argv, opts):
     matches = collections.OrderedDict()
     leftovers = collections.OrderedDict()
 
-    for opt, arg in argv.iteritems():
+    for opt, arg in argv.items():
         # If we are looking for the option, match it and convert the argument.
         if opt in want:
             converter = want[opt]
@@ -182,5 +183,5 @@ def match(argv, opts):
         else:
             leftovers[opt] = arg
 
-    return matches, want.keys(), leftovers
+    return matches, list(want.keys()), leftovers
 

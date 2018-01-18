@@ -1,4 +1,5 @@
 from __future__ import absolute_import
+from builtins import range
 __all__ = ['BinaryReplyDecoder']
 
 import collections
@@ -160,7 +161,7 @@ class BinaryReplyDecoder(ReplyDecoder):
         #
         my_csum = 0
         if not is_file:
-            for i in xrange(10, fullLength - 10 + 1):
+            for i in range(10, fullLength - 10 + 1):
                 my_csum ^= ord(buf[i])
             if my_csum != csum:
                 CPL.log('Hub.decap', 'csum(%d) != calculated csum(%d)' %

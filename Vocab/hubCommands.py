@@ -68,21 +68,21 @@ class hubCommands(InternalCmd.InternalCmd):
         CPL.log("doListen", "leftovers: %s" % (leftovers))
         
         if 'addActors' in matched:
-            actors = leftovers.keys()
+            actors = list(leftovers.keys())
             CPL.log("doListen", "addActors: %s" % (actors))
             #cmd.inform('text="%s"' % (CPL.qstr("adding actors: %s" % (actors))))
             cmdr.taster.addToFilter(actors, [], actors)
             cmdr.taster.genKeys(cmd)
             cmd.finish()
         elif 'setActors' in matched:
-            actors = leftovers.keys()
+            actors = list(leftovers.keys())
             CPL.log("doListen", "setActors: %s" % (actors))
             #cmd.inform('text="%s"' % (CPL.qstr("adding actors: %s" % (actors))))
             cmdr.taster.setFilter(actors, [], actors)
             cmdr.taster.genKeys(cmd)
             cmd.finish()
         elif 'delActors' in matched:
-            actors = leftovers.keys()
+            actors = list(leftovers.keys())
             CPL.log("doListen", "delActors: %s" % (actors))
             #cmd.inform('text="%s"' % (CPL.qstr("removing actors: %s" % (actors))))
             cmdr.taster.removeFromFilter(actors, [], actors)
@@ -154,7 +154,7 @@ class hubCommands(InternalCmd.InternalCmd):
     def stopNubs(self, cmd):
         """ stop a list of nubs. """
 
-        nubs = cmd.argDict.keys()[1:]
+        nubs = list(cmd.argDict.keys())[1:]
         if len(nubs) == 0:
             cmd.fail('text="must specify one or more nubs to stop..."')
             return
@@ -172,7 +172,7 @@ class hubCommands(InternalCmd.InternalCmd):
     def startNubs(self, cmd):
         """ (re-)start a list of nubs. """
 
-        nubs = cmd.argDict.keys()[1:]
+        nubs = list(cmd.argDict.keys())[1:]
         if len(nubs) == 0:
             cmd.fail('text="must specify one or more nubs to start..."')
             return
@@ -194,7 +194,7 @@ class hubCommands(InternalCmd.InternalCmd):
 
         """
 
-        parts = cmd.argDict.keys()[1:]
+        parts = list(cmd.argDict.keys())[1:]
         if len(parts) == 0:
             cmd.fail('text="must specify a nub to start..."')
             return
@@ -224,9 +224,9 @@ class hubCommands(InternalCmd.InternalCmd):
         """ Get gory status about a list of actor nubs. """
 
         # Query all actors if none are specified.
-        names = cmd.argDict.keys()[1:]
+        names = list(cmd.argDict.keys())[1:]
         if len(names) == 0:
-            names = g.actors.keys()
+            names = list(g.actors.keys())
             
         for n in names:
             try:
@@ -241,9 +241,9 @@ class hubCommands(InternalCmd.InternalCmd):
         """ Get gory status about a list of actor nubs. """
 
         # Query all actors if none are specified.
-        names = cmd.argDict.keys()[1:]
+        names = list(cmd.argDict.keys())[1:]
         if len(names) == 0:
-            names = g.actors.keys()
+            names = list(g.actors.keys())
             
         for n in names:
             try:
@@ -257,7 +257,7 @@ class hubCommands(InternalCmd.InternalCmd):
     def loadWords(self, cmd, finish=True):
         """ (re-)load an internal vocabulary word. """
         
-        words = cmd.argDict.keys()[1:]
+        words = list(cmd.argDict.keys())[1:]
 
         if len(words) == 0:
             words = None
@@ -291,7 +291,7 @@ class hubCommands(InternalCmd.InternalCmd):
         
         matched, unmatched = g.KVs.getValues(src, keys)
         CPL.log("hub.getKeys", "matched=%s unmatched=%s" % (matched, unmatched))
-        for k, v in matched.iteritems():
+        for k, v in matched.items():
             kvString = kvAsASCII(k, v)
             cmd.inform(kvString, src="hub.%s" % (src))
         if unmatched:

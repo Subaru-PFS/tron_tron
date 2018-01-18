@@ -13,7 +13,7 @@ class TCCShellNub(ShellNub):
     def findUserNum(self, kvl):
         """ Find YourUserNum key in list of KVs. Return the CID or None. """
         
-        for k, v in kvl.iteritems():
+        for k, v in kvl.items():
             if k == "YourUserNum":
                 cid = int(v[0])
                 return cid

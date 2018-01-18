@@ -103,7 +103,7 @@ class ASCIIReplyEncoder(ReplyEncoder):
             return ""
         
         keylist = []
-        for k, v in KVs.iteritems():
+        for k, v in KVs.items():
             if self.debug > 5:
                 CPL.log("ASCIIReplyEnc.encode", "encoding %r=%r" % (k, v))
 

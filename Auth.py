@@ -143,7 +143,7 @@ class Auth(CPL.Object):
         if not cmd:
             cmd = self.defaultCmd
 
-        actors = self.actors.keys()
+        actors = list(self.actors.keys())
         actors.remove('perms')
         actors.sort()
         actors = [CPL.qstr(x) for x in actors]
@@ -168,7 +168,7 @@ class Auth(CPL.Object):
         if not cmd:
             cmd = self.defaultCmd
 
-        programs = self.programs.keys()
+        programs = list(self.programs.keys())
         programs.sort()
         programs = [CPL.qstr(x) for x in programs]
 
@@ -192,7 +192,7 @@ class Auth(CPL.Object):
         if not cmd:
             cmd = self.defaultCmd
 
-        actors = self.lockedActors.keys()
+        actors = list(self.lockedActors.keys())
         actors.sort()
         actors = [CPL.qstr(x) for x in actors]
 
@@ -315,14 +315,14 @@ class Auth(CPL.Object):
         if not cmd:
             cmd = self.defaultCmd
         if not programs:
-            programs = self.programs.keys()
+            programs = list(self.programs.keys())
 
         programs.sort()
         CPL.log("auth.genAuthKeys", "listing programs: %s" % (programs))
 
         for prog in programs:
             try:
-                pAuth = self.programs[prog].keys()
+                pAuth = list(self.programs[prog].keys())
             except KeyError as e:
                 raise Exception("No authorization entry found for program %s" % (prog))
             
@@ -343,7 +343,7 @@ class Auth(CPL.Object):
 
         if not programs:
             programs = []
-            for name, cmdr in g.commanders.iteritems():
+            for name, cmdr in g.commanders.items():
                 if cmdr.needsAuth and name not in self.programs:
                     programs.append(name)
 
@@ -370,7 +370,7 @@ class Auth(CPL.Object):
         """
 
         if not programs:
-            programs = self.programs.keys()
+            programs = list(self.programs.keys())
 
         if self.debug > 3:
             CPL.log("auth.dropProgram", "dropping programs %s" % (programs))

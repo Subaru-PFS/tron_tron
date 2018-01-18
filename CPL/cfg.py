@@ -2,6 +2,7 @@
 """
 from __future__ import print_function
 
+from past.builtins import execfile
 __all__ = ['init', 'get', 'flush']
 
 import os

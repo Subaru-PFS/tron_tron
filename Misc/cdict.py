@@ -1,4 +1,5 @@
-class cdict:
+from builtins import object
+class cdict(object):
     """Dictionary, that has case-insensitive keys.
     
     Keys are retained in their original form
@@ -34,7 +35,7 @@ class cdict:
         return self._dict[k][1]
 
     def __iter__(self):
-        return self.iterkeys()
+        return iter(self.keys())
     
     def __len__(self):
         """Returns the number of (key, value) pairs."""
@@ -42,7 +43,7 @@ class cdict:
 
     def __repr__(self):
         """String representation of the dictionary."""
-        items = ", ".join([("%r: %r" % (k,v)) for k,v in self.items()])
+        items = ", ".join([("%r: %r" % (k,v)) for k,v in list(self.items())])
         return "{%s}" % items
 
     def __setitem__(self, key, value):
@@ -86,28 +87,28 @@ class cdict:
 
     def items(self):
         """List of (key,value) pairs."""
-        return self._dict.values()
+        return list(self._dict.values())
 
     def iteritems(self):
-        for key in self.iterkeys():
+        for key in self.keys():
             yield(key, self[key])
                     
     def iterkeys(self):
-        return iter(self.keys())
+        return iter(list(self.keys()))
 
     def itervalues(self):
-        return iter(self.values())
+        return iter(list(self.values()))
 
     def keys(self):
         """List of keys in their original case."""
-        return [v[0] for v in self._dict.values()]
+        return [v[0] for v in list(self._dict.values())]
 
     def update(self, dict):
         """Copy (key,value) pairs from 'dict'."""
-        for k,v in dict.items():
+        for k,v in list(dict.items()):
             self[k] = v
 
     def values(self):
         """List of values."""
-        return [v[1] for v in self._dict.values()]
+        return [v[1] for v in list(self._dict.values())]
 

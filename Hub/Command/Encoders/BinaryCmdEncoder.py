@@ -1,4 +1,5 @@
 from __future__ import absolute_import
+from builtins import range
 __all__ = ['BinaryCmdEncoder']
            
 import struct
@@ -16,7 +17,7 @@ class BinaryCmdEncoder(CommandEncoder):
         str = cmd.cmd
         length = len(str)
         csum = 0
-        for i in xrange(length):
+        for i in range(length):
             csum ^= ord(str[i])
 
         # See extractCompleteCommand for better notes.

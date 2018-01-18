@@ -1,7 +1,9 @@
 from __future__ import absolute_import
+from future import standard_library
+standard_library.install_aliases()
 __all__ = ['PyReplyEncoder']
            
-import cPickle
+import pickle
 
 import CPL
 from Hub.Reply.FullReply import FullReply
@@ -27,7 +29,7 @@ class PyReplyEncoder(ReplyEncoder):
 
         fullReply = FullReply()
         fullReply.initFromReply(r, noKeys)
-        fullPickle = cPickle.dumps(fullReply)
+        fullPickle = pickle.dumps(fullReply)
 
         if self.debug > 6:
             CPL.log('PyEncode.encode', 'encoding FullReply %s as %r' % (fullReply, fullPickle))

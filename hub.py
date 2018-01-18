@@ -204,21 +204,21 @@ def _shutdown():
     sys.stderr.write("final cleanup; deleting hub pieces...\n")
     
     sys.stderr.write("       deleting acceptors...\n")
-    for aname, acceptor in g.acceptors.items():
+    for aname, acceptor in list(g.acceptors.items()):
         try:
             acceptor.shutdown(notifyHub=False)
         except:
             pass
             
     sys.stderr.write("       deleting commanders...\n")
-    for cname, cmdr in g.commanders.items():
+    for cname, cmdr in list(g.commanders.items()):
         try:
             cmdr.shutdown(notifyHub=False)
         except:
             pass
             
     sys.stderr.write("       deleting actors...\n")
-    for aname, actor in g.actors.items():
+    for aname, actor in list(g.actors.items()):
         try:
             actor.shutdown(notifyHub=False)
         except:
@@ -258,7 +258,7 @@ class NubDict(collections.OrderedDict):
 
     def listSelf(self, cmd=None):
         names = []
-        for n in self.itervalues():
+        for n in self.values():
             names.append(CPL.qstr(n.name))
 
         if not cmd:
@@ -278,7 +278,7 @@ class CmdrDict(NubDict):
             cmd = g.hubcmd
         names = []
         userNames = []
-        for n in self.itervalues():
+        for n in self.values():
             names.append(CPL.qstr(n.name))
             if n.isUser:
                 userNames.append(CPL.qstr(n.name))
@@ -383,7 +383,7 @@ def dropNub(nub):
 def listActors(match):
     """ """
 
-    actors = g.actors.keys()
+    actors = list(g.actors.keys())
     actors.sort()
     
     return actors
@@ -412,7 +412,7 @@ def validateCommanderNames(nub, programName, username):
     ok = False
     while not ok:
         ok = True
-        for c in g.commanders.itervalues():
+        for c in g.commanders.values():
             if c.name == proposedName:
                 ok = False
                 break

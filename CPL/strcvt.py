@@ -1,5 +1,6 @@
 """ Various string parsers. """
 
+from builtins import map
 def floatArgs(s, cnt=None, failWith=None):
     """ Parse a comma-delimited list of floats.
 
@@ -17,7 +18,7 @@ def floatArgs(s, cnt=None, failWith=None):
 
     try:
         stringList = s.split(',')
-        floatList = map(float(stringList))
+        floatList = list(map(float(stringList)))
     except Exception as e:
         if failWith:
             raise RuntimeError("%s: %s" % (failWith, s))

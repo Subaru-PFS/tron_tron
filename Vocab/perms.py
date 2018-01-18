@@ -87,7 +87,7 @@ class perms(InternalCmd):
            setLocked *
         """
 
-        args = cmd.argDict.keys()[1:]
+        args = list(cmd.argDict.keys())[1:]
         if len(args) == 1 and args[0] == '*':
             actors = None
         else:
@@ -106,7 +106,7 @@ class perms(InternalCmd):
            lock *
         """
 
-        args = cmd.argDict.keys()[1:]
+        args = list(cmd.argDict.keys())[1:]
         if len(args) == 1 and args[0] == '*':
             actors = []
         else:
@@ -125,7 +125,7 @@ class perms(InternalCmd):
            unlock *
         """
 
-        args = cmd.argDict.keys()[1:]
+        args = list(cmd.argDict.keys())[1:]
 
         if len(args) == 1 and args[0] == '*':
             actors = []
@@ -145,7 +145,7 @@ class perms(InternalCmd):
            register *
         """
 
-        args = cmd.argDict.keys()[1:]
+        args = list(cmd.argDict.keys())[1:]
         if len(args) == 0:
             cmd.fail('text="perms register requires one or more program names"')
             return
@@ -168,7 +168,7 @@ class perms(InternalCmd):
            unregister *
         """
 
-        args = cmd.argDict.keys()[1:]
+        args = list(cmd.argDict.keys())[1:]
         if len(args) == 0:
             cmd.fail('text="perms unregister requires one or more program names"')
             return

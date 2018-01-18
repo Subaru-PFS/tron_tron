@@ -1,7 +1,9 @@
 from __future__ import absolute_import
+from future import standard_library
+standard_library.install_aliases()
 __all__ = ['PyReplyDecoder']
 
-import cPickle
+import pickle
 
 import CPL
 import g
@@ -45,7 +47,7 @@ class PyReplyDecoder(ReplyDecoder):
         # Make sure to consume unparseable junk up to the next EOL.
         #
         try:
-            r = cPickle.loads(replyString)
+            r = pickle.loads(replyString)
         except SyntaxError as e:
             CPL.log("PyReply.decoder", "Failed to unpickle %r" % (replyString))
             return None, buf

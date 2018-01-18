@@ -1,3 +1,4 @@
+from builtins import object
 __all__ = ['InternalCmd']
 
 import re
@@ -46,7 +47,7 @@ class InternalCmd(object):
         self.totalCommands += 1
         
         cmd.parseArgs()
-        words = cmd.argDict.keys()
+        words = list(cmd.argDict.keys())
         if len(words) == 0:
             cmd.finish('')
             return
