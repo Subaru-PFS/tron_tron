@@ -1,8 +1,9 @@
 #!/usr/bin/env python
 
+from __future__ import absolute_import
 __all__ = ['SocketHandler']
 
-import IOHandler
+from . import IOHandler
 import CPL
 
 class SocketHandler(IOHandler):
@@ -17,7 +18,7 @@ class SocketHandler(IOHandler):
         # CPL.log("Cat.readInput", "reading...")
         try:
             readIn = self.in_f.recv(self.tryToRead)
-        except socket.error, e:
+        except socket.error as e:
             CPL.log("Cat.readInput", "exception %r" % (sys.exc_info,))
             self.poller.removeInput(self)
             if len(self.outBuffer) > 0:
@@ -39,7 +40,7 @@ class SocketHandler(IOHandler):
 
         try:
             sent = self.out_f.send(self.outBuffer[:self.tryToWrite])
-        except socket.error, e:
+        except socket.error as e:
             CPL.log("Cat.mayOutput", "exception %r" % (e,))
             self.poller.removeOutput(self)
             try:

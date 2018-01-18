@@ -1,10 +1,11 @@
+from __future__ import absolute_import
 __all__ = ['PyReplyEncoder']
            
 import cPickle
 
 import CPL
 from Hub.Reply.FullReply import FullReply
-from ReplyEncoder import ReplyEncoder
+from .ReplyEncoder import ReplyEncoder
 
 class PyReplyEncoder(ReplyEncoder):
     """ Encode Replys as single-line pickled python objects.

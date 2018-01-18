@@ -18,7 +18,7 @@ def floatArgs(s, cnt=None, failWith=None):
     try:
         stringList = s.split(',')
         floatList = map(float(stringList))
-    except Exception, e:
+    except Exception as e:
         if failWith:
             raise RuntimeError("%s: %s" % (failWith, s))
         else:

@@ -1,8 +1,9 @@
+from __future__ import absolute_import
 __all__ = ['TCCShellNub']
 
 import CPL
 import Hub.Reply
-from ShellNub import ShellNub
+from .ShellNub import ShellNub
 
 class TCCShellNub(ShellNub):
     """ An ShellNub with the plumbing required to recognize and record the TCC YourUserName as

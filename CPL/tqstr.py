@@ -1,3 +1,4 @@
+from __future__ import print_function
 __all__ = ['qstr']
 
 def qstr(o, equotes=None, tquote='"'):
@@ -30,7 +31,7 @@ def qstr(o, equotes=None, tquote='"'):
     #
     for equote in equotes:
         equote_repl = "\\" + equote
-        print "replacing %s with %s" % (equote, equote_repl)
+        print("replacing %s with %s" % (equote, equote_repl))
         
         idx = 0
         while 1:
@@ -39,10 +40,10 @@ def qstr(o, equotes=None, tquote='"'):
             if dq == -1:
                 break
 
-            print "found %s at %s. p1=:%s: p2=:%s:" % (equote, dq, s[:dq], s[dq+1:]),
+            print("found %s at %s. p1=:%s: p2=:%s:" % (equote, dq, s[:dq], s[dq+1:]), end=' ')
         
             s = ''.join((s[:dq], equote_repl, s[dq+1:]))
-            print " s=:%s:" % (s)
+            print(" s=:%s:" % (s))
             
             idx = dq + 2
         
@@ -69,16 +70,16 @@ if __name__ == "__main__":
         qt = qstr(t)
         try:
             e = eval(qt)
-        except Exception, e:
-            print "===== NE: %s" % (t)
-            print "        : %s" % (qt)
+        except Exception as e:
+            print("===== NE: %s" % (t))
+            print("        : %s" % (qt))
             continue
             
         if t == e:
-            print "===== OK: %s" % (qt)
+            print("===== OK: %s" % (qt))
         else:
-            print "===== NG: %s:" % (t)
-            print "        : %s:" % (qt)
+            print("===== NG: %s:" % (t))
+            print("        : %s:" % (qt))
 
-    print
-    print
+    print()
+    print()

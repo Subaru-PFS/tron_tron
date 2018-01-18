@@ -1,3 +1,4 @@
+from __future__ import print_function
 __all__ = ['KV', 'KVDict',
            'kvAsASCII']
 
@@ -225,7 +226,7 @@ class KVDict(CPL.Object):
             try:
                 casek, val = d.fetch(k)
                 vals[casek] = val
-            except KeyError, e:
+            except KeyError as e:
                 unmatched.append(k)
                 
         return vals, unmatched
@@ -238,25 +239,25 @@ if __name__ == "__main__":
     d.setKVs('xxx', (('b', 2), ('c', '3'), ('d', ('dfg', 4353))), None)
         
 
-    print "\n".join(map(str, d.listKVs(full=True)))
-    print d.listKVs(pattern='^hub')
-    print d.listKVs(pattern='nomatch')
+    print("\n".join(map(str, d.listKVs(full=True))))
+    print(d.listKVs(pattern='^hub'))
+    print(d.listKVs(pattern='nomatch'))
 
     d.clearKeys(keys=('hub.b', 'hub.xx'))
-    print d.listKVs()
+    print(d.listKVs())
     
     d.clearKeys()
-    print d.listKVs()
+    print(d.listKVs())
     
     import time
     t0 = time.time()
     N = 100000
     for i in xrange(N):
-        d.setKV('hub', `i`, i*3)
+        d.setKV('hub', repr(i), i*3)
     t1 = time.time()
     KVL = d.listKVs(pattern='^1')
     t2 = time.time()
     
-    print "%0.6fs per add" % ((t1-t0) / N)
-    print "%0.6fs per list" % ((t2-t1) / N)
+    print("%0.6fs per add" % ((t1-t0) / N))
+    print("%0.6fs per list" % ((t2-t1) / N))
     

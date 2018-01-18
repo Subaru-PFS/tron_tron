@@ -94,7 +94,7 @@ def start(poller, name, initCmds=None,
                              needsAuth=False,
                              logDir=os.path.join(g.logDir, name),
                              debug=nubDebug)
-    except Exception, e:
+    except Exception as e:
         g.hubcmd.warn('text=%s' % (qstr("failed to start MHS Nub  %s at %s:%s: %s" % (name, hostname, port, e))))
         raise
 

@@ -1,11 +1,12 @@
 #!/usr/bin/env python
 
+from __future__ import absolute_import
 __all__ = ['PollAccept']
 
 import socket
 
 import CPL
-import IOHandler
+from . import IOHandler
 
 class PollAccept(IOHandler.IOHandler):
     """ Provide asynchronous socket accept() handling. """

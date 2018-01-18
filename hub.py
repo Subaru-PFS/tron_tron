@@ -158,7 +158,7 @@ def _loadWords(wordlist, cmd=None):
             CPL.log('hub.loadVocab', 'trying to (re-)load vocabulary word %s' % (w,))
             fp, pathname, description = imp.find_module(modName, vocab_mod.__path__)
             mod = imp.load_module(modName, fp, pathname, description)
-        except ImportError, e:
+        except ImportError as e:
             raise Exception('Import of %s failed: %s' % (modName, e))
 
         if fp:
@@ -174,7 +174,7 @@ def _loadWords(wordlist, cmd=None):
             except:
                 pass
             g.vocabulary[w] = cmdSet
-        except Exception, e:
+        except Exception as e:
             raise Exception("Failed to load word %s: %s" % (w, e))
 
         addActor(cmdSet)
@@ -235,7 +235,7 @@ def run():
             CPL.log('Hub.run', 'Normal exit."')
             raise
         
-        except Exception, e:
+        except Exception as e:
             CPL.tback('Hub.run', e)
 
 class NubDict(collections.OrderedDict):
@@ -375,7 +375,7 @@ def dropNub(nub):
                 (nub.ID, nub))
         try:
             nub.ioshutdown()
-        except Exception, e:
+        except Exception as e:
             CPL.log("hub.dropNub", "emergency unregistering of %s(%s) failed: %s" % \
                     (nub.ID, nub, e))
 
@@ -488,7 +488,7 @@ def runCmd(c):
     
     try:
         ret = eval(cmd)
-    except Exception, e:
+    except Exception as e:
         c.fail('EvalError=%s' % CPL.qstr(e),
                src='hub')
         raise
@@ -622,7 +622,7 @@ def startManagedNub(name, managerName='mhsActor', hostname=None, port=None):
 
     try:
         mod = imp.load_module(managerName, fp, pathname, description)
-    except Exception, e:
+    except Exception as e:
         g.hubcmd.warn('text=%s' % (CPL.qstr("failed to load manager Nub %s: %s" % (managerName, e))))
         return False
     finally:
@@ -636,7 +636,7 @@ def startManagedNub(name, managerName='mhsActor', hostname=None, port=None):
     try:
         g.hubcmd.inform('text="starting managed Nub %s at %s:%s..."' % (name, hostname, port))
         mod.start(g.poller, name, argHost=hostname, argPort=port)
-    except Exception, e:
+    except Exception as e:
         g.hubcmd.warn('text=%s' % (CPL.qstr("failed to start managed Nub %s: %s" % (name, e))))
         return False
 

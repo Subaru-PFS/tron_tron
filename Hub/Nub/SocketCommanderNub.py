@@ -1,8 +1,9 @@
+from __future__ import absolute_import
 __all__ = ['SocketCommanderNub']
 
 import socket
 
-from Commanders import CommanderNub
+from .Commanders import CommanderNub
 
 class SocketCommanderNub(CommanderNub):
     def __init__(self, poller, host, port, **argv):

@@ -75,14 +75,14 @@ class cdict:
     def setdefault(self, key, default):
         """If 'key' doesn't exists, associate it with the 'default' value.
         Return value associated with 'key'."""
-        if not self.has_key(key):
+        if key not in self:
             self[key] = default
         return self[key]
 
     def has_key(self, key):
         """Case insensitive test wether 'key' exists."""
         k = key.lower()
-        return self._dict.has_key(k)
+        return k in self._dict
 
     def items(self):
         """List of (key,value) pairs."""

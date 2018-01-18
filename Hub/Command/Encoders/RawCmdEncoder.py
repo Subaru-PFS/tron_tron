@@ -1,7 +1,8 @@
+from __future__ import absolute_import
 __all__ = ['RawCmdEncoder']
            
 import CPL
-from CommandEncoder import CommandEncoder
+from .CommandEncoder import CommandEncoder
 
 class RawCmdEncoder(CommandEncoder):
     """ Encode commands into a raw ASCII protocol: one without any MID, CID, etc.

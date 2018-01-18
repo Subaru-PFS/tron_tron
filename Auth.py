@@ -1,5 +1,6 @@
 """ Auth.py - maintain authorization tables: who can command which actors?
 """
+from __future__ import print_function
 
 __all__ = ['Auth']
 
@@ -322,7 +323,7 @@ class Auth(CPL.Object):
         for prog in programs:
             try:
                 pAuth = self.programs[prog].keys()
-            except KeyError, e:
+            except KeyError as e:
                 raise Exception("No authorization entry found for program %s" % (prog))
             
             pAuth.sort()
@@ -432,7 +433,7 @@ class Auth(CPL.Object):
             
         try:
             d = self.programs[program]
-        except KeyError, e:
+        except KeyError as e:
             cmd.fail("permsTxt=%s" % (CPL.qstr("Program %s did not have an authorization entry, so could not be added to" % (program))))
             return
 
@@ -453,7 +454,7 @@ class Auth(CPL.Object):
             
         try:
             d = self.programs[program]
-        except KeyError, e:
+        except KeyError as e:
             cmd.fail("permsTxt=%s" % (CPL.qstr("Program %s did not have an authorization entry, so could not be modified" % (program))))
             return
 
@@ -473,7 +474,7 @@ if __name__ == "__main__":
         else:
             ok = "BAD "
             
-        print "%s %s\t-> %s\t = %s" % (ok, cmdr, actor, access)
+        print("%s %s\t-> %s\t = %s" % (ok, cmdr, actor, access))
         
     g.actors = ('tcc', 'them')
     a = Auth(CPL.tcmd(name='auth'), debug=9)

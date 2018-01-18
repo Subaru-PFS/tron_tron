@@ -1,5 +1,6 @@
 """ A simple configuration manager. Loads python files in a given directory. That's it.
 """
+from __future__ import print_function
 
 __all__ = ['init', 'get', 'flush']
 
@@ -79,12 +80,12 @@ def _loadSpace(space):
     filename = os.path.join(cfgPath, "%s.py" % (space))
     try:
         execfile(filename, gdict, ldict)
-    except SyntaxError, e:
+    except SyntaxError as e:
         # ICCError handling should be improved to handle multi-line errors,
         # so we could use the SyntaxError's .text and .offset, and spit out a proper
         # backtrace.
         raise ICCError("syntax error at or before line %d (%s) of the configuration file %s" % (e.lineno, e.text, filename))
-    except Exception, e:
+    except Exception as e:
         raise ICCError("failed to read the configuration file %s: %s" % (filename, e))
         
     cfgCache[space] = ldict
@@ -92,8 +93,8 @@ def _loadSpace(space):
 
 def _test():
     init('/tmp/cfg')
-    print get('t1', 'x')
-    print get('t1', 'x2')
+    print(get('t1', 'x'))
+    print(get('t1', 'x2'))
 
 if __name__ == '__main__':
     _test()

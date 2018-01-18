@@ -1,3 +1,4 @@
+from __future__ import absolute_import
 __all__ = ['CommandEncoder',
            'BinaryCmdEncoder',
            'ASCIICmdEncoder']
@@ -5,7 +6,7 @@ __all__ = ['CommandEncoder',
 import struct
 
 import CPL
-from Command import Command
+from .Command import Command
 
 class CommandEncoder(CPL.Object):
     def __init__(self, **argv):

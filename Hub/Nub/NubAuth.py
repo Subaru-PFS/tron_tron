@@ -31,7 +31,7 @@ class NubAuth(object):
         try:
             path = CPL.cfg.get('hub', 'passwordFile')
             pw_f = open(path, "r")
-        except Exception, e:
+        except Exception as e:
             g.hubcmd.inform('HubError=%s' % (CPL.qstr("Could not read the password file: %s" % e)),
                             src="hub")
 
@@ -47,7 +47,7 @@ class NubAuth(object):
                 
             try:
                 (program, password) = l.split()
-            except Exception, e:
+            except Exception as e:
                 g.hubcmd.inform('HubError=%s' % (CPL.qstr("password file line cannot be parsed: %s" % l)),
                                 src="hub")
 

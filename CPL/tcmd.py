@@ -1,3 +1,4 @@
+from __future__ import print_function
 __all__ = ['tcmd']
 
 class tcmd(object):
@@ -5,11 +6,11 @@ class tcmd(object):
         self.name = name
         
     def inform(self, *args):
-        print "%s.inform: %s" % (self.name, ''.join(*args))
+        print("%s.inform: %s" % (self.name, ''.join(*args)))
 
     def warn(self, *args):
-        print "%s.warn: %s" % (self.name, ''.join(*args))
+        print("%s.warn: %s" % (self.name, ''.join(*args)))
 
     def fail(self, *args):
-        print "%s.fail: %s" % (self.name, ''.join(*args))
+        print("%s.fail: %s" % (self.name, ''.join(*args)))
             

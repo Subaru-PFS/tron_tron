@@ -1,10 +1,11 @@
+from __future__ import absolute_import
 __all__ = ['PyReplyDecoder']
 
 import cPickle
 
 import CPL
 import g
-from ReplyDecoder import ReplyDecoder
+from .ReplyDecoder import ReplyDecoder
 
 class PyReplyDecoder(ReplyDecoder):
     """ Encode Replys as single-line pickled python objects.
@@ -45,7 +46,7 @@ class PyReplyDecoder(ReplyDecoder):
         #
         try:
             r = cPickle.loads(replyString)
-        except SyntaxError, e:
+        except SyntaxError as e:
             CPL.log("PyReply.decoder", "Failed to unpickle %r" % (replyString))
             return None, buf
         

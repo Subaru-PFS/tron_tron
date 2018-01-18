@@ -1,3 +1,4 @@
+from __future__ import absolute_import
 __all__ = ['ASCIICmdDecoder']
 
 import re
@@ -6,7 +7,7 @@ import CPL
 from Hub.Command import Command
 import g
 
-import CommandDecoder
+from . import CommandDecoder
 
 class ASCIICmdDecoder(CommandDecoder.CommandDecoder):
 

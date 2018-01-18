@@ -1,5 +1,6 @@
 #!/usr/bin/env python
 
+from __future__ import print_function
 import os
 import CPL.cfg
 
@@ -26,7 +27,7 @@ def printActors(actors, verbose=False):
         actorList = [actors[name]['actorName'] for name in actors.keys()]
 
     if actorList:
-        print "\n".join(actorList)
+        print("\n".join(actorList))
 
 def main():
     printActors(getAllActors())

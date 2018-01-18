@@ -1,9 +1,10 @@
+from __future__ import absolute_import
 __all__ = ['RawCmdDecoder']
 
 import CPL
 from Hub.Command import Command
 
-import CommandDecoder
+from . import CommandDecoder
 
 class RawCmdDecoder(CommandDecoder.CommandDecoder):
     """ A Command decoder for accepting commands which have no target, MID, or CID. We

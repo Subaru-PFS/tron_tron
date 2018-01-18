@@ -37,13 +37,13 @@ class ReplyTaster(CPL.Object):
         """ Remove a list of actors and commanders to accept Replys from. """
         
         for i in actors:
-            if self.actors.has_key(i):
+            if i in self.actors:
                 del self.actors[i]
         for c in cmdrs:
-            if self.cmdrs.has_key(c):
+            if c in self.cmdrs:
                 del self.cmdrs[c]
         for s in sources:
-            if self.sources.has_key(s):
+            if s in self.sources:
                 del self.sources[s]
             
     def addToFilter(self, actors, cmdrs, sources):

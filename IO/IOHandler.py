@@ -217,11 +217,11 @@ class IOHandler(CPL.Object):
         readIn = ""
         try:
             readIn = os.read(self.in_fd, self.tryToRead)
-        except socket.error, e:
+        except socket.error as e:
             error = "socket exception %s" % (e,)
             CPL.log("IOHandler.readInput", error)
             readIn = ""
-        except os.error, e:
+        except os.error as e:
             error = "os exception %s" % (e,)
             CPL.log("IOHandler.readInput", error)
             readIn = ""
@@ -283,15 +283,15 @@ class IOHandler(CPL.Object):
                 
             try:
                 wrote = os.write(self.out_fd, qtop[:wlen])
-            except socket.error, e:
+            except socket.error as e:
                 CPL.log("IOHandler.mayOutput", "socket exception %r" % (e,))
                 self.shutdown(why=str(e))
                 return
-            except os.error, e:
+            except os.error as e:
                 CPL.log("IOHandler.mayOutput", "os exception %r" % (e,))
                 self.shutdown(why=str(e))
                 return
-            except Exception, e:
+            except Exception as e:
                 CPL.log("IOHandler.mayOutput", "unhandled exception %r" % (e,))
                 self.shutdown(why=str(e))
                 return

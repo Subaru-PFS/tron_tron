@@ -1,10 +1,11 @@
+from __future__ import absolute_import
 __all__ = ['CommanderNub',
            'AuthCommanderNub',
            'StdinNub',
            'AuthStdinNub']
 
-from NubAuth import NubAuth
-import CoreNub
+from .NubAuth import NubAuth
+from . import CoreNub
 from Hub.Reply.ReplyTaster import ReplyTaster
 import CPL
 
@@ -32,7 +33,7 @@ class CommanderNub(CoreNub.CoreNub):
 
         self.isUser = argv.get('isUser', False)
 
-        if argv.has_key('forceUser'):
+        if 'forceUser' in argv:
             program, user = argv.get('forceUser').split('.')
             self.setNames(program, user)
 

@@ -61,7 +61,7 @@ class InternalCmd(object):
         cmd.reportQueued()
         try:
             cmdHandler(cmd)
-        except Exception, e:
+        except Exception as e:
             CPL.tback('Vocab.sendCommand', e)
             cmd.fail('%sTxt=%s' % (self.name, CPL.qstr(e, tquote='"')))
             return

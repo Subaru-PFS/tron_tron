@@ -1,10 +1,11 @@
 #!/usr/bin/env python
 
+from __future__ import absolute_import
 __all__ = ['PollConnect']
 
 import socket
 
-import IOHandler
+from . import IOHandler
 import CPL
 
 class PollConnect(IOHandler.IOHandler):

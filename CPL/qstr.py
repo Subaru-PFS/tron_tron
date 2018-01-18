@@ -1,3 +1,4 @@
+from __future__ import print_function
 __all__ = ['qstr']
 
 def qstr(o, equotes=None, tquote='"'):
@@ -63,16 +64,16 @@ if __name__ == "__main__":
         qt = qstr(t)
         try:
             e = eval(qt)
-        except Exception, e:
-            print "===== NE: %s" % (t)
-            print "        : %s" % (qt)
+        except Exception as e:
+            print("===== NE: %s" % (t))
+            print("        : %s" % (qt))
             continue
             
         if t == e:
-            print "===== OK: %s" % (qt)
+            print("===== OK: %s" % (qt))
         else:
-            print "===== NG: %s:" % (t)
-            print "        : %s:" % (qt)
+            print("===== NG: %s:" % (t))
+            print("        : %s:" % (qt))
 
-    print
-    print
+    print()
+    print()

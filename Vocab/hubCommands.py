@@ -164,7 +164,7 @@ class hubCommands(InternalCmd.InternalCmd):
             try:
                 cmd.inform('text=%s' % (CPL.qstr("stopping nub %s" % (nub))))
                 hub.stopNub(nub)
-            except Exception, e:
+            except Exception as e:
                 cmd.warn('text=%s' % (CPL.qstr("failed to stop nub %s: %s" % (nub, e))))
 
         cmd.finish('')
@@ -182,7 +182,7 @@ class hubCommands(InternalCmd.InternalCmd):
             try:
                 cmd.inform('text=%s' % (CPL.qstr("(re-)starting nub %s" % (nub))))
                 hub.startNub(nub)
-            except Exception, e:
+            except Exception as e:
                 cmd.warn('text=%s' % (CPL.qstr("failed to start nub %s: %s" % (nub, e))))
 
         cmd.finish('')
@@ -208,14 +208,14 @@ class hubCommands(InternalCmd.InternalCmd):
 
         try:
             port = int(port)
-        except Exception, e:
+        except Exception as e:
             cmd.fail('text="nub port must be an integer, not %s"' % (port))
             return
 
         try:
             cmd.inform('text=%s' % (CPL.qstr("(re-)starting nub %s (%s:%s) " % (nubName, hostname, port))))
             hub.startNub(nubName, hostname=hostname, port=port)
-        except Exception, e:
+        except Exception as e:
             cmd.warn('text=%s' % (CPL.qstr("failed to start nub %s: %s" % (nubName, e))))
 
         cmd.finish('')
@@ -232,7 +232,7 @@ class hubCommands(InternalCmd.InternalCmd):
             try:
                 nub = g.actors[n]
                 nub.statusCmd(cmd, doFinish=False)
-            except Exception, e:
+            except Exception as e:
                 cmd.warn('text=%s' % (CPL.qstr("failed to query actor %s: %s" % (n, e))))
 
         cmd.finish('')
@@ -249,7 +249,7 @@ class hubCommands(InternalCmd.InternalCmd):
             try:
                 nub = g.actors[n]
                 nub.listCommandsCmd(cmd, doFinish=False)
-            except Exception, e:
+            except Exception as e:
                 cmd.warn('text=%s' % (CPL.qstr("failed to query actor %s: %s" % (n, e))))
 
         cmd.finish('')
@@ -265,7 +265,7 @@ class hubCommands(InternalCmd.InternalCmd):
         CPL.log("hubCmd", "loadWords loading %s" % (words))
         try:
             hub.loadWords(words)
-        except Exception, e:
+        except Exception as e:
             CPL.tback('hub.loadWords', e)
             cmd.fail('text=%s' % (CPL.qstr(e)))
             return

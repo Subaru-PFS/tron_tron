@@ -1,3 +1,4 @@
+from __future__ import print_function
 __all__ = ['getDayDirName',
            'getQuarterName']
 
@@ -47,7 +48,7 @@ def _test():
     now = time.time()
     for h in range(24):
         testNow = now + h * 3600
-        print getDayDirName(t=testNow)
+        print(getDayDirName(t=testNow))
 
 if __name__ == "__main__":
     _test()

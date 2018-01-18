@@ -1,9 +1,10 @@
+from __future__ import absolute_import
 __all__ = ['ASCIIReplyDecoder']
 
 import g
 import CPL
 from Parsing import *
-from ReplyDecoder import ReplyDecoder
+from .ReplyDecoder import ReplyDecoder
 
 class ASCIIReplyDecoder(ReplyDecoder):
     def __init__(self, **argv):
@@ -61,7 +62,7 @@ class ASCIIReplyDecoder(ReplyDecoder):
         #
         try:
             r = parseASCIIReply(replyString, cidFirst=self.cidFirst)
-        except SyntaxError, e:
+        except SyntaxError as e:
             CPL.log("ASCIIReplyDecoder", "Parsing error from %s: %r" % (self.name, e))
             return None, buf
         

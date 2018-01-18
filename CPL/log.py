@@ -34,7 +34,7 @@ def setLogdir(dirname):
 
     logfileDir = dirname
     if not os.path.isdir(logfileDir):
-        os.makedirs(logfileDir, 0755)
+        os.makedirs(logfileDir, 0o755)
     
 def enableLoggingFor(system):
     systems[system] = ENABLED
@@ -76,7 +76,7 @@ def rollover(t):
         logfileName = "%s.log" % (strftime("%Y-%m-%dT%H:%M:%S", gmtime(t)))
         fullLogDir = os.path.join(logfileDir, logID)
         if not os.path.isdir(fullLogDir):
-            os.makedirs(fullLogDir, 0755)
+            os.makedirs(fullLogDir, 0o755)
         logfile = open(os.path.join(fullLogDir, logfileName), "w", 1)
         currentName = os.path.join(fullLogDir, "current.log")
         try:

@@ -1,9 +1,10 @@
+from __future__ import absolute_import
 __all__ = ['BinaryCmdEncoder']
            
 import struct
 
 import CPL
-from CommandEncoder import CommandEncoder
+from .CommandEncoder import CommandEncoder
         
 class BinaryCmdEncoder(CommandEncoder):
     def __init__(self, **argv):

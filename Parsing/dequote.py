@@ -1,3 +1,4 @@
+from __future__ import print_function
 __all__ = ['dequote']
 
 import CPL
@@ -55,12 +56,12 @@ if __name__ == "__main__":
              ('"abc\"def\\\\ghi"', 'abc"def\\ghi')
              )
 
-    print "testing dequote..."
+    print("testing dequote...")
     for test in pairs:
         s0, s1 = test
         sx = dequote(s0)
         if sx != s1:
-            print "mismatch: s0=%r s1=%r got=%r" % (s0, s1, sx)
+            print("mismatch: s0=%r s1=%r got=%r" % (s0, s1, sx))
         else:
-            print "ok: %r -> %r" % (s0, sx)
+            print("ok: %r -> %r" % (s0, sx))
             
