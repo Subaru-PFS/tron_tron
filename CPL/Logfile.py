@@ -1,6 +1,5 @@
 from __future__ import division
 from builtins import range
-from past.utils import old_div
 from builtins import object
 __all__ = ['Logfile']
 
@@ -115,7 +114,7 @@ def test():
         l.log("logging %d" % (i))
     end = time()
     l.log("%d lines in %0.3fs, or %d lines/s" % \
-          (n, (end - start), old_div(n,(end -  start))))
+          (n, (end - start), n//(end -  start)))
 
 if __name__ == "__main__":
     test()

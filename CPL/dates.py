@@ -1,7 +1,6 @@
 from __future__ import print_function
 from __future__ import division
 from builtins import range
-from past.utils import old_div
 __all__ = ['getDayDirName',
            'getQuarterName']
 
@@ -45,7 +44,7 @@ def getQuarterName(t=None):
     localNowMinus12H = localNow - (12 * 3600)
     month = time.gmtime(localNowMinus12H)[1]
 
-    return "Q%d" % (old_div((month + 2), 3))
+    return "Q%d" % ((month + 2)//3)
 
 def _test():
     now = time.time()

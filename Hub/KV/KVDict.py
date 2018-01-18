@@ -3,7 +3,6 @@ from __future__ import division
 from builtins import str
 from builtins import map
 from builtins import range
-from past.utils import old_div
 from builtins import object
 __all__ = ['KV', 'KVDict',
            'kvAsASCII']
@@ -264,6 +263,6 @@ if __name__ == "__main__":
     KVL = d.listKVs(pattern='^1')
     t2 = time.time()
     
-    print("%0.6fs per add" % (old_div((t1-t0), N)))
-    print("%0.6fs per list" % (old_div((t2-t1), N)))
+    print("%0.6fs per add" % ((t1-t0)/N))
+    print("%0.6fs per list" % ((t2-t1)/N))
     
