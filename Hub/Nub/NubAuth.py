@@ -2,9 +2,7 @@ from builtins import map
 from builtins import object
 __all__ = ['NubAuth']
 
-import base64
-import re
-import sha
+import hashlib
 
 import g
 import hub
@@ -119,10 +117,12 @@ class NubAuth(object):
         program = matched["program"].upper()
 
         ourPW = self.passwords.get(program, None)
-        if ourPW == None:
+        if ourPW is None:
             return "unknown program"
         
-        enc = sha.new(self.nonce + ourPW)
+        enc = hashlib.sha1()
+        pw = self.nonce + ourPW
+        enc.update(pw.encode('latin-1'))
         if enc.hexdigest() != matched['password']:
             return "incorrect password"
         
