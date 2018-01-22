@@ -5,14 +5,14 @@ __all__ = ['CommanderNub',
            'AuthStdinNub']
 
 from .NubAuth import NubAuth
-from . import CoreNub
+from .CoreNub import CoreNub
 from Hub.Reply.ReplyTaster import ReplyTaster
 import CPL
 
 import g
 import hub
 
-class CommanderNub(CoreNub.CoreNub):
+class CommanderNub(CoreNub):
     """ Base class for ICC connections, where we accept commands from and send replies to the remote end.  """
 
     def __init__(self, poller, **argv):
@@ -23,7 +23,7 @@ class CommanderNub(CoreNub.CoreNub):
            forceUser - override any automatically derived username.
         """
 
-        CoreNub.CoreNub.__init__(self, poller, **argv)
+        CoreNub.__init__(self, poller, **argv)
 
         # Note which Replies we want to accept. The default
         # is to accept only responses to our own commands.

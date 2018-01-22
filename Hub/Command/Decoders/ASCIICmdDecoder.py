@@ -8,9 +8,9 @@ import CPL
 from Hub.Command import Command
 import g
 
-from . import CommandDecoder
+from .CommandDecoder import CommandDecoder
 
-class ASCIICmdDecoder(CommandDecoder.CommandDecoder):
+class ASCIICmdDecoder(CommandDecoder):
 
     # REs to match commands like:
     #   cmdrName TGT command
@@ -47,7 +47,7 @@ class ASCIICmdDecoder(CommandDecoder.CommandDecoder):
 
     def __init__(self, **argv):
 
-        CommandDecoder.CommandDecoder.__init__(self, **argv)
+        CommandDecoder.__init__(self, **argv)
         
         self.EOL = argv.get('EOL', '\n')
         self.needCID = argv.get('needCID', True)
