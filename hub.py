@@ -164,11 +164,11 @@ def _loadWords(wordlist, cmd=None):
         if fp:
             fp.close()
 
-        loadCmd = 'cmdSet = mod.%s()' % (modName)
-        CPL.log('hub.loadWords', 'loading vocabulary word %s with %s...' % (w, loadCmd))
+        CPL.log('hub.loadWords', 'loading vocabulary word %s from %s...' % (w, mod))
 
         try:
-            exec(loadCmd)
+            loadCall = getattr(mod, modName)
+            cmdSet = loadCall()
             try:
                 dropActor(cmdSet)
             except:
