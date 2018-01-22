@@ -217,7 +217,7 @@ class IOHandler(CPL.Object):
         error = ""
         readIn = ""
         try:
-            readIn = os.read(self.in_fd, self.tryToRead)
+            readIn = os.read(self.in_fd, self.tryToRead).decode('latin-1')
         except socket.error as e:
             error = "socket exception %s" % (e,)
             CPL.log("IOHandler.readInput", error)
@@ -283,7 +283,7 @@ class IOHandler(CPL.Object):
                         (len(qtop), wlen, qtop[:min(wlen, 50)]))
                 
             try:
-                wrote = os.write(self.out_fd, qtop[:wlen])
+                wrote = os.write(self.out_fd, qtop[:wlen].encode('latin-1'))
             except socket.error as e:
                 CPL.log("IOHandler.mayOutput", "socket exception %r" % (e,))
                 self.shutdown(why=str(e))
