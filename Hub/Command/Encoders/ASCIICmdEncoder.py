@@ -1,7 +1,8 @@
+from __future__ import absolute_import
 __all__ = ['ASCIICmdEncoder']
            
 import CPL
-from CommandEncoder import CommandEncoder
+from .CommandEncoder import CommandEncoder
 
 class ASCIICmdEncoder(CommandEncoder):
     """ Encode commands into the simple ASCII protocol.

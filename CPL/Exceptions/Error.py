@@ -1,8 +1,6 @@
 __all__ = ['Error']
 
-import exceptions
-
-class Error(exceptions.Exception):
+class Error(Exception):
     def __init__(self, oneliner, **argv):
         """ Create a generic error with arbitray attributes.
 
@@ -11,7 +9,7 @@ class Error(exceptions.Exception):
            argv    - a dictionary of attributes.
         """
         
-        exceptions.Exception.__init__(self)
+        Exception.__init__(self)
         
         self.oneliner = oneliner
 

@@ -1,12 +1,14 @@
+from __future__ import absolute_import
+from builtins import range
 __all__ = ['parseArgs', 'match']
 
 import collections
 import re
 
 import CPL
-from Exceptions import ParseException
+from .Exceptions import ParseException
 
-from keys import *
+from .keys import *
 
 # Match "  key = STUFF"
 arg_re = re.compile(r"""
@@ -83,7 +85,7 @@ def parseArg(s):
     #
     try:
         val, rest = eatAVee(rest)
-    except ParseException, e:
+    except ParseException as e:
         e.prependText(rest)
         raise
 
@@ -114,7 +116,7 @@ def parseArgs(s):
     while 1:
         try:
             key, values, rest = parseArg(rest)
-        except ParseException, e:
+        except ParseException as e:
             e.setKVs(KVs)
             raise
         
@@ -148,7 +150,7 @@ def match(argv, opts):
     for o in opts:
         try:
             a, b = o
-        except Exception, e:
+        except Exception as e:
             raise Exception("the argument to Command.matchDicts must be a list of duples")
 
         want[a] = b
@@ -158,7 +160,7 @@ def match(argv, opts):
     matches = collections.OrderedDict()
     leftovers = collections.OrderedDict()
 
-    for opt, arg in argv.iteritems():
+    for opt, arg in argv.items():
         # If we are looking for the option, match it and convert the argument.
         if opt in want:
             converter = want[opt]
@@ -169,7 +171,7 @@ def match(argv, opts):
             else:
                 try:
                     convArg = converter(arg)
-                except Exception, e:
+                except Exception as e:
                     raise Exception("error with option '%s': %s" % (opt, e))
 
                 matches[opt] = convArg
@@ -181,5 +183,5 @@ def match(argv, opts):
         else:
             leftovers[opt] = arg
 
-    return matches, want.keys(), leftovers
+    return matches, list(want.keys()), leftovers
 

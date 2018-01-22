@@ -1,3 +1,5 @@
+from __future__ import print_function
+from __future__ import absolute_import
 __all__ = ['eatAVee', 'eatAString',
            'parseKV', 'parseKVs',
            'parseASCIIReply',
@@ -18,7 +20,7 @@ import collections
 import re
 
 import CPL
-from Exceptions import ParseException
+from .Exceptions import ParseException
 
 def eatAVee(s):
     """ Match a keyword value -- a possibly space-padded value ended by a whitespace, a comma, or a semicolon.
@@ -154,7 +156,7 @@ def parseKV(s):
         #
         try:
             V, rest = eatAVee(rest)
-        except ParseException, e:
+        except ParseException as e:
             e.prependText(rest)
             raise
 
@@ -201,7 +203,7 @@ def parseKVs(s):
     while 1:
         try:
             key, values, rest = parseKV(rest)
-        except ParseException, e:
+        except ParseException as e:
             e.setKVs(KVs)
             raise
         
@@ -267,13 +269,13 @@ def parseASCIIReply(s, cidFirst=False):
 
     try:
         KVs = parseKVs(d['rest'])
-    except ParseException, e:
+    except ParseException as e:
         KVs = e.KVs
         leftoverText = e.leftoverText
 
         # In this case, quote the offending text.
         KVs['UNPARSEDTEXT'] = [CPL.qstr(leftoverText)]
-    except Exception, e:
+    except Exception as e:
         CPL.log("parseASCIIReply", "unexpected Exception: %s" % (e))
         KVs = collections.OrderedDict()
         KVs['UNPARSEDTEXT'] = [CPL.qstr(d['rest'])]
@@ -321,19 +323,19 @@ def testParsing():
     
     for t in OKtests:
         r = parseKVs(t)
-        print "OKtest = %s" % (t)
-        print "output = %s" % (r)
-        print
+        print("OKtest = %s" % (t))
+        print("output = %s" % (r))
+        print()
         
     for t in NGtests:
-        print "NGtest = %s" % (t)
+        print("NGtest = %s" % (t))
         try:
             r = parseKVs(t)
-            print "output = %s" % (r)
-        except Exception, e:
-            print "exception = %s" % (e)
+            print("output = %s" % (r))
+        except Exception as e:
+            print("exception = %s" % (e))
             
-        print
+        print()
 
 def testMatching():
     pass

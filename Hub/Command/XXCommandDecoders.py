@@ -1,3 +1,5 @@
+from __future__ import absolute_import
+from builtins import str
 __all__ = ['CommandDecoder',
            'ASCIICmdDecoder',
            'ASCIITargetCmdDecoder']
@@ -5,7 +7,7 @@ __all__ = ['CommandDecoder',
 import re
 
 import CPL
-from Command import Command
+from .Command import Command
 import g
 
 class CommandDecoder(CPL.Object):

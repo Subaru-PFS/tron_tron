@@ -1,3 +1,9 @@
+from __future__ import print_function
+from __future__ import division
+from builtins import str
+from builtins import map
+from builtins import range
+from builtins import object
 __all__ = ['KV', 'KVDict',
            'kvAsASCII']
 
@@ -107,7 +113,7 @@ class KVDict(CPL.Object):
     def keyNamesForKVs(self, KVs):
         """ Return the key names for a list of raw KVs. """
 
-        return map(lambda kv: kv[0], KVs)
+        return [kv[0] for kv in KVs]
         
     def setKV(self, src, key, val, reply):
         """ Save the 
@@ -133,7 +139,7 @@ class KVDict(CPL.Object):
         if self.debug > 7:
             CPL.log("KVDict.setKVs", "src = %r, keys = %r" % (src, KVs))
         
-        for key, val in KVs.iteritems():
+        for key, val in KVs.items():
             self.setKV(src, key, val, reply)
         
     def getKV(self, src, key, default=None):
@@ -167,7 +173,7 @@ class KVDict(CPL.Object):
     def getSources(self):
         """ Return the known sources. """
 
-        sourceList = self.sources.keys()
+        sourceList = list(self.sources.keys())
         sourceList.sort()
 
         return sourceList
@@ -214,7 +220,7 @@ class KVDict(CPL.Object):
             return vals, keys
 
         if not keys:
-            keys = d.keys()
+            keys = list(d.keys())
         
         unmatched = []
         for k in keys:
@@ -225,7 +231,7 @@ class KVDict(CPL.Object):
             try:
                 casek, val = d.fetch(k)
                 vals[casek] = val
-            except KeyError, e:
+            except KeyError as e:
                 unmatched.append(k)
                 
         return vals, unmatched
@@ -238,25 +244,25 @@ if __name__ == "__main__":
     d.setKVs('xxx', (('b', 2), ('c', '3'), ('d', ('dfg', 4353))), None)
         
 
-    print "\n".join(map(str, d.listKVs(full=True)))
-    print d.listKVs(pattern='^hub')
-    print d.listKVs(pattern='nomatch')
+    print("\n".join(map(str, d.listKVs(full=True))))
+    print(d.listKVs(pattern='^hub'))
+    print(d.listKVs(pattern='nomatch'))
 
     d.clearKeys(keys=('hub.b', 'hub.xx'))
-    print d.listKVs()
+    print(d.listKVs())
     
     d.clearKeys()
-    print d.listKVs()
+    print(d.listKVs())
     
     import time
     t0 = time.time()
     N = 100000
-    for i in xrange(N):
-        d.setKV('hub', `i`, i*3)
+    for i in range(N):
+        d.setKV('hub', repr(i), i*3)
     t1 = time.time()
     KVL = d.listKVs(pattern='^1')
     t2 = time.time()
     
-    print "%0.6fs per add" % ((t1-t0) / N)
-    print "%0.6fs per list" % ((t2-t1) / N)
+    print("%0.6fs per add" % ((t1-t0)/N))
+    print("%0.6fs per list" % ((t2-t1)/N))
     

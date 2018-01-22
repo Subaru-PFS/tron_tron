@@ -1,7 +1,8 @@
+from __future__ import absolute_import
 __all__ = ['RawReplyDecoder']
 
 import CPL
-from ReplyDecoder import ReplyDecoder
+from .ReplyDecoder import ReplyDecoder
 from Parsing import parseRawReply
 
 class RawReplyDecoder(ReplyDecoder):

@@ -1,3 +1,5 @@
+from __future__ import absolute_import
+from builtins import range
 __all__ = ['ShellNub']
 
 import os
@@ -6,7 +8,7 @@ import signal
 import sys
 
 import CPL
-from ActorNub import ActorNub
+from .ActorNub import ActorNub
 
 class ShellNub(ActorNub):
     
@@ -23,7 +25,7 @@ class ShellNub(ActorNub):
         
         try:
             os.kill(self.pid, self.sig)
-        except Exception, e:
+        except Exception as e:
             CPL.log("Shell.shutdown",
                     "os.kill(pid=%s, sig=%s) failed with %s" % \
                     (self.pid, self.sig, e))

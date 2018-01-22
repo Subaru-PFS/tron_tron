@@ -1,7 +1,8 @@
+from __future__ import absolute_import
 __all__ = ['RawActorNub']
 
-from ActorNub import ActorNub
-from SocketActorNub import SocketActorNub
+from .ActorNub import ActorNub
+from .SocketActorNub import SocketActorNub
 
 import CPL
 import g
@@ -26,7 +27,7 @@ class RawActorNub(SocketActorNub, ActorNub):
                 self.activeMid += 1
             else:
                 CPL.log('rawReply', 'not converting reply flag :%s:' % (replyText))
-        except Exception, e:
+        except Exception as e:
             CPL.log('rawReply', 'ignoring exceptoin: %s' % (e))
         
         r['cid'] = 0

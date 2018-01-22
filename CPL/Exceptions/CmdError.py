@@ -1,8 +1,6 @@
 __all__ = ['CmdError']
 
-import exceptions
-
-class CmdError(exceptions.Exception):
+class CmdError(Exception):
     """ A exception due to commands sent to the ICC. Anything can throw one, passing a one line
         error message. The top-level event loop will close/cleanup/destroy any running command
         and return the error message on distxt.
@@ -16,7 +14,7 @@ class CmdError(exceptions.Exception):
            details - optional text, intended for operators/programmers. Will be returned on diserrtxt.
         """
 
-        exceptions.Exception.__init__(self)
+        Exception.__init__(self)
 
         self.error = error
         self.details = details

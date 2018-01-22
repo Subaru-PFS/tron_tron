@@ -1,9 +1,12 @@
+from __future__ import absolute_import
+from builtins import str
+from past.builtins import basestring
 __all__ = ['ActorNub']
 
 import re
 
 from Hub.Command.Command import Command
-from CoreNub import CoreNub
+from .CoreNub import CoreNub
 
 import CPL
 import g
@@ -175,7 +178,7 @@ class ActorNub(CoreNub):
         
         if self.debug > 0:
             CPL.log("Nub", "registering key(ours=%s)=%s for %s" % (key, ours, cmd))
-        if ours and self.liveCommands.has_key(key):
+        if ours and key in self.liveCommands:
             raise RuntimeError("Duplicate command key for %s: %s" % (self, key))
 
         self.liveCommands[key] = cmd
@@ -249,7 +252,7 @@ class ActorNub(CoreNub):
         cmd.inform('actorCmds=%s,%d,%d' % \
                    (CPL.qstr(self.name), len(self.liveCommands), len(self.ourCommands)))
 
-        for id, ourCmd in self.ourCommands.iteritems():
+        for id, ourCmd in self.ourCommands.items():
             cmd.inform('actorCmd=%s,%s,%s' % \
                    (CPL.qstr(self.name), CPL.qstr(id), CPL.qstr(ourCmd)))
             

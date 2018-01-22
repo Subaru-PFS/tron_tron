@@ -1,13 +1,14 @@
 #!/usr/bin/env python
 
+from __future__ import absolute_import
 __all__ = ['PollAccept']
 
 import socket
 
 import CPL
-import IOHandler
+from .IOHandler import IOHandler
 
-class PollAccept(IOHandler.IOHandler):
+class PollAccept(IOHandler):
     """ Provide asynchronous socket accept() handling. """
     
     def __init__(self, poller, host, port, depth=5, callback=None, **argv):
@@ -26,7 +27,7 @@ class PollAccept(IOHandler.IOHandler):
         self.host = host
         self.port = port
         
-        IOHandler.IOHandler.__init__(self, poller, **argv)
+        IOHandler.__init__(self, poller, **argv)
         
         self.acceptMany = depth
         self.callback = callback

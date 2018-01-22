@@ -1,11 +1,12 @@
+from __future__ import absolute_import
 __all__ = ['RawCmdDecoder']
 
 import CPL
 from Hub.Command import Command
 
-import CommandDecoder
+from .CommandDecoder import CommandDecoder
 
-class RawCmdDecoder(CommandDecoder.CommandDecoder):
+class RawCmdDecoder(CommandDecoder):
     """ A Command decoder for accepting commands which have no target, MID, or CID. We
     know our target, and assign an incrementing MID. In other words, we transform:
 
@@ -23,7 +24,7 @@ class RawCmdDecoder(CommandDecoder.CommandDecoder):
            cmdWrapper - if set, call this command at the target actor, and pass the incoming
                         cmd as an argument.
         """
-        CommandDecoder.CommandDecoder.__init__(self, **argv)
+        CommandDecoder.__init__(self, **argv)
         
         self.target = target
         self.EOL = argv.get('EOL', '\n')

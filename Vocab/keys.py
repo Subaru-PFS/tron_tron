@@ -41,7 +41,7 @@ class keys(InternalCmd):
             cmd.fail('keysTxt="actor %s is not connected"' % (actor))
             return
 
-        keys = leftovers.keys()
+        keys = list(leftovers.keys())
         CPL.log("keys.getFor", "matched=%s; unmatched=%s; leftovers=%s" % (matched, unmatched, leftovers))
         
         matchedKeys, unmatchedKeys = g.KVs.getValues(actor, keys)
@@ -50,7 +50,7 @@ class keys(InternalCmd):
             cmd.warn('unmatchedKeys=%s' % (','.join(failed)), bcast=False)
 
         values = []
-        for k, v in matchedKeys.iteritems():
+        for k, v in matchedKeys.items():
             values.append(kvAsASCII(k, v))
 
         if values:

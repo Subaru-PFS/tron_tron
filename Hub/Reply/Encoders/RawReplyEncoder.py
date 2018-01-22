@@ -1,9 +1,10 @@
+from __future__ import absolute_import
 __all__ = ['RawReplyEncoder']
            
 import CPL
 from Hub.KV.KVDict import kvAsASCII
-from ReplyEncoder import ReplyEncoder
-from ASCIIReplyEncoder import ASCIIReplyEncoder
+from .ReplyEncoder import ReplyEncoder
+from .ASCIIReplyEncoder import ASCIIReplyEncoder
 from Parsing.dequote import dequote
 
 class RawReplyEncoder(ReplyEncoder):
@@ -53,7 +54,7 @@ class RawReplyEncoder(ReplyEncoder):
             return ""
         
         keylist = []
-        for k, v in KVs.iteritems():
+        for k, v in KVs.items():
             if self.debug > 5:
                 CPL.log("ASCIIReplyEnc.encode", "encoding %r=%r" % (k, v))
 

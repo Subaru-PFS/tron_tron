@@ -16,34 +16,34 @@ class ReplyTaster(CPL.Object):
         self.sources = {}
         
     def __str__(self):
-        return ("ReplyTaster(actors=%s; cmdrs=%s; sources=%s)" % (self.actors.keys(),
-                                                                  self.cmdrs.keys(),
-                                                                  self.sources.keys())
+        return ("ReplyTaster(actors=%s; cmdrs=%s; sources=%s)" % (list(self.actors.keys()),
+                                                                  list(self.cmdrs.keys()),
+                                                                  list(self.sources.keys()))
                                                                   )
     def listeningTo(self):
-        return self.actors.keys(), self.cmdrs.keys(), self.sources.keys()
+        return list(self.actors.keys()), list(self.cmdrs.keys()), list(self.sources.keys())
     
     def genKeys(self, cmd):
         """ generate the keys describing ourselves. """
 
         cmd.inform("tasterActors=%s,%s" %  (CPL.qstr(self.cmdr.name),
-                                            CPL.qstr(self.actors.keys())))
+                                            CPL.qstr(list(self.actors.keys()))))
         cmd.inform("tasterCmdrs=%s,%s" %   (CPL.qstr(self.cmdr.name),
-                                            CPL.qstr(self.cmdrs.keys())))
+                                            CPL.qstr(list(self.cmdrs.keys()))))
         cmd.inform("tasterSources=%s,%s" % (CPL.qstr(self.cmdr.name),
-                                            CPL.qstr(self.sources.keys())))
+                                            CPL.qstr(list(self.sources.keys()))))
         
     def removeFromFilter(self, actors, cmdrs, sources):
         """ Remove a list of actors and commanders to accept Replys from. """
         
         for i in actors:
-            if self.actors.has_key(i):
+            if i in self.actors:
                 del self.actors[i]
         for c in cmdrs:
-            if self.cmdrs.has_key(c):
+            if c in self.cmdrs:
                 del self.cmdrs[c]
         for s in sources:
-            if self.sources.has_key(s):
+            if s in self.sources:
                 del self.sources[s]
             
     def addToFilter(self, actors, cmdrs, sources):

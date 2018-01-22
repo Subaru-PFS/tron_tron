@@ -1,5 +1,6 @@
 #/usr/bin/env python
 
+from builtins import str
 __all__ = ['IOHandler']
 
 import os
@@ -216,12 +217,12 @@ class IOHandler(CPL.Object):
         error = ""
         readIn = ""
         try:
-            readIn = os.read(self.in_fd, self.tryToRead)
-        except socket.error, e:
+            readIn = os.read(self.in_fd, self.tryToRead).decode('latin-1')
+        except socket.error as e:
             error = "socket exception %s" % (e,)
             CPL.log("IOHandler.readInput", error)
             readIn = ""
-        except os.error, e:
+        except os.error as e:
             error = "os exception %s" % (e,)
             CPL.log("IOHandler.readInput", error)
             readIn = ""
@@ -282,16 +283,16 @@ class IOHandler(CPL.Object):
                         (len(qtop), wlen, qtop[:min(wlen, 50)]))
                 
             try:
-                wrote = os.write(self.out_fd, qtop[:wlen])
-            except socket.error, e:
+                wrote = os.write(self.out_fd, qtop[:wlen].encode('latin-1'))
+            except socket.error as e:
                 CPL.log("IOHandler.mayOutput", "socket exception %r" % (e,))
                 self.shutdown(why=str(e))
                 return
-            except os.error, e:
+            except os.error as e:
                 CPL.log("IOHandler.mayOutput", "os exception %r" % (e,))
                 self.shutdown(why=str(e))
                 return
-            except Exception, e:
+            except Exception as e:
                 CPL.log("IOHandler.mayOutput", "unhandled exception %r" % (e,))
                 self.shutdown(why=str(e))
                 return

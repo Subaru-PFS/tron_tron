@@ -1,3 +1,5 @@
+from __future__ import absolute_import
+from builtins import range
 __all__ = ['BinaryReplyDecoder']
 
 import collections
@@ -11,7 +13,7 @@ import g
 import CPL
 from Parsing import *
 
-from ReplyDecoder import ReplyDecoder
+from .ReplyDecoder import ReplyDecoder
 
 class BinaryReplyDecoder(ReplyDecoder):
     msg_re = re.compile(r"""
@@ -43,14 +45,14 @@ class BinaryReplyDecoder(ReplyDecoder):
         hdr = []
         fmt = "%-08s=%21s / %-47s"
         hdr.append(fmt % ('SIMPLE', 'T', ''))
-        hdr.append(fmt % ('BITPIX', `bitpix`, 'Number of bits/data pixel'))
+        hdr.append(fmt % ('BITPIX', repr(bitpix), 'Number of bits/data pixel'))
         hdr.append(fmt % ('NAXIS', '2', 'An image'))
-        hdr.append(fmt % ('NAXIS1', `xpix`, 'The number of columns'))
-        hdr.append(fmt % ('NAXIS2', `ypix`, 'The number of rows'))
+        hdr.append(fmt % ('NAXIS1', repr(xpix), 'The number of columns'))
+        hdr.append(fmt % ('NAXIS2', repr(ypix), 'The number of rows'))
 
         if self.BZERO != 0.0:
             hdr.append(fmt % ('BSCALE', 1.0, ''))
-            hdr.append(fmt % ('BZERO', `self.BZERO`, ''))
+            hdr.append(fmt % ('BZERO', repr(self.BZERO), ''))
             
         hdr.append('%-80s' % ('END'))
         
@@ -159,7 +161,7 @@ class BinaryReplyDecoder(ReplyDecoder):
         #
         my_csum = 0
         if not is_file:
-            for i in xrange(10, fullLength - 10 + 1):
+            for i in range(10, fullLength - 10 + 1):
                 my_csum ^= ord(buf[i])
             if my_csum != csum:
                 CPL.log('Hub.decap', 'csum(%d) != calculated csum(%d)' %
@@ -212,10 +214,10 @@ class BinaryReplyDecoder(ReplyDecoder):
         
             try:
                 KVs = parseKVs(msg_d['rest'])
-            except ParseException, e:
+            except ParseException as e:
                 KVs = e.KVs
                 KVs['UNPARSEDTEXT'] = CPL.qstr(e.leftoverText)
-            except Exception, e:
+            except Exception as e:
                 CPL.log("parseASCIIReply", "unexpected Exception: %s" % (e))
                 KVs = collections.OrderedDict()
                 KVs['RawLine'] = CPL.qstr(msg_d['rest'])

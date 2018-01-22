@@ -1,10 +1,12 @@
+from __future__ import print_function
+from __future__ import absolute_import
 __all__ = ['ASCIIReplyEncoder']
            
 import re
 
 import CPL
 from Hub.KV.KVDict import kvAsASCII
-from ReplyEncoder import ReplyEncoder
+from .ReplyEncoder import ReplyEncoder
 
 class ASCIIReplyEncoder(ReplyEncoder):
     """ Encode Replys in a basic ASCII protocol. """
@@ -101,7 +103,7 @@ class ASCIIReplyEncoder(ReplyEncoder):
             return ""
         
         keylist = []
-        for k, v in KVs.iteritems():
+        for k, v in KVs.items():
             if self.debug > 5:
                 CPL.log("ASCIIReplyEnc.encode", "encoding %r=%r" % (k, v))
 
@@ -128,6 +130,6 @@ if __name__ == "__main__":
     for t in tests:
         sys.stderr.write("====== :%s:\n" % (t))
         d = parseKVs(t)
-        print "t=:%s: d=%s" % (t, d)
+        print("t=:%s: d=%s" % (t, d))
         
     

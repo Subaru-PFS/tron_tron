@@ -1,9 +1,10 @@
 #!/usr/bin/env python
 
+from __future__ import absolute_import
 __all__ = ['FileHandler']
 
 import CPL
-import IOHandler
+from . import IOHandler
 
 class FileHandler(IOHandler):
     """ Class for IO connections that are connected to files/pipes. """
@@ -17,7 +18,7 @@ class FileHandler(IOHandler):
         # CPL.log("Cat.readInput", "reading...")
         try:
             readIn = self.in_f.read(self.tryToRead)
-        except socket.error, e:
+        except socket.error as e:
             CPL.log("Cat.readInput", "exception %r" % (sys.exc_info,))
             self.poller.removeInput(self)
             if len(self.outBuffer) > 0:
@@ -44,7 +45,7 @@ class FileHandler(IOHandler):
 
         try:
             sent = self.out_f.write(self.outBuffer[:self.tryToWrite])
-        except socket.error, e:
+        except socket.error as e:
             CPL.log("Cat.mayOutput", "exception %r" % (e,))
             self.poller.removeOutput(self)
             try:

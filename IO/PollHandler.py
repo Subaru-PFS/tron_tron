@@ -1,5 +1,7 @@
 #!/usr/bin/env python
 
+from builtins import range
+from builtins import object
 __all__ = ['PollHandler']
 
 """ PollHandler.py -- wrap poll loop.
@@ -175,7 +177,7 @@ class PollHandler(CPL.Object):
 
         if self.debug > 2:
             CPL.log('Poll.registry', '%s added input %r(%s): %s' %
-                    (id(self), fd, self.flagNames(eventMask), `obj`))
+                    (id(self), fd, self.flagNames(eventMask), repr(obj)))
 
         return lastHandler
     
@@ -271,11 +273,11 @@ class PollHandler(CPL.Object):
 
             try:
                 self.poller.unregister(fd)
-            except Exception, e:
+            except Exception as e:
                 CPL.log('Poll.registry', 'removeInput poller could not unregister fd=%s err=%s' % (fd, e))
             try:
                 del self.files[fd]
-            except Exception, e:
+            except Exception as e:
                 CPL.log('Poll.registry', 'removeInput could not delete fd=%s err=%s' % (fd, e))
 
         
@@ -321,12 +323,12 @@ class PollHandler(CPL.Object):
             CPL.log('Poll.registry', 'entirely removing (via out) fd=%s' % (fd))
             try:
                 self.poller.unregister(fd)
-            except Exception, e:
+            except Exception as e:
                 CPL.log('Poll.registry', 'removeOutput poller could not unregister fd=%s err=%s' % (fd, e))
                 
             try:
                 del self.files[fd]
-            except Exception, e:
+            except Exception as e:
                 CPL.log('Poll.registry', 'removeOutput could not delete fd=%s err=%s' % (fd, e))
                 
         self.lock.release()
@@ -365,7 +367,7 @@ class PollHandler(CPL.Object):
         """ Returns string describing the files we believe we are waiting on... """
 
         dlist = []
-        for fd, f in self.files.iteritems():
+        for fd, f in self.files.items():
             inHandler = f.get('inputHandler', None)
             outHandler = f.get('outputHandler', None)
             
@@ -401,7 +403,7 @@ class PollHandler(CPL.Object):
 
             try:
                 events = self.poller.poll(timeout * 1000.0)
-            except (socket.error, os.error, "error"), e:
+            except (socket.error, os.error, "error") as e:
                 CPL.log("PollHandler.run",
                         "poll trying to clean up: %s" % (e,))
                 try:
@@ -411,7 +413,7 @@ class PollHandler(CPL.Object):
                 except:
                     CPL.log("PollHandler.run",
                             "poll failed with unknown error exception: %s" % (e,))
-            except Exception, e:
+            except Exception as e:
                 CPL.log("PollHandler.run", "poll failed with: %s (%s)" % (e, type(e)))
                 if type(e) == type((),) and len(e) == 2:
                     CPL.log("PollHandler.run",
@@ -467,8 +469,8 @@ class PollHandler(CPL.Object):
                 
                 try:
                     d = self.files[fd]
-                except KeyError, e:
-                    CPL.log("PollHandler.run", "invalid file on poll: %s" % (`fd`))
+                except KeyError as e:
+                    CPL.log("PollHandler.run", "invalid file on poll: %s" % (repr(fd)))
                     
                     continue
 
@@ -494,7 +496,7 @@ class PollHandler(CPL.Object):
                 if flag & (select.POLLHUP | select.POLLERR):
                     # On HUP or ERR, let the readInput() or mayOutput() discover the error and act on it.
                     #
-                    CPL.log("PollHandler.run", "HUP/ERR (%s) on poll: %s" % (self.flagNames(flag), `fd`))
+                    CPL.log("PollHandler.run", "HUP/ERR (%s) on poll: %s" % (self.flagNames(flag), repr(fd)))
                     outputHandler = d.get('outputHandler', None)
                     inputHandler = d.get('inputHandler', None)
                     if outputHandler:
@@ -505,7 +507,7 @@ class PollHandler(CPL.Object):
                 if flag & select.POLLNVAL:
                     # I don't know what I'm doing here. -- CPL
                     #
-                    CPL.log("PollHandler.run", "NVAL (%s) on poll: %s" % (self.flagNames(flag), `fd`))
+                    CPL.log("PollHandler.run", "NVAL (%s) on poll: %s" % (self.flagNames(flag), repr(fd)))
 
                     outputHandler = d.get('outputHandler', None)
                     inputHandler = d.get('inputHandler', None)

@@ -1,5 +1,6 @@
 #!/usr/bin/env python
 
+from __future__ import print_function
 import os
 import CPL.cfg
 
@@ -11,9 +12,9 @@ def getActors(actorName=None, hostName=None):
     
     actors = CPL.cfg.get('hub', 'actors')
     if actorName:
-        actors = dict([(key, val) for key, val in actors.items() if key == actorName])
+        actors = dict([(key, val) for key, val in list(actors.items()) if key == actorName])
     if hostName:
-        actors = dict([(key, val) for key, val in actors.items() if (hostName in (val['host'],
+        actors = dict([(key, val) for key, val in list(actors.items()) if (hostName in (val['host'],
                                                                       val['host'].split('.', 1)[0]))])
     return actors
 
@@ -21,12 +22,12 @@ def printActors(actors, verbose=False):
     if verbose:
         actorList = ["%s,%s,%s" % (actors[name]['actorName'],
                                    actors[name]['host'],
-                                   actors[name]['port']) for name in actors.keys()]
+                                   actors[name]['port']) for name in list(actors.keys())]
     else:
-        actorList = [actors[name]['actorName'] for name in actors.keys()]
+        actorList = [actors[name]['actorName'] for name in list(actors.keys())]
 
     if actorList:
-        print "\n".join(actorList)
+        print("\n".join(actorList))
 
 def main():
     printActors(getAllActors())

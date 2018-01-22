@@ -1,8 +1,9 @@
+from __future__ import absolute_import
 __all__ = ['TCCShellNub']
 
 import CPL
 import Hub.Reply
-from ShellNub import ShellNub
+from .ShellNub import ShellNub
 
 class TCCShellNub(ShellNub):
     """ An ShellNub with the plumbing required to recognize and record the TCC YourUserName as
@@ -12,7 +13,7 @@ class TCCShellNub(ShellNub):
     def findUserNum(self, kvl):
         """ Find YourUserNum key in list of KVs. Return the CID or None. """
         
-        for k, v in kvl.iteritems():
+        for k, v in kvl.items():
             if k == "YourUserNum":
                 cid = int(v[0])
                 return cid

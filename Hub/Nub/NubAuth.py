@@ -1,8 +1,8 @@
+from builtins import map
+from builtins import object
 __all__ = ['NubAuth']
 
-import base64
-import re
-import sha
+import hashlib
 
 import g
 import hub
@@ -31,7 +31,7 @@ class NubAuth(object):
         try:
             path = CPL.cfg.get('hub', 'passwordFile')
             pw_f = open(path, "r")
-        except Exception, e:
+        except Exception as e:
             g.hubcmd.inform('HubError=%s' % (CPL.qstr("Could not read the password file: %s" % e)),
                             src="hub")
 
@@ -47,7 +47,7 @@ class NubAuth(object):
                 
             try:
                 (program, password) = l.split()
-            except Exception, e:
+            except Exception as e:
                 g.hubcmd.inform('HubError=%s' % (CPL.qstr("password file line cannot be parsed: %s" % l)),
                                 src="hub")
 
@@ -74,7 +74,7 @@ class NubAuth(object):
         CPL.log('NubAut', 'parsing version %s' % (s))
 
         parts = s.split(',')
-        dqparts = map(Parsing.dequote, parts)
+        dqparts = list(map(Parsing.dequote, parts))
 
         CPL.log('NubAut', 'parsed %s' % (dqparts))
         return dqparts
@@ -117,10 +117,12 @@ class NubAuth(object):
         program = matched["program"].upper()
 
         ourPW = self.passwords.get(program, None)
-        if ourPW == None:
+        if ourPW is None:
             return "unknown program"
         
-        enc = sha.new(self.nonce + ourPW)
+        enc = hashlib.sha1()
+        pw = self.nonce + ourPW
+        enc.update(pw.encode('latin-1'))
         if enc.hexdigest() != matched['password']:
             return "incorrect password"
         

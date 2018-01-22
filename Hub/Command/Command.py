@@ -1,3 +1,4 @@
+from builtins import range
 __all__ = ['Command']
            
 import re 
@@ -169,7 +170,7 @@ class Command(CPL.Object):
     def cmdr(self):
         """ Return our commander. """
 
-        for c in g.commanders.values():
+        for c in list(g.commanders.values()):
             CPL.log("Command.cmdr()" , "checking %s in %s" % (self.cmdrName, c))
             if self.cmdrName == c.name:
                 CPL.log("Command.cmdr()" , "matched %s in %s" % (self.cmdrName, c))
@@ -495,7 +496,7 @@ class Command(CPL.Object):
         if not argv.get('noRegister', False):
             g.KVs.setKVsFromReply(r)
 
-        for c in g.commanders.values():
+        for c in list(g.commanders.values()):
             c.tasteReply(r)
             
         if r.finishesCommand():

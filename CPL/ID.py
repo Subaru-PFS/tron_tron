@@ -1,5 +1,6 @@
 #!/usr/bin/env python
 
+from builtins import object
 __all__ = ['ID']
 
 import threading

@@ -1,3 +1,5 @@
+from __future__ import absolute_import
+from builtins import str
 __all__ = ['ASCIICmdDecoder']
 
 import re
@@ -6,9 +8,9 @@ import CPL
 from Hub.Command import Command
 import g
 
-import CommandDecoder
+from .CommandDecoder import CommandDecoder
 
-class ASCIICmdDecoder(CommandDecoder.CommandDecoder):
+class ASCIICmdDecoder(CommandDecoder):
 
     # REs to match commands like:
     #   cmdrName TGT command
@@ -45,7 +47,7 @@ class ASCIICmdDecoder(CommandDecoder.CommandDecoder):
 
     def __init__(self, **argv):
 
-        CommandDecoder.CommandDecoder.__init__(self, **argv)
+        CommandDecoder.__init__(self, **argv)
         
         self.EOL = argv.get('EOL', '\n')
         self.needCID = argv.get('needCID', True)

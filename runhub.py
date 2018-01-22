@@ -11,7 +11,7 @@ def startAllListeners(names):
     for n in names:
         try:
             hub.startNub(n)
-        except Exception, e:
+        except Exception as e:
             sys.stderr.write("FAILED to start nub %s: %s\n" % (n, e))
             try:
                 g.hubcmd.warn('text=%s' % (CPL.qstr('FAILED to start nub %s: %s\n', n, e)))

@@ -1,5 +1,6 @@
 """ Auth.py - maintain authorization tables: who can command which actors?
 """
+from __future__ import print_function
 
 __all__ = ['Auth']
 
@@ -142,7 +143,7 @@ class Auth(CPL.Object):
         if not cmd:
             cmd = self.defaultCmd
 
-        actors = self.actors.keys()
+        actors = list(self.actors.keys())
         actors.remove('perms')
         actors.sort()
         actors = [CPL.qstr(x) for x in actors]
@@ -167,7 +168,7 @@ class Auth(CPL.Object):
         if not cmd:
             cmd = self.defaultCmd
 
-        programs = self.programs.keys()
+        programs = list(self.programs.keys())
         programs.sort()
         programs = [CPL.qstr(x) for x in programs]
 
@@ -191,7 +192,7 @@ class Auth(CPL.Object):
         if not cmd:
             cmd = self.defaultCmd
 
-        actors = self.lockedActors.keys()
+        actors = list(self.lockedActors.keys())
         actors.sort()
         actors = [CPL.qstr(x) for x in actors]
 
@@ -314,15 +315,15 @@ class Auth(CPL.Object):
         if not cmd:
             cmd = self.defaultCmd
         if not programs:
-            programs = self.programs.keys()
+            programs = list(self.programs.keys())
 
         programs.sort()
         CPL.log("auth.genAuthKeys", "listing programs: %s" % (programs))
 
         for prog in programs:
             try:
-                pAuth = self.programs[prog].keys()
-            except KeyError, e:
+                pAuth = list(self.programs[prog].keys())
+            except KeyError as e:
                 raise Exception("No authorization entry found for program %s" % (prog))
             
             pAuth.sort()
@@ -342,7 +343,7 @@ class Auth(CPL.Object):
 
         if not programs:
             programs = []
-            for name, cmdr in g.commanders.iteritems():
+            for name, cmdr in g.commanders.items():
                 if cmdr.needsAuth and name not in self.programs:
                     programs.append(name)
 
@@ -369,7 +370,7 @@ class Auth(CPL.Object):
         """
 
         if not programs:
-            programs = self.programs.keys()
+            programs = list(self.programs.keys())
 
         if self.debug > 3:
             CPL.log("auth.dropProgram", "dropping programs %s" % (programs))
@@ -432,7 +433,7 @@ class Auth(CPL.Object):
             
         try:
             d = self.programs[program]
-        except KeyError, e:
+        except KeyError as e:
             cmd.fail("permsTxt=%s" % (CPL.qstr("Program %s did not have an authorization entry, so could not be added to" % (program))))
             return
 
@@ -453,7 +454,7 @@ class Auth(CPL.Object):
             
         try:
             d = self.programs[program]
-        except KeyError, e:
+        except KeyError as e:
             cmd.fail("permsTxt=%s" % (CPL.qstr("Program %s did not have an authorization entry, so could not be modified" % (program))))
             return
 
@@ -473,7 +474,7 @@ if __name__ == "__main__":
         else:
             ok = "BAD "
             
-        print "%s %s\t-> %s\t = %s" % (ok, cmdr, actor, access)
+        print("%s %s\t-> %s\t = %s" % (ok, cmdr, actor, access))
         
     g.actors = ('tcc', 'them')
     a = Auth(CPL.tcmd(name='auth'), debug=9)

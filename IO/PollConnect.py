@@ -1,13 +1,14 @@
 #!/usr/bin/env python
 
+from __future__ import absolute_import
 __all__ = ['PollConnect']
 
 import socket
 
-import IOHandler
+from .IOHandler import IOHandler
 import CPL
 
-class PollConnect(IOHandler.IOHandler):
+class PollConnect(IOHandler):
     """ Provide asynchronous socket accept() handling. """
     
     def __init__(self, poller, host, port, depth=5, callback=None):

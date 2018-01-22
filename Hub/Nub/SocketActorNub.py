@@ -1,8 +1,9 @@
+from __future__ import absolute_import
 __all__ = ['SocketActorNub']
 
 import socket
 
-from ActorNub import ActorNub
+from .ActorNub import ActorNub
 
 class SocketActorNub(ActorNub):
     def __init__(self, poller, host, port, **argv):

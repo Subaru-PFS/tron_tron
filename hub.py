@@ -158,23 +158,23 @@ def _loadWords(wordlist, cmd=None):
             CPL.log('hub.loadVocab', 'trying to (re-)load vocabulary word %s' % (w,))
             fp, pathname, description = imp.find_module(modName, vocab_mod.__path__)
             mod = imp.load_module(modName, fp, pathname, description)
-        except ImportError, e:
+        except ImportError as e:
             raise Exception('Import of %s failed: %s' % (modName, e))
 
         if fp:
             fp.close()
 
-        loadCmd = 'cmdSet = mod.%s()' % (modName)
-        CPL.log('hub.loadWords', 'loading vocabulary word %s with %s...' % (w, loadCmd))
+        CPL.log('hub.loadWords', 'loading vocabulary word %s from %s...' % (w, mod))
 
         try:
-            exec(loadCmd)
+            loadCall = getattr(mod, modName)
+            cmdSet = loadCall()
             try:
                 dropActor(cmdSet)
             except:
                 pass
             g.vocabulary[w] = cmdSet
-        except Exception, e:
+        except Exception as e:
             raise Exception("Failed to load word %s: %s" % (w, e))
 
         addActor(cmdSet)
@@ -204,21 +204,21 @@ def _shutdown():
     sys.stderr.write("final cleanup; deleting hub pieces...\n")
     
     sys.stderr.write("       deleting acceptors...\n")
-    for aname, acceptor in g.acceptors.items():
+    for aname, acceptor in list(g.acceptors.items()):
         try:
             acceptor.shutdown(notifyHub=False)
         except:
             pass
             
     sys.stderr.write("       deleting commanders...\n")
-    for cname, cmdr in g.commanders.items():
+    for cname, cmdr in list(g.commanders.items()):
         try:
             cmdr.shutdown(notifyHub=False)
         except:
             pass
             
     sys.stderr.write("       deleting actors...\n")
-    for aname, actor in g.actors.items():
+    for aname, actor in list(g.actors.items()):
         try:
             actor.shutdown(notifyHub=False)
         except:
@@ -235,7 +235,7 @@ def run():
             CPL.log('Hub.run', 'Normal exit."')
             raise
         
-        except Exception, e:
+        except Exception as e:
             CPL.tback('Hub.run', e)
 
 class NubDict(collections.OrderedDict):
@@ -258,7 +258,7 @@ class NubDict(collections.OrderedDict):
 
     def listSelf(self, cmd=None):
         names = []
-        for n in self.itervalues():
+        for n in self.values():
             names.append(CPL.qstr(n.name))
 
         if not cmd:
@@ -278,7 +278,7 @@ class CmdrDict(NubDict):
             cmd = g.hubcmd
         names = []
         userNames = []
-        for n in self.itervalues():
+        for n in self.values():
             names.append(CPL.qstr(n.name))
             if n.isUser:
                 userNames.append(CPL.qstr(n.name))
@@ -375,7 +375,7 @@ def dropNub(nub):
                 (nub.ID, nub))
         try:
             nub.ioshutdown()
-        except Exception, e:
+        except Exception as e:
             CPL.log("hub.dropNub", "emergency unregistering of %s(%s) failed: %s" % \
                     (nub.ID, nub, e))
 
@@ -383,7 +383,7 @@ def dropNub(nub):
 def listActors(match):
     """ """
 
-    actors = g.actors.keys()
+    actors = list(g.actors.keys())
     actors.sort()
     
     return actors
@@ -412,7 +412,7 @@ def validateCommanderNames(nub, programName, username):
     ok = False
     while not ok:
         ok = True
-        for c in g.commanders.itervalues():
+        for c in g.commanders.values():
             if c.name == proposedName:
                 ok = False
                 break
@@ -488,7 +488,7 @@ def runCmd(c):
     
     try:
         ret = eval(cmd)
-    except Exception, e:
+    except Exception as e:
         c.fail('EvalError=%s' % CPL.qstr(e),
                src='hub')
         raise
@@ -622,7 +622,7 @@ def startManagedNub(name, managerName='mhsActor', hostname=None, port=None):
 
     try:
         mod = imp.load_module(managerName, fp, pathname, description)
-    except Exception, e:
+    except Exception as e:
         g.hubcmd.warn('text=%s' % (CPL.qstr("failed to load manager Nub %s: %s" % (managerName, e))))
         return False
     finally:
@@ -636,7 +636,7 @@ def startManagedNub(name, managerName='mhsActor', hostname=None, port=None):
     try:
         g.hubcmd.inform('text="starting managed Nub %s at %s:%s..."' % (name, hostname, port))
         mod.start(g.poller, name, argHost=hostname, argPort=port)
-    except Exception, e:
+    except Exception as e:
         g.hubcmd.warn('text=%s' % (CPL.qstr("failed to start managed Nub %s: %s" % (name, e))))
         return False
 
