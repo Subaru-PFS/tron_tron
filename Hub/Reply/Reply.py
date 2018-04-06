@@ -58,13 +58,13 @@ class Reply(CPL.Object):
          - a list, which we parse either as a list of key=value strings or of (key, value) duples.
         """
         
-        if type(kvl) == str:
+        if isinstance(kvl, str):
             return Parsing.parseKVs(kvl)
 
         od = collections.OrderedDict()
-        if kvl != None:
+        if kvl is not None:
             for i in kvl:
-                if type(i) == str:
+                if isinstance(i, str):
                     k, v, junk = Parsing.parseKV(i)
                     od[k] = v
                 elif type(i) in (list, tuple) and len(i) == 2:
