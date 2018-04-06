@@ -26,7 +26,7 @@ cd $TRON_TRON_DIR
 #
 get_pid() {
     PID=""
-    pid=`/bin/ps -e -ww -o pid,user,command | egrep -v 'awk|grep' | grep 'python runhub.py' | awk '{print $1}'`
+    pid=`/bin/ps -e -ww -o pid,user,command | egrep -v 'awk|grep' | grep 'python3 runhub.py' | awk '{print $1}'`
     PID=$pid
     
     if test "$pid"; then
@@ -52,7 +52,7 @@ do_start() {
     # This log will only get startup bomb messages. Don't bother saving them.
     cd $TRON_TRON_DIR
     mv $LOG_DIR/run.log $LOG_DIR/run.log-last 2>/dev/null
-    python runhub.py >$LOG_DIR/run.log 2>&1 &        
+    python3 runhub.py >$LOG_DIR/run.log 2>&1 &        
     
     # Check that it really started...
     #
