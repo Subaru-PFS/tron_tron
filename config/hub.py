@@ -41,5 +41,5 @@ actors = dict(iic=       dict(host="localhost", port=9000, actorName='mhsActor',
               cam4=      dict(host="localhost", port=9024, actorName='mhsActor'),
               )
 
-httpHost = 'localhost'
+httpHost = 'tron.pfs'
 httpRoot = '/'
