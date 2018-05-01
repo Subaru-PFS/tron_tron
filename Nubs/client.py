@@ -10,7 +10,7 @@ import hub
 
 name = 'client'
 listenPort = 6093
-listenHost = 'tron.pfs'
+listenHost = 'tron'
 
 def acceptStdin(in_f, out_f, addr=None):
     """ Create a command source with the given fds as input and output. """

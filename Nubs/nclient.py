@@ -11,7 +11,7 @@ import hub
 
 name = 'nclient'
 listenPort = 6095
-listenHost = 'tron.pfs'
+listenHost = 'tron'
 
 def acceptStdin(in_f, out_f, addr=None):
     """ Create a command source with the given fds as input and output. """
