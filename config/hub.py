@@ -19,7 +19,7 @@ listeners = ('cmdin',
 # For the PFS MHS, all the current actors use the same connection protocol, so we hand off 
 # to a single manager which reads this dictionary.
 # 
-actors = dict(iic=       dict(host="localhost", port=9000, actorName='mhsActor', fixed=True),
+actors = dict(iic=       dict(host="localhost", port=9000, actorName='mhsActor'),
 
               enu=       dict(host="localhost", port=9999, actorName='mhsActor'),
               mps=       dict(host="localhost", port=9001, actorName='mhsActor'),
