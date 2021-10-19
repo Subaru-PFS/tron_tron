@@ -403,7 +403,7 @@ class PollHandler(CPL.Object):
 
             try:
                 events = self.poller.poll(timeout * 1000.0)
-            except (socket.error, os.error, "error") as e:
+            except (socket.error, os.error) as e:
                 CPL.log("PollHandler.run",
                         "poll trying to clean up: %s" % (e,))
                 try:
