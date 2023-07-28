@@ -1,6 +1,3 @@
-from __future__ import division
-from builtins import range
-from builtins import object
 __all__ = ['Logfile']
 
 import os
@@ -73,10 +70,10 @@ class Logfile(object):
     def getTS(self, t=None, format="%Y-%m-%d %H:%M:%S", zone="Z"):
         """ Return a proper ISO timestamp for t, or now if t==None. """
 
-        if t == None:
+        if t is None:
             t = time()
 
-        if zone == None:
+        if zone is None:
             zone = ''
 
         return strftime(format, gmtime(t)) \
@@ -91,7 +88,7 @@ class Logfile(object):
 
         if level > self.level:
             return
-        
+
         now = time()
         self.rollover(now)
         ts = self.getTS(t=now)
