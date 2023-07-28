@@ -59,13 +59,19 @@ class Logfile(object):
         
         self.rolloverTime = t - t%self.rolloverChunk + self.rolloverChunk + self.rolloverOffset
         logfileName = "%s.log" % (strftime("%Y-%m-%dT%H:%M:%S", gmtime(t)))
-        self.logfile = open(os.path.join(self.logDir, logfileName), "w", 1)
-        currentName = os.path.join(self.logDir, "current.log")
         try:
-            os.unlink(currentName)
-        except:
+            self.logfile = open(os.path.join(self.logDir, logfileName), "w", 1)
+            currentName = os.path.join(self.logDir, "current.log")
+            try:
+                os.unlink(currentName)
+            except:
+                pass
+            os.symlink(logfileName, currentName)
+        except (OSError, FileNotFoundError):
+            # If logging fails, keep running.
+            # Since logging has failed, we cannot complain.
+            self.logfile = None
             pass
-        os.symlink(logfileName, currentName)
 
     def getTS(self, t=None, format="%Y-%m-%d %H:%M:%S", zone="Z"):
         """ Return a proper ISO timestamp for t, or now if t==None. """
@@ -93,11 +99,18 @@ class Logfile(object):
         self.rollover(now)
         ts = self.getTS(t=now)
 
-        if self.doEncode:
-            self.logfile.write("%s %s %r%s" % (ts, note, txt, self.EOL))
-        else:
-            self.logfile.write("%s %s %s%s" % (ts, note, txt, self.EOL))
-        
+        # If logging fails, keep running.
+        # Since logging has failed, we cannot complain.
+        if self.logfile is None:
+            return
+        try:
+            if self.doEncode:
+                self.logfile.write("%s %s %r%s" % (ts, note, txt, self.EOL))
+            else:
+                self.logfile.write("%s %s %s%s" % (ts, note, txt, self.EOL))
+        except (OSError, FileNotFoundError):
+            pass
+
 def test():
     l = Log('/tmp/tlogs')
 
