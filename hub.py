@@ -139,8 +139,7 @@ def _loadWords(wordlist, cmd=None):
     # First, (re-)load the entire Vocabulary module. Let that fail to the top
     # level.
     #
-    
-    CPL.log('hub.loadVocab', 'trying to (re-)load Vocab module')
+
     CPL.log('hub.loadVocab', 'trying to (re-)load Vocab module')
     fp, pathname, description = imp.find_module('Vocab')
     vocab_mod = imp.load_module('Vocab', fp, pathname, description)
@@ -495,50 +494,6 @@ def runCmd(c):
     
     c.finish("Eval=%s" % (CPL.qstr(ret)), src='hub')
     CPL.log("hub.runCmd", "ret = %r" % (ret))
-
-
-def listenTo(**argv):
-    """ Arrange for the given events to be accepted. """
-    pass
-
-def loadVocab(**argv):
-    """ Load the entire Vocabulary, overwriting any existing info. """
-
-    # First, (re-)load the entire Nubs module. Let that fail to the top
-    # level.
-    #
-    fp, pathname, description = imp.find_module('Vocab')
-    vocab_mod = imp.load_module('Vocab', fp, pathname, description)
-    if fp:
-        fp.close()
-     
-    # Now try to load the module itself.
-    #
-    try:
-        CPL.log('hub.loadVocab', 'trying to (re-)load vocabulary')
-        fp, pathname, description = imp.find_module(name, vocab_mod.__path__)
-    except:
-        raise
-
-    try:
-        mod = imp.load_module(name, fp, pathname, description)
-    finally:
-        # Since we may exit via an exception, close fp explicitly.
-        if fp:
-            fp.close()
-
-    # And call the start() function.
-    #
-    CPL.log('hub.startAConnection', 'starting Nub %s...' % (name))
-    mod.start(g.poller)
-
-def stopNub(id):
-    """  """
-
-    n = findNub(id)
-    if n:
-        n.shutdown(notifyHub=False)
-        dropNub(n)
 
 def forceReload(name, all=True):
     """ Do whatever we can to force a given module/package to be reloaded.
