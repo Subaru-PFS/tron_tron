@@ -20,7 +20,7 @@
    r = Reply(cmd=cmd
 """
 
-import imp
+import importlib
 import os
 import re
 import signal
@@ -139,13 +139,13 @@ def _loadWords(wordlist, cmd=None):
     # First, (re-)load the entire Vocabulary module. Let that fail to the top
     # level.
     #
-    
+
     CPL.log('hub.loadVocab', 'trying to (re-)load Vocab module')
-    CPL.log('hub.loadVocab', 'trying to (re-)load Vocab module')
-    fp, pathname, description = imp.find_module('Vocab')
-    vocab_mod = imp.load_module('Vocab', fp, pathname, description)
-    if fp:
-        fp.close()
+    try:
+        vocab_mod = importlib.import_module('Vocab')
+    except ImportError:
+        pass
+
     CPL.log('hub.loadVocab', 'Vocab module: %s' % (dir(vocab_mod)))
      
     for w in wordlist:
@@ -156,13 +156,9 @@ def _loadWords(wordlist, cmd=None):
             modName = 'hubCommands'
         try:
             CPL.log('hub.loadVocab', 'trying to (re-)load vocabulary word %s' % (w,))
-            fp, pathname, description = imp.find_module(modName, vocab_mod.__path__)
-            mod = imp.load_module(modName, fp, pathname, description)
+            mod = importlib.import_module(f"Vocab.{modName}")
         except ImportError as e:
-            raise Exception('Import of %s failed: %s' % (modName, e))
-
-        if fp:
-            fp.close()
+            raise Exception('Import of %s failed: Vocab.%s' % (modName, e))
 
         CPL.log('hub.loadWords', 'loading vocabulary word %s from %s...' % (w, mod))
 
@@ -496,50 +492,6 @@ def runCmd(c):
     c.finish("Eval=%s" % (CPL.qstr(ret)), src='hub')
     CPL.log("hub.runCmd", "ret = %r" % (ret))
 
-
-def listenTo(**argv):
-    """ Arrange for the given events to be accepted. """
-    pass
-
-def loadVocab(**argv):
-    """ Load the entire Vocabulary, overwriting any existing info. """
-
-    # First, (re-)load the entire Nubs module. Let that fail to the top
-    # level.
-    #
-    fp, pathname, description = imp.find_module('Vocab')
-    vocab_mod = imp.load_module('Vocab', fp, pathname, description)
-    if fp:
-        fp.close()
-     
-    # Now try to load the module itself.
-    #
-    try:
-        CPL.log('hub.loadVocab', 'trying to (re-)load vocabulary')
-        fp, pathname, description = imp.find_module(name, vocab_mod.__path__)
-    except:
-        raise
-
-    try:
-        mod = imp.load_module(name, fp, pathname, description)
-    finally:
-        # Since we may exit via an exception, close fp explicitly.
-        if fp:
-            fp.close()
-
-    # And call the start() function.
-    #
-    CPL.log('hub.startAConnection', 'starting Nub %s...' % (name))
-    mod.start(g.poller)
-
-def stopNub(id):
-    """  """
-
-    n = findNub(id)
-    if n:
-        n.shutdown(notifyHub=False)
-        dropNub(n)
-
 def forceReload(name, all=True):
     """ Do whatever we can to force a given module/package to be reloaded.
     
@@ -561,34 +513,28 @@ def forceReload(name, all=True):
             start = end+1
 
             CPL.log('hub.forceReload', 'trying to (re-)load module %s in %s' % (partName, mod))
-            if mod == None:
-                fp, pathname, description = imp.find_module(partName)
+            if mod is None:
+                full_mod_name = partName
             else:
-                fp, pathname, description = imp.find_module(partName, mod.__path__)
+                full_mod_name = f"{mod}.{partName}"
 
             try:
-                mod = imp.load_module(partName, fp, pathname, description)
-            finally:
-                if fp:
-                    fp.close()
+                mod = importlib.import_module(full_mod_name)
+            except ImportError:
+                pass
      
     # Now try to load the module itself.
     #
-    try:
-        CPL.log('hub.forceReload', 'trying to (re-)load final %s in %s' % (partName, mod))
-        if mod == None:
-            fp, pathname, description = imp.find_module(partName)
-        else:
-            fp, pathname, description = imp.find_module(partName, mod.__path__)
-    except:
-        raise
+    CPL.log('hub.forceReload', 'trying to (re-)load final %s in %s' % (partName, mod))
+    if mod is None:
+        full_mod_name = partName
+    else:
+        full_mod_name = f"{mod}.{partName}"
 
     try:
-        mod = imp.load_module(name, fp, pathname, description)
-    finally:
-        # Since we may exit via an exception, close fp explicitly.
-        if fp:
-            fp.close()
+        mod = importlib.import_module(full_mod_name)
+    except ImportError as e:
+        raise e
 
     return mod
 
@@ -607,28 +553,21 @@ def startManagedNub(name, managerName='mhsActor', hostname=None, port=None):
     # First, (re-)load the entire Nubs module. Let that fail to the top
     # level.
     #
-    fp, pathname, description = imp.find_module('Nubs')
-    nubs_mod = imp.load_module('Nubs', fp, pathname, description)
-    if fp:
-        fp.close()
-     
+    try:
+        nubs_mod = importlib.import_module('Nubs')
+    except ImportError:
+        pass
+
     # Now try to load the manager nub itself.
     #
     try:
         CPL.log('hub.startNub', 'trying to (re-)load Nub manager %s' % (managerName))
-        fp, pathname, description = imp.find_module(managerName, nubs_mod.__path__)
-    except:
+        mod = importlib.import_module(f"Nubs.{managerName}")
+    except ImportError:
         return False
-
-    try:
-        mod = imp.load_module(managerName, fp, pathname, description)
     except Exception as e:
         g.hubcmd.warn('text=%s' % (CPL.qstr("failed to load manager Nub %s: %s" % (managerName, e))))
         return False
-    finally:
-        # Since we may exit via an exception, close fp explicitly.
-        if fp:
-            fp.close()
 
     # And call the start() function.
     #
@@ -653,25 +592,20 @@ def startNub(name, hostname=None, port=None):
     # First, (re-)load the entire Nubs module. Let that fail to the top
     # level.
     #
-    fp, pathname, description = imp.find_module('Nubs')
-    nubs_mod = imp.load_module('Nubs', fp, pathname, description)
-    if fp:
-        fp.close()
-     
+    try:
+        nubs_mod = importlib.import_module('Nubs')
+    except ImportError:
+        pass
+
     # Now try to load the module itself.
     #
     try:
         CPL.log('hub.startNub', 'trying to (re-)load Nub %s' % (name))
-        fp, pathname, description = imp.find_module(name, nubs_mod.__path__)
-    except:
+        mod = importlib.import_module(f"Nubs.{name}")
+    except Exception as e:
         return startManagedNub(name, hostname=hostname, port=port)
 
-    try:
-        mod = imp.load_module(name, fp, pathname, description)
-    finally:
-        # Since we may exit via an exception, close fp explicitly.
-        if fp:
-            fp.close()
+    mod = importlib.import_module(f"Nubs.{name}")
 
     # And call the start() function.
     #
